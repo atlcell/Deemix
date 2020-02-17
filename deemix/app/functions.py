@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
+import re
+
 from deemix.api.deezer import Deezer, APIError
 from deemix.utils.taggers import tagID3, tagFLAC
-import json
-import re
 
 extensions = {
 	9: '.flac',
@@ -16,28 +16,30 @@ extensions = {
 
 dz = Deezer()
 
+
 def getIDFromLink(link, type):
 	if '?' in link:
 		link = link[:link.find('?')]
 
 	if link.startswith("http") and 'open.spotify.com/' in link:
 		if type == "spotifyplaylist":
-			return link[link.find("/playlist/")+10]
+			return link[link.find("/playlist/") + 10]
 		if type == "spotifytrack":
-			return link[link.find("/track/")+7]
+			return link[link.find("/track/") + 7]
 		if type == "spotifyalbum":
-			return link[link.find("/album/")+7]
+			return link[link.find("/album/") + 7]
 	elif link.startswith("spotify:"):
 		if type == "spotifyplaylist":
-			return link[link.find("playlist:")+9]
+			return link[link.find("playlist:") + 9]
 		if type == "spotifytrack":
-			return link[link.find("track:")+6]
+			return link[link.find("track:") + 6]
 		if type == "spotifyalbum":
-			return link[link.find("album:")+6]
+			return link[link.find("album:") + 6]
 	elif type == "artisttop":
-		return re.search("\/artist\/(\d+)\/top_track",link)[1]
+		return re.search(r"\/artist\/(\d+)\/top_track", link)[1]
 	else:
-		return link[link.rfind("/")+1:]
+		return link[link.rfind("/") + 1:]
+
 
 def getTypeFromLink(link):
 	type = ''
@@ -56,29 +58,30 @@ def getTypeFromLink(link):
 			type = 'playlist'
 		elif '/album' in link:
 			type = 'album'
-		elif re.search("\/artist\/(\d+)\/top_track",link):
+		elif re.search("\/artist\/(\d+)\/top_track", link):
 			type = 'artisttop'
 		elif '/artist' in link:
 			type = 'artist'
 	return type
+
 
 def getTrackData(id):
 	if not id:
 		return None
 	trackAPI = dz.get_track_gw(id)
 	if not 'MD5_ORIGIN' in trackAPI:
-		trackAPI['MD5_ORIGIN'] = dz.get_track_MD5(id)
+		trackAPI['MD5_ORIGIN'] = dz.get_track_md5(id)
 
 	track = {}
 	track['id'] = trackAPI['SNG_ID']
 	track['title'] = trackAPI['SNG_TITLE']
 	if trackAPI['VERSION']:
-		track['title'] += " "+trackAPI['VERSION']
+		track['title'] += " " + trackAPI['VERSION']
 	track['duration'] = trackAPI['DURATION']
 	track['MD5'] = trackAPI['MD5_ORIGIN']
 	track['mediaVersion'] = trackAPI['MEDIA_VERSION']
 
-	if int(track['id'])<0:
+	if int(track['id']) < 0:
 		track['filesize'] = trackAPI['FILESIZE']
 		track['album'] = {}
 		track['album']['id'] = 0
@@ -131,9 +134,11 @@ def getTrackData(id):
 			track['lyrics']['sync'] = ""
 			for i in range(len(trackAPI["LYRICS"]["LYRICS_SYNC_JSON"])):
 				if "lrc_timestamp" in trackAPI["LYRICS"]["LYRICS_SYNC_JSON"][i]:
-					track['lyrics']['sync'] += trackAPI["LYRICS"]["LYRICS_SYNC_JSON"][i]["lrc_timestamp"] + trackAPI["LYRICS"]["LYRICS_SYNC_JSON"][i]["line"]+"\r\n"
-				elif i+1 < len(trackAPI["LYRICS"]["LYRICS_SYNC_JSON"]):
-					track['lyrics']['sync'] += trackAPI["LYRICS"]["LYRICS_SYNC_JSON"][i+1]["lrc_timestamp"] + trackAPI["LYRICS"]["LYRICS_SYNC_JSON"][i]["line"]+"\r\n"
+					track['lyrics']['sync'] += trackAPI["LYRICS"]["LYRICS_SYNC_JSON"][i]["lrc_timestamp"] + \
+											   trackAPI["LYRICS"]["LYRICS_SYNC_JSON"][i]["line"] + "\r\n"
+				elif i + 1 < len(trackAPI["LYRICS"]["LYRICS_SYNC_JSON"]):
+					track['lyrics']['sync'] += trackAPI["LYRICS"]["LYRICS_SYNC_JSON"][i + 1]["lrc_timestamp"] + \
+											   trackAPI["LYRICS"]["LYRICS_SYNC_JSON"][i]["line"] + "\r\n"
 
 	track['mainArtist'] = {}
 	track['mainArtist']['id'] = trackAPI['ART_ID']
@@ -174,7 +179,7 @@ def getTrackData(id):
 				'year': albumAPI["release_date"][0:4]
 			}
 		track['album']['genre'] = []
-		if 'genres' in albumAPI and 'data' in albumAPI['genres'] and len(albumAPI['genres']['data'])>0:
+		if 'genres' in albumAPI and 'data' in albumAPI['genres'] and len(albumAPI['genres']['data']) > 0:
 			for genre in albumAPI['genres']['data']:
 				track['album']['genre'].append(genre['name'])
 	except APIError:
@@ -217,6 +222,7 @@ def getTrackData(id):
 		track['album']['discTotal'] = albumAPI2['NUMBER_DISK']
 	return track
 
+
 def downloadTrack(id, bitrate):
 	# Get the metadata
 	track = getTrackData(id)
@@ -252,13 +258,15 @@ def downloadTrack(id, bitrate):
 	track['album']['bitrate'] = track['selectedFormat']
 
 	# Create the filename
-	filename = "{artist} - {title}".format(title=track['title'], artist=track['mainArtist']['name'])+extensions[track['selectedFormat']]
+	filename = "{artist} - {title}".format(title=track['title'], artist=track['mainArtist']['name']) + extensions[
+		track['selectedFormat']]
 	print(filename)
 
-	track['downloadUrl'] = dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], track['selectedFormat'])
+	track['downloadUrl'] = dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'],
+												   track['selectedFormat'])
 	with open(filename, 'wb') as stream:
 		dz.stream_track(track['id'], track['downloadUrl'], stream)
-	if track['selectedFormat'] in [3,1,8]:
+	if track['selectedFormat'] in [3, 1, 8]:
 		tagID3(filename, track)
 	elif track['selectedFormat'] == 9:
 		tagFLAC(filename, track)
