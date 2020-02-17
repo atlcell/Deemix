@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-from mutagen.id3 import ID3, ID3NoHeaderError
-from mutagen.id3 import TXXX, TIT2, TPE1, TALB, TPE2, TRCK, TPOS, TCON, TYER, TDAT, TLEN, TBPM, TPUB, TSRC, USLT, APIC, IPLS, TCOM, TCOP, TCMP
-from mutagen.flac import FLAC, Picture
 from urllib.request import urlopen
+
+from mutagen.flac import FLAC, Picture
+from mutagen.id3 import ID3, ID3NoHeaderError, TXXX, TIT2, TPE1, TALB, TPE2, TRCK, TPOS, TCON, TYER, TDAT, TLEN, TBPM, \
+	TPUB, TSRC, USLT, APIC, IPLS, TCOM, TCOP
+
 
 def tagID3(stream, track):
 	try:
@@ -18,7 +20,7 @@ def tagID3(stream, track):
 	tag.add(TPOS(text=str(track['discNumber'])))
 	tag.add(TCON(text=track['album']['genre']))
 	tag.add(TYER(text=str(track['date']['year'])))
-	tag.add(TDAT(text=str(track['date']['month'])+str(track['date']['day'])))
+	tag.add(TDAT(text=str(track['date']['month']) + str(track['date']['day'])))
 	tag.add(TLEN(text=str(track['duration'])))
 	tag.add(TBPM(text=str(track['bpm'])))
 	tag.add(TPUB(text=track['album']['label']))
@@ -28,20 +30,22 @@ def tagID3(stream, track):
 	tag.add(TXXX(desc="REPLAYGAIN_TRACK_GAIN", text=track['replayGain']))
 	if 'unsync' in track['lyrics']:
 		tag.add(USLT(text=track['lyrics']['unsync']))
-	involvedPeople = []
+	involved_people = []
 	for role in track['contributors']:
 		if role in ['author', 'engineer', 'mixer', 'producer', 'writer']:
 			for person in track['contributors'][role]:
-				involvedPeople.append([role,person])
+				involved_people.append([role, person])
 		elif role == 'composer':
 			tag.add(TCOM(text=track['contributors']['composer']))
-	if len(involvedPeople) > 0:
-		tag.add(IPLS(people=involvedPeople))
+	if len(involved_people) > 0:
+		tag.add(IPLS(people=involved_people))
 	tag.add(TCOP(text=track['copyright']))
 
-	tag.add(APIC(3, 'image/jpeg', 3, data=urlopen("http://e-cdn-images.deezer.com/images/cover/"+track["album"]['pic']+"/800x800.jpg").read()))
+	tag.add(APIC(3, 'image/jpeg', 3, data=urlopen(
+		"http://e-cdn-images.deezer.com/images/cover/" + track["album"]['pic'] + "/800x800.jpg").read()))
 
 	tag.save(stream, v1=2, v2_version=3, v23_sep=None)
+
 
 def tagFLAC(stream, track):
 	tag = FLAC(stream)
@@ -76,7 +80,7 @@ def tagFLAC(stream, track):
 	image = Picture()
 	image.type = 3
 	image.mime = 'image/jpeg'
-	image.data = urlopen("http://e-cdn-images.deezer.com/images/cover/"+track["album"]['pic']+"/800x800.jpg").read()
+	image.data = urlopen("http://e-cdn-images.deezer.com/images/cover/" + track["album"]['pic'] + "/800x800.jpg").read()
 	tag.add_picture(image)
 
 	tag.save(deleteid3=True)
