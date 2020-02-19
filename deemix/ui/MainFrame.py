@@ -1,13 +1,32 @@
 #!/usr/bin/env python3
 import wx
 
+from deemix.ui.SettingsDialog import SettingsDialog
 from deemix.app.functions import downloadTrack, getIDFromLink, getTypeFromLink
 
+menuIDs = {
+	"SETTINGS": 1
+}
 
 class MainFrame(wx.Frame):
-	def __init__(self):
+	def __init__(self, *args, **kwargs):
 		super().__init__(parent=None, title='deemix')
 		panel = wx.Panel(self)
+
+		self.settings = {}
+
+		# Menubar
+		menubar = wx.MenuBar()
+		fileMenu = wx.Menu()
+		settingsItem = fileMenu.Append(menuIDs['SETTINGS'], 'Settings', 'Edit Settings')
+		fileMenu.AppendSeparator()
+		quitItem = fileMenu.Append(wx.ID_EXIT, 'Quit', 'Quit application')
+		menubar.Append(fileMenu, '&File')
+		self.SetMenuBar(menubar)
+		self.Bind(wx.EVT_MENU, self.close_app, quitItem)
+		self.Bind(wx.EVT_MENU, self.open_settings, settingsItem)
+
+		# Main app
 		main_sizer = wx.BoxSizer(wx.VERTICAL)
 		search_sizer = wx.BoxSizer(wx.HORIZONTAL)
 		main_sizer.Add(search_sizer, 0, wx.EXPAND, 5)
@@ -30,3 +49,13 @@ class MainFrame(wx.Frame):
 		if type == "track":
 			downloadTrack(id, 9)
 		self.text_ctrl.SetValue("")
+
+	def close_app(self, event):
+		self.Close()
+
+	def open_settings(self, event):
+		settings_dialog = SettingsDialog(self.settings, self)
+		res = settings_dialog.ShowModal()
+		if res == wx.ID_OK:
+			self.settings = settings_dialog.GetSettings()
+		settings_dialog.Destroy()
