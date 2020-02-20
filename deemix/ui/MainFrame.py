@@ -2,7 +2,9 @@
 import wx
 
 from deemix.ui.SettingsDialog import SettingsDialog
-from deemix.app.functions import downloadTrack, getIDFromLink, getTypeFromLink
+from deemix.app.functions import getIDFromLink, getTypeFromLink
+from deemix.app.downloader import download_track, download_album
+from deemix.app.settings import initSettings
 
 menuIDs = {
 	"SETTINGS": 1
@@ -13,7 +15,7 @@ class MainFrame(wx.Frame):
 		super().__init__(parent=None, title='deemix')
 		panel = wx.Panel(self)
 
-		self.settings = {}
+		self.settings = initSettings()
 
 		# Menubar
 		menubar = wx.MenuBar()
@@ -47,7 +49,9 @@ class MainFrame(wx.Frame):
 		id = getIDFromLink(value, type)
 		print(type, id)
 		if type == "track":
-			downloadTrack(id, 9)
+			download_track(id, self.settings)
+		elif type == "album":
+			download_album(id, self.settings)
 		self.text_ctrl.SetValue("")
 
 	def close_app(self, event):

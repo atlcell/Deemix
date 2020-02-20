@@ -1,0 +1,36 @@
+{
+	"pathSettings": {
+		"downloadLocation": ""
+	},
+	"appSettings": {
+		"maxBitrate": 3
+	},
+	"taggingSettings": {
+		"artworkSize": 800,
+		"tags": {
+			"title": true,
+			"artist": true,
+			"album": true,
+			"cover": true,
+			"trackNumber": true,
+			"trackTotal": false,
+			"discNumber": true,
+			"discTotal": false,
+			"albumArtist": true,
+			"genre": true,
+			"year": true,
+			"date": true,
+			"explicit": false,
+			"isrc": true,
+			"length": false,
+			"barcode": false,
+			"bpm": true,
+			"replayGain": false,
+			"label": true,
+			"lyrics": false,
+			"copyright": false,
+			"composer": false,
+			"involvedPeople": false
+		}
+	}
+}

@@ -5,4 +5,6 @@ Run `python -m deemix` to run the app
 
 # TODO
 Find all dependencies and add them to requirements.txt<br>
+Making the download work in multi-threading<br>
+Add the settings in the GUI<br>
 Finish porting all features
