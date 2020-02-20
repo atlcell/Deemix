@@ -6,81 +6,117 @@ from mutagen.id3 import ID3, ID3NoHeaderError, TXXX, TIT2, TPE1, TALB, TPE2, TRC
 	TPUB, TSRC, USLT, APIC, IPLS, TCOM, TCOP
 
 
-def tagID3(stream, track):
+def tagID3(stream, track, save):
 	try:
 		tag = ID3(stream)
 	except ID3NoHeaderError:
 		tag = ID3()
 
-	tag.add(TIT2(text=track['title']))
-	tag.add(TPE1(text=track['artists']))
-	tag.add(TALB(text=track['album']['title']))
-	tag.add(TPE2(text=track['album']['artist']['name']))
-	tag.add(TRCK(text=str(track['trackNumber'])))
-	tag.add(TPOS(text=str(track['discNumber'])))
-	tag.add(TCON(text=track['album']['genre']))
-	tag.add(TYER(text=str(track['date']['year'])))
-	tag.add(TDAT(text=str(track['date']['month']) + str(track['date']['day'])))
-	tag.add(TLEN(text=str(track['duration'])))
-	tag.add(TBPM(text=str(track['bpm'])))
-	tag.add(TPUB(text=track['album']['label']))
-	tag.add(TSRC(text=track['ISRC']))
-	tag.add(TXXX(desc="BARCODE", text=track['album']['barcode']))
+	if save['title']:
+		tag.add(TIT2(text=track['title']))
+	if save['artist']:
+		tag.add(TPE1(text=track['artists']))
+	if save['album']:
+		tag.add(TALB(text=track['album']['title']))
+	if save['albumArtist']:
+		tag.add(TPE2(text=track['album']['artist']['name']))
+	if save['trackNumber']:
+		tag.add(TRCK(text=str(track['trackNumber'])))
+	if save['discNumber']:
+		tag.add(TPOS(text=str(track['discNumber'])))
+	if save['genre']:
+		tag.add(TCON(text=track['album']['genre']))
+	if save['year']:
+		tag.add(TYER(text=str(track['date']['year'])))
+	if save['date']:
+		tag.add(TDAT(text=str(track['date']['month']) + str(track['date']['day'])))
+	if save['length']:
+		tag.add(TLEN(text=str(track['duration'])))
+	if save['bpm']:
+		tag.add(TBPM(text=str(track['bpm'])))
+	if save['label']:
+		tag.add(TPUB(text=track['album']['label']))
+	if save['isrc']:
+		tag.add(TSRC(text=track['ISRC']))
+	if save['barcode']:
+		tag.add(TXXX(desc="BARCODE", text=track['album']['barcode']))
 	tag.add(TXXX(desc="ITUNESADVISORY", text="1" if track['explicit'] else "0"))
-	tag.add(TXXX(desc="REPLAYGAIN_TRACK_GAIN", text=track['replayGain']))
-	if 'unsync' in track['lyrics']:
+	if save['replayGain']:
+		tag.add(TXXX(desc="REPLAYGAIN_TRACK_GAIN", text=track['replayGain']))
+	if 'unsync' in track['lyrics'] and save['lyrics']:
 		tag.add(USLT(text=track['lyrics']['unsync']))
 	involved_people = []
 	for role in track['contributors']:
 		if role in ['author', 'engineer', 'mixer', 'producer', 'writer']:
 			for person in track['contributors'][role]:
 				involved_people.append([role, person])
-		elif role == 'composer':
+		elif role == 'composer' and save['composer']:
 			tag.add(TCOM(text=track['contributors']['composer']))
-	if len(involved_people) > 0:
+	if len(involved_people) > 0 and save['involvedPeople']:
 		tag.add(IPLS(people=involved_people))
-	tag.add(TCOP(text=track['copyright']))
-
-	tag.add(APIC(3, 'image/jpeg', 3, data=urlopen(
-		"http://e-cdn-images.deezer.com/images/cover/" + track["album"]['pic'] + "/800x800.jpg").read()))
+	if save['copyright']:
+		tag.add(TCOP(text=track['copyright']))
+	if save['cover']:
+		tag.add(APIC(3, 'image/jpeg', 3, data=urlopen(track['album']['picUrl']).read()))
 
 	tag.save(stream, v1=2, v2_version=3, v23_sep=None)
 
 
-def tagFLAC(stream, track):
+def tagFLAC(stream, track, save):
 	tag = FLAC(stream)
 
-	tag["TITLE"] = track['title']
-	tag["ARTIST"] = track['artists']
-	tag["ALBUM"] = track['album']['title']
-	tag["ALBUMARTIST"] = track['album']['artist']['name']
-	tag["TRACKNUMBER"] = str(track['trackNumber'])
-	tag["TRACKTOTAL"] = str(track['album']['trackTotal'])
-	tag["DISCNUMBER"] = str(track['discNumber'])
-	tag["DISCTOTAL"] = str(track['album']['discTotal'])
-	tag["GENRE"] = track['album']['genre']
-	tag["YEAR"] = str(track['date']['year'])
-	tag["DATE"] = "{}-{}-{}".format(str(track['date']['year']), str(track['date']['month']), str(track['date']['day']))
-	tag["LENGTH"] = str(track['duration'])
-	tag["BPM"] = str(track['bpm'])
-	tag["PUBLISHER"] = track['album']['label']
-	tag["ISRC"] = track['ISRC']
-	tag["BARCODE"] = track['album']['barcode']
-	tag["ITUNESADVISORY"] = "1" if track['explicit'] else "0"
-	tag["REPLAYGAIN_TRACK_GAIN"] = track['replayGain']
-	if 'unsync' in track['lyrics']:
+	if save['title']:
+		tag["TITLE"] = track['title']
+	if save['artist']:
+		tag["ARTIST"] = track['artists']
+	if save['album']:
+		tag["ALBUM"] = track['album']['title']
+	if save['albumArtist']:
+		tag["ALBUMARTIST"] = track['album']['artist']['name']
+	if save['trackNumber']:
+		tag["TRACKNUMBER"] = str(track['trackNumber'])
+	if save['trackTotal']:
+		tag["TRACKTOTAL"] = str(track['album']['trackTotal'])
+	if save['discNumber']:
+		tag["DISCNUMBER"] = str(track['discNumber'])
+	if save['discTotal']:
+		tag["DISCTOTAL"] = str(track['album']['discTotal'])
+	if save['genre']:
+		tag["GENRE"] = track['album']['genre']
+	if save['year']:
+		tag["YEAR"] = str(track['date']['year'])
+	if save['date']:
+		tag["DATE"] = "{}-{}-{}".format(str(track['date']['year']), str(track['date']['month']), str(track['date']['day']))
+	if save['length']:
+		tag["LENGTH"] = str(track['duration'])
+	if save['bpm']:
+		tag["BPM"] = str(track['bpm'])
+	if save['label']:
+		tag["PUBLISHER"] = track['album']['label']
+	if save['isrc']:
+		tag["ISRC"] = track['ISRC']
+	if save['barcode']:
+		tag["BARCODE"] = track['album']['barcode']
+	if save['explicit']:
+		tag["ITUNESADVISORY"] = "1" if track['explicit'] else "0"
+	if save['replayGain']:
+		tag["REPLAYGAIN_TRACK_GAIN"] = track['replayGain']
+	if 'unsync' in track['lyrics'] and save['lyrics']:
 		tag["LYRICS"] = track['lyrics']['unsync']
 	for role in track['contributors']:
 		if role in ['author', 'engineer', 'mixer', 'producer', 'writer', 'composer']:
-			tag[role.upper()] = track['contributors'][role]
-		elif role == 'musicpublisher':
+			if save['involvedPeople'] and role != 'composer' or role == 'composer' and save['composer']:
+				tag[role] = track['contributors'][role]
+		elif role == 'musicpublisher' and save['involvedPeople']:
 			tag["ORGANIZATION"] = track['contributors']['musicpublisher']
-	tag["COPYRIGHT"] = track['copyright']
+	if save['copyright']:
+		tag["COPYRIGHT"] = track['copyright']
 
-	image = Picture()
-	image.type = 3
-	image.mime = 'image/jpeg'
-	image.data = urlopen("http://e-cdn-images.deezer.com/images/cover/" + track["album"]['pic'] + "/800x800.jpg").read()
-	tag.add_picture(image)
+	if save['cover']:
+		image = Picture()
+		image.type = 3
+		image.mime = 'image/jpeg'
+		image.data = urlopen(track['album']['picUrl']).read()
+		tag.add_picture(image)
 
 	tag.save(deleteid3=True)

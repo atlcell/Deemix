@@ -217,6 +217,7 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False):
 		track['selectedFormat'] = 8
 		track['selectedFilesize'] = track['filesize']['default']
 	track['album']['bitrate'] = track['selectedFormat']
+	track['album']['picUrl'] = "http://e-cdn-images.deezer.com/images/cover/{}/{}x{}-000000-80-0-0.jpg".format(track['album']['pic'], settings['taggingSettings']['artworkSize'], settings['taggingSettings']['artworkSize'])
 
 	# Create the filename
 	filename = "{artist} - {title}".format(title=track['title'], artist=track['mainArtist']['name']) + extensions[
@@ -228,9 +229,9 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False):
 	with open(writepath, 'wb') as stream:
 		dz.stream_track(track['id'], track['downloadUrl'], stream)
 	if track['selectedFormat'] in [3, 1, 8]:
-		tagID3(writepath, track)
+		tagID3(writepath, track, settings['taggingSettings']['tags'])
 	elif track['selectedFormat'] == 9:
-		tagFLAC(writepath, track)
+		tagFLAC(writepath, track, settings['taggingSettings']['tags'])
 
 def download_track(id, settings, overwriteBitrate=False):
 	trackAPI = dz.get_track_gw(id)
