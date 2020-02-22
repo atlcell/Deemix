@@ -27,7 +27,7 @@ def initSettings():
 		settings['downloadLocation'] = path.join(localpaths.getHomeFolder(), 'deemix Music')
 		saveSettings(settings)
 	if not path.isdir(settings['downloadLocation']):
-		mkdir(settings['pathSettings']['downloadLocation'])
+		mkdir(settings['downloadLocation'])
 	return settings
 
 def getSettings():
