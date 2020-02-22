@@ -188,7 +188,7 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False):
 	if overwriteBitrate:
 		bitrate = overwriteBitrate
 	else:
-		bitrate = settings['appSettings']['maxBitrate']
+		bitrate = settings['maxBitrate']
 	bitrateFound = False;
 	if int(bitrate) == 9:
 		track['selectedFormat'] = 9
@@ -217,21 +217,21 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False):
 		track['selectedFormat'] = 8
 		track['selectedFilesize'] = track['filesize']['default']
 	track['album']['bitrate'] = track['selectedFormat']
-	track['album']['picUrl'] = "http://e-cdn-images.deezer.com/images/cover/{}/{}x{}-000000-80-0-0.jpg".format(track['album']['pic'], settings['taggingSettings']['artworkSize'], settings['taggingSettings']['artworkSize'])
+	track['album']['picUrl'] = "http://e-cdn-images.deezer.com/images/cover/{}/{}x{}-000000-80-0-0.jpg".format(track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'])
 
 	# Create the filename
 	filename = "{artist} - {title}".format(title=track['title'], artist=track['mainArtist']['name']) + extensions[
 		track['selectedFormat']]
-	writepath = os.path.join(settings['pathSettings']['downloadLocation'], filename)
+	writepath = os.path.join(settings['downloadLocation'], filename)
 
 	track['downloadUrl'] = dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'],
 												   track['selectedFormat'])
 	with open(writepath, 'wb') as stream:
 		dz.stream_track(track['id'], track['downloadUrl'], stream)
 	if track['selectedFormat'] in [3, 1, 8]:
-		tagID3(writepath, track, settings['taggingSettings']['tags'])
+		tagID3(writepath, track, settings['tags'])
 	elif track['selectedFormat'] == 9:
-		tagFLAC(writepath, track, settings['taggingSettings']['tags'])
+		tagFLAC(writepath, track, settings['tags'])
 
 def download_track(id, settings, overwriteBitrate=False):
 	trackAPI = dz.get_track_gw(id)
