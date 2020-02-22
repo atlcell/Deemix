@@ -2,7 +2,7 @@
 import wx
 
 from deemix.ui.SettingsDialog import SettingsDialog
-from deemix.app.functions import getIDFromLink, getTypeFromLink
+from deemix.utils.misc import getIDFromLink, getTypeFromLink
 from deemix.app.downloader import download_track, download_album, download_playlist
 from deemix.app.settings import initSettings
 

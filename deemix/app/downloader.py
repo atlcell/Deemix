@@ -150,7 +150,7 @@ def getTrackData(trackAPI):
 		}
 		track['album']['trackTotal'] = albumAPI2['NUMBER_TRACK']
 		track['album']['discTotal'] = albumAPI2['NUMBER_DISK']
-		track['album']['recordType'] = trackAPI['TYPE']
+		track['album']['recordType'] = "Album"
 		track['album']['barcode'] = "Unknown"
 		track['album']['label'] = albumAPI2['LABEL_NAME'] if 'LABEL_NAME' in albumAPI2 else "Unknown"
 		if not 'pic' in track['album']:
@@ -174,10 +174,11 @@ def getTrackData(trackAPI):
 	track['artist'] = {}
 	track['artists'] = []
 	for artist in trackAPI2['contributors']:
-		track['artists'].append(artist['name'])
-		if not artist['role'] in track['artist']:
-			track['artist'][artist['role']] = []
-		track['artist'][artist['role']].append(artist['name'])
+		if artist['id'] != 5080:
+			track['artists'].append(artist['name'])
+			if not artist['role'] in track['artist']:
+				track['artist'][artist['role']] = []
+			track['artist'][artist['role']].append(artist['name'])
 
 	if not 'discTotal' in track['album'] or not track['album']['discTotal']:
 		if not albumAPI2:

@@ -21,9 +21,9 @@ def tagID3(stream, track, save):
 	if save['albumArtist']:
 		tag.add(TPE2(text=track['album']['artist']['name']))
 	if save['trackNumber']:
-		tag.add(TRCK(text=str(track['trackNumber'])))
+		tag.add(TRCK(text=str(track['trackNumber'])+("/"+str(track['album']['trackTotal']) if save['trackTotal'] else "")))
 	if save['discNumber']:
-		tag.add(TPOS(text=str(track['discNumber'])))
+		tag.add(TPOS(text=str(track['discNumber'])+("/"+str(track['album']['discTotal']) if save['discTotal'] else "")))
 	if save['genre']:
 		tag.add(TCON(text=track['album']['genre']))
 	if save['year']:
