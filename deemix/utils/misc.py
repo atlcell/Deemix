@@ -1,6 +1,17 @@
 #!/usr/bin/env python3
 import re
 
+def getBitrateInt(txt):
+	txt = str(txt)
+	if txt in ['flac', 'lossless', '9']:
+		return 9
+	elif txt in ['mp3', '320', '3']:
+		return 3
+	elif txt in ['128']:
+		return 1
+	else:
+		return None
+
 def getIDFromLink(link, type):
 	if '?' in link:
 		link = link[:link.find('?')]
