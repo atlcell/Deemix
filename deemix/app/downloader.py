@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 from deemix.api.deezer import Deezer, APIError
 from deemix.utils.taggers import tagID3, tagFLAC
+from deemix.utils.pathtemplates import generateFilename, generateFilepath
 import os.path
+from os import makedirs
 from urllib.error import HTTPError
 
 dz = Deezer()
@@ -15,6 +17,38 @@ extensions = {
 	14: '.mp4',
 	13: '.mp4'
 }
+
+def getPreferredBitrare(filesize, bitrate):
+	bitrateFound = False;
+	selectedFormat = 0
+	selectedFilesize = 0
+	if int(bitrate) == 9:
+		selectedFormat = 9
+		selectedFilesize = filesize['flac']
+		if filesize['flac'] > 0:
+			bitrateFound = True
+		else:
+			bitrateFound = False
+			bitrate = 3
+	if int(bitrate) == 3:
+		selectedFormat = 3
+		selectedFilesize = filesize['mp3_320']
+		if filesize['mp3_320'] > 0:
+			bitrateFound = True
+		else:
+			bitrateFound = False
+			bitrate = 1
+	if int(bitrate) == 1:
+		selectedFormat = 3
+		selectedFilesize = filesize['mp3_320']
+		if filesize['mp3_320'] > 0:
+			bitrateFound = True
+		else:
+			bitrateFound = False
+	if not bitrateFound:
+		selectedFormat = 8
+		selectedFilesize = filesize['default']
+	return (selectedFormat, selectedFilesize)
 
 def parseEssentialTrackData(track, trackAPI):
 	track['id'] = trackAPI['SNG_ID']
@@ -57,7 +91,10 @@ def getTrackData(trackAPI):
 		track['mainArtist'] = {}
 		track['mainArtist']['id'] = 0
 		track['mainArtist']['name'] = trackAPI['ART_NAME']
-		track['artistArray'] = [trackAPI['ART_NAME']]
+		track['artists'] = [trackAPI['ART_NAME']]
+		track['aritst'] = {
+			'Main': [trackAPI['ART_NAME']]
+		}
 		track['date'] = {
 			'day': 0,
 			'month': 0,
@@ -72,10 +109,12 @@ def getTrackData(trackAPI):
 		track['explicit'] = trackAPI['EXPLICIT_LYRICS'] != "0"
 	if 'COPYRIGHT' in trackAPI:
 		track['copyright'] = trackAPI['COPYRIGHT']
-	track['replayGain'] = "{0:.2f} dB".format((float(trackAPI['GAIN']) + 18.4) * -1)
+	track['replayGain'] = "{0:.2f} dB".format((float(trackAPI['GAIN']) + 18.4) * -1) if 'GAIN' in trackAPI else None
 	track['ISRC'] = trackAPI['ISRC']
 	track['trackNumber'] = trackAPI['TRACK_NUMBER']
 	track['contributors'] = trackAPI['SNG_CONTRIBUTORS']
+	if 'POSITION' in trackAPI:
+		track['position'] = trackAPI['POSITION']
 
 	track['lyrics'] = {}
 	if 'LYRICS_ID' in trackAPI:
@@ -130,8 +169,8 @@ def getTrackData(trackAPI):
 		track['album']['label'] = albumAPI['label'] if 'label' in albumAPI else "Unknown"
 		if not 'pic' in track['album']:
 			track['album']['pic'] = albumAPI['cover_small'][43:-24]
-		if 'release_date' in albumAPI and not 'date' in track:
-			track['date'] = {
+		if 'release_date' in albumAPI:
+			track['album']['date'] = {
 				'day': albumAPI["release_date"][8:10],
 				'month': albumAPI["release_date"][5:7],
 				'year': albumAPI["release_date"][0:4]
@@ -155,18 +194,21 @@ def getTrackData(trackAPI):
 		track['album']['label'] = albumAPI2['LABEL_NAME'] if 'LABEL_NAME' in albumAPI2 else "Unknown"
 		if not 'pic' in track['album']:
 			track['album']['pic'] = albumAPI2['ALB_PICTURE']
-		if 'PHYSICAL_RELEASE_DATE' in albumAPI2 and not 'date' in track:
-			track['date'] = {
+		if 'PHYSICAL_RELEASE_DATE' in albumAPI2:
+			track['album']['date'] = {
 				'day': albumAPI2["PHYSICAL_RELEASE_DATE"][8:10],
 				'month': albumAPI2["PHYSICAL_RELEASE_DATE"][5:7],
 				'year': albumAPI2["PHYSICAL_RELEASE_DATE"][0:4]
 			}
 		track['album']['genre'] = []
 
+	if 'date' in track['album']:
+		track['date'] = track['album']['date']
+
 	trackAPI2 = dz.get_track(track['id'])
 	track['bpm'] = trackAPI2['bpm']
 	if not 'replayGain' in track:
-		track['replayGain'] = "{0:.2f} dB".format((float(trackAPI2['gain']) + 18.4) * -1)
+		track['replayGain'] = "{0:.2f} dB".format((float(trackAPI2['gain']) + 18.4) * -1) if 'GAIN' in trackAPI else ""
 	if not 'explicit' in track:
 		track['explicit'] = trackAPI2['explicit_lyrics']
 	if not 'discNumber' in track:
@@ -204,43 +246,19 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 		bitrate = overwriteBitrate
 	else:
 		bitrate = settings['maxBitrate']
-	bitrateFound = False;
-	if int(bitrate) == 9:
-		track['selectedFormat'] = 9
-		track['selectedFilesize'] = track['filesize']['flac']
-		if track['filesize']['flac'] > 0:
-			bitrateFound = True
-		else:
-			bitrateFound = False
-			bitrate = 3
-	if int(bitrate) == 3:
-		track['selectedFormat'] = 3
-		track['selectedFilesize'] = track['filesize']['mp3_320']
-		if track['filesize']['mp3_320'] > 0:
-			bitrateFound = True
-		else:
-			bitrateFound = False
-			bitrate = 1
-	if int(bitrate) == 1:
-		track['selectedFormat'] = 3
-		track['selectedFilesize'] = track['filesize']['mp3_320']
-		if track['filesize']['mp3_320'] > 0:
-			bitrateFound = True
-		else:
-			bitrateFound = False
-	if not bitrateFound:
-		track['selectedFormat'] = 8
-		track['selectedFilesize'] = track['filesize']['default']
-	track['album']['bitrate'] = track['selectedFormat']
+	(format, filesize) = getPreferredBitrare(track['filesize'], bitrate)
+	track['selectedFormat'] = format
+	track['selectedFilesize'] = filesize
+	track['album']['bitrate'] = format
 	track['album']['picUrl'] = "http://e-cdn-images.deezer.com/images/cover/{}/{}x{}-000000-80-0-0.jpg".format(track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'])
-
 	# Create the filename
-	filename = "{artist} - {title}".format(title=track['title'], artist=track['mainArtist']['name']) + extensions[
-		track['selectedFormat']]
-	writepath = os.path.join(settings['downloadLocation'], filename)
+	filename = generateFilename(track, trackAPI, settings) + extensions[track['selectedFormat']]
+	(filepath, artistPath, coverPath, extrasPath) = generateFilepath(track, trackAPI, settings)
 
-	track['downloadUrl'] = dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'],
-												   track['selectedFormat'])
+	makedirs(filepath, exist_ok=True)
+	writepath = os.path.join(filepath, filename)
+
+	track['downloadUrl'] = dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], track['selectedFormat'])
 	with open(writepath, 'wb') as stream:
 		try:
 			dz.stream_track(track['id'], track['downloadUrl'], stream)
@@ -268,6 +286,8 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 
 def download_track(id, settings, overwriteBitrate=False):
 	trackAPI = dz.get_track_gw(id)
+	trackAPI['FILENAME_TEMPLATE'] = settings['tracknameTemplate']
+	trackAPI['SINGLE_TRACK'] = True
 	downloadTrackObj(trackAPI, settings, overwriteBitrate)
 
 def download_album(id, settings, overwriteBitrate=False):
@@ -278,16 +298,21 @@ def download_album(id, settings, overwriteBitrate=False):
 	if albumAPI['nb_tracks'] == 1:
 		trackAPI = dz.get_track_gw(albumAPI['tracks']['data'][0]['id'])
 		trackAPI['ALBUM_EXTRA'] = albumAPI
+		trackAPI['FILENAME_TEMPLATE'] = settings['tracknameTemplate']
+		trackAPI['SINGLE_TRACK'] = True
 		downloadTrackObj(trackAPI, settings, overwriteBitrate)
 	else:
 		tracksArray = dz.get_album_tracks_gw(id)
 		for trackAPI in tracksArray:
 			trackAPI['ALBUM_EXTRA'] = albumAPI
+			trackAPI['FILENAME_TEMPLATE'] = settings['albumTracknameTemplate']
 			downloadTrackObj(trackAPI, settings, overwriteBitrate)
 
 def download_playlist(id, settings, overwriteBitrate=False):
 	playlistAPI = dz.get_playlist(id)
 	playlistTracksAPI = dz.get_playlist_tracks_gw(id)
-	for trackAPI in playlistTracksAPI:
+	for pos, trackAPI in enumerate(playlistTracksAPI, start=1):
 		trackAPI['PLAYLIST_EXTRA'] = playlistAPI
+		trackAPI['POSITION'] = pos
+		trackAPI['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
 		downloadTrackObj(trackAPI, settings, overwriteBitrate)
