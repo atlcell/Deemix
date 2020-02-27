@@ -56,7 +56,7 @@ def tagID3(stream, track, save):
 		tag.add(TCOP(text=track['copyright']))
 	if save['cover'] and track['album']['picPath']:
 		with open(track['album']['picPath'], 'rb') as f:
-			tag.add(APIC(3, 'image/jpeg', 3, data=f.read()))
+			tag.add(APIC(3, 'image/jpeg' if track['album']['picPath'].endswith('jpg') else 'image/png', 3, data=f.read()))
 
 	tag.save(stream, v1=2, v2_version=3, v23_sep=None)
 
@@ -114,7 +114,7 @@ def tagFLAC(stream, track, save):
 	if save['cover'] and track['album']['picPath']:
 		image = Picture()
 		image.type = 3
-		image.mime = 'image/jpeg'
+		image.mime = 'image/jpeg' if track['album']['picPath'].endswith('jpg') else 'image/png'
 		with open(track['album']['picPath'], 'rb') as f:
 			image.data = f.read()
 		tag.add_picture(image)

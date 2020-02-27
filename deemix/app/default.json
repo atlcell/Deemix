@@ -29,6 +29,7 @@
 	"coverImageTemplate": "cover",
 	"saveArtworkArtist": false,
 	"artistImageTemplate": "folder",
+	"PNGcovers": false,
 	"multitagSeparator": "default",
 	"dateFormat": "YMD",
 	"savePlaylistAsCompilation": false,

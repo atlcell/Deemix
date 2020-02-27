@@ -253,14 +253,14 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 	track['selectedFormat'] = format
 	track['selectedFilesize'] = filesize
 	track['album']['bitrate'] = format
-	track['album']['picUrl'] = "http://e-cdn-images.deezer.com/images/cover/{}/{}x{}-000000-80-0-0.jpg".format(track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'])
+	track['album']['picUrl'] = "http://e-cdn-images.deezer.com/images/cover/{}/{}x{}-000000-80-0-0.{}".format(track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'], 'png' if settings['PNGcovers'] else 'jpg')
 
 	# Generate filename and filepath from metadata
 	filename = generateFilename(track, trackAPI, settings) + extensions[track['selectedFormat']]
 	(filepath, artistPath, coverPath, extrasPath) = generateFilepath(track, trackAPI, settings)
 
 	# Download and cache coverart
-	track['album']['picPath'] = os.path.join(TEMPDIR, f"alb{track['album']['id']}_{settings['embeddedArtworkSize']}.jpg")
+	track['album']['picPath'] = os.path.join(TEMPDIR, f"alb{track['album']['id']}_{settings['embeddedArtworkSize']}.{'png' if settings['PNGcovers'] else 'jpg'}")
 	if not os.path.isfile(track['album']['picPath']):
 		with open(track['album']['picPath'], 'wb') as f:
 			try:
