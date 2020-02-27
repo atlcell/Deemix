@@ -4,9 +4,14 @@ from deemix.utils.taggers import tagID3, tagFLAC
 from deemix.utils.pathtemplates import generateFilename, generateFilepath
 import os.path
 from os import makedirs
+from urllib.request import urlopen
 from urllib.error import HTTPError
+from tempfile import gettempdir
 
 dz = Deezer()
+TEMPDIR = os.path.join(gettempdir(), 'deezloader-imgs')
+if not os.path.isdir(TEMPDIR):
+	makedirs(TEMPDIR)
 
 extensions = {
 	9: '.flac',
@@ -243,18 +248,25 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 	print('Downloading: {} - {}'.format(track['mainArtist']['name'], track['title']))
 
 	# Get the selected bitrate
-	if overwriteBitrate:
-		bitrate = overwriteBitrate
-	else:
-		bitrate = settings['maxBitrate']
+	bitrate = overwriteBitrate if overwriteBitrate else settings['maxBitrate']
 	(format, filesize) = getPreferredBitrare(track['filesize'], bitrate)
 	track['selectedFormat'] = format
 	track['selectedFilesize'] = filesize
 	track['album']['bitrate'] = format
 	track['album']['picUrl'] = "http://e-cdn-images.deezer.com/images/cover/{}/{}x{}-000000-80-0-0.jpg".format(track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'])
-	# Create the filename
+
+	# Generate filename and filepath from metadata
 	filename = generateFilename(track, trackAPI, settings) + extensions[track['selectedFormat']]
 	(filepath, artistPath, coverPath, extrasPath) = generateFilepath(track, trackAPI, settings)
+
+	# Download and cache coverart
+	track['album']['picPath'] = os.path.join(TEMPDIR, f"alb{track['album']['id']}_{settings['embeddedArtworkSize']}.jpg")
+	if not os.path.isfile(track['album']['picPath']):
+		with open(track['album']['picPath'], 'wb') as f:
+			try:
+				f.write(urlopen(track['album']['picUrl']).read())
+			except HTTPError:
+				track['album']['picPath'] = None
 
 	makedirs(filepath, exist_ok=True)
 	writepath = os.path.join(filepath, filename)

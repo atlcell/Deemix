@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-from urllib.request import urlopen
-
 from mutagen.flac import FLAC, Picture
 from mutagen.id3 import ID3, ID3NoHeaderError, TXXX, TIT2, TPE1, TALB, TPE2, TRCK, TPOS, TCON, TYER, TDAT, TLEN, TBPM, \
 	TPUB, TSRC, USLT, APIC, IPLS, TCOM, TCOP
@@ -56,8 +54,9 @@ def tagID3(stream, track, save):
 		tag.add(IPLS(people=involved_people))
 	if save['copyright']:
 		tag.add(TCOP(text=track['copyright']))
-	if save['cover']:
-		tag.add(APIC(3, 'image/jpeg', 3, data=urlopen(track['album']['picUrl']).read()))
+	if save['cover'] and track['album']['picPath']:
+		with open(track['album']['picPath'], 'rb') as f:
+			tag.add(APIC(3, 'image/jpeg', 3, data=f.read()))
 
 	tag.save(stream, v1=2, v2_version=3, v23_sep=None)
 
@@ -112,11 +111,12 @@ def tagFLAC(stream, track, save):
 	if save['copyright']:
 		tag["COPYRIGHT"] = track['copyright']
 
-	if save['cover']:
+	if save['cover'] and track['album']['picPath']:
 		image = Picture()
 		image.type = 3
 		image.mime = 'image/jpeg'
-		image.data = urlopen(track['album']['picUrl']).read()
+		with open(track['album']['picPath'], 'rb') as f:
+			image.data = f.read()
 		tag.add_picture(image)
 
 	tag.save(deleteid3=True)
