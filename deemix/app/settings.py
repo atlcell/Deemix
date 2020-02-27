@@ -19,7 +19,7 @@ def initSettings():
 		defaultSettings = json.load(d)
 	if not path.isfile(path.join(configFolder, 'config.json')):
 		with open(path.join(configFolder, 'config.json'), 'w') as f:
-			f.write(json.dumps(defaultSettings))
+			json.dump(f, defaultSettings, indent=2)
 	with open(path.join(configFolder, 'config.json'), 'r') as configFile:
 		settings = json.load(configFile)
 	settingsCheck()
@@ -38,7 +38,7 @@ def saveSettings(newSettings):
 	global settings
 	settings = newSettings
 	with open(path.join(localpaths.getConfigFolder(), 'config.json'), 'w') as configFile:
-		json.dump(settings, configFile)
+		json.dump(settings, configFile, indent=2)
 	return True
 
 def settingsCheck():
