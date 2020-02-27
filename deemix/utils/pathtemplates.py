@@ -14,7 +14,7 @@ bitrateLabels = {
 
 def fixName(txt, char='_'):
 	txt = str(txt)
-	txt = re.sub(r'[\0\/\\:*?"<>|]', char, txt)
+	txt = re.sub('[\\/\\\\:*?"<>|]', char, txt)
 	return txt
 
 def fixLongName(name):
@@ -123,7 +123,7 @@ def settingsRegex(filename, track, settings, playlist=None):
 		filename = filename.replace("%position%", pad(track['position'], playlist['nb_tracks'], settings['padTracks']))
 	else:
 		filename = filename.replace("%position%", pad(track['trackNumber'], track['album']['trackTotal'], settings['padTracks']))
-	filename = re.sub(r'[/\\]', pathSep, filename)
+	filename = re.sub('[\\/\\\\]', pathSep, filename)
 	return antiDot(fixLongName(filename))
 
 def settingsRegexAlbum(foldername, album, settings):
@@ -144,13 +144,13 @@ def settingsRegexAlbum(foldername, album, settings):
 	foldername = foldername.replace("%date%", "{}-{}-{}".format(str(album['date']['year']), str(album['date']['month']), str(album['date']['day'])))
 	foldername = foldername.replace("%bitrate%", bitrateLabels[int(album['bitrate'])])
 
-	foldername = re.sub(r'[/\\]', pathSep, foldername)
+	foldername = re.sub('[\\/\\\\]', pathSep, foldername)
 	return antiDot(fixLongName(foldername))
 
 def settingsRegexArtist(foldername, artist, settings):
 	foldername = foldername.replace("%artist%", fixName(artist['name'], settings['illegalCharacterReplacer']))
 	foldername = foldername.replace("%artist_id%", str(artist['id']))
-	foldername = re.sub(r'[/\\]', pathSep, foldername)
+	foldername = re.sub('[\\/\\\\]', pathSep, foldername)
 	return antiDot(fixLongName(foldername))
 
 def settingsRegexPlaylist(foldername, playlist, settings):
@@ -160,5 +160,5 @@ def settingsRegexPlaylist(foldername, playlist, settings):
 	foldername = foldername.replace("%owner_id%", str(playlist['creator']['id']))
 	foldername = foldername.replace("%year%", str(playlist['creation_date'][:4]))
 	foldername = foldername.replace("%date%", str(playlist['creation_date'][:10]))
-	foldername = re.sub(r'[/\\]', pathSep, foldername)
+	foldername = re.sub('[\\/\\\\]', pathSep, foldername)
 	return antiDot(fixLongName(foldername))
