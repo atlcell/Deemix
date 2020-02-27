@@ -48,7 +48,7 @@ def generateFilename(track, trackAPI, settings):
 		filename = "%artist% - %title%"
 	else:
 		filename = trackAPI['FILENAME_TEMPLATE']
-	return settingsRegex(filename, track, settings, trackAPI['PLAYLIST_EXTRA'] if 'PLAYLIST_EXTRA' in trackAPI else None)
+	return settingsRegex(filename, track, settings, trackAPI['_EXTRA_PLAYLIST'] if '_EXTRA_PLAYLIST' in trackAPI else None)
 
 def generateFilepath(track, trackAPI, settings):
 	filepath = settings['downloadLocation']
@@ -58,16 +58,16 @@ def generateFilepath(track, trackAPI, settings):
 	coverPath = None
 	extrasPath = None
 
-	if settings['createPlaylistFolder'] and 'PLAYLIST_EXTRA' in trackAPI and not settings['savePlaylistAsCompilation']:
-		filepath += antiDot(settingsRegexPlaylist(settings['playlistNameTemplate'], trackAPI['PLAYLIST_EXTRA'], settings)) + pathSep
+	if settings['createPlaylistFolder'] and '_EXTRA_PLAYLIST' in trackAPI and not settings['savePlaylistAsCompilation']:
+		filepath += antiDot(settingsRegexPlaylist(settings['playlistNameTemplate'], trackAPI['_EXTRA_PLAYLIST'], settings)) + pathSep
 
-	if 'PLAYLIST_EXTRA' in trackAPI and not settings['savePlaylistAsCompilation']:
+	if '_EXTRA_PLAYLIST' in trackAPI and not settings['savePlaylistAsCompilation']:
 		extrasPath = filepath
 
 	if (
-		settings['createArtistFolder'] and not 'PLAYLIST_EXTRA' in trackAPI or
-		(settings['createArtistFolder'] and 'PLAYLIST_EXTRA' in trackAPI and settings['savePlaylistAsCompilation']) or
-		(settings['createArtistFolder'] and 'PLAYLIST_EXTRA' in trackAPI and settings['createStructurePlaylist'])
+		settings['createArtistFolder'] and not '_EXTRA_PLAYLIST' in trackAPI or
+		(settings['createArtistFolder'] and '_EXTRA_PLAYLIST' in trackAPI and settings['savePlaylistAsCompilation']) or
+		(settings['createArtistFolder'] and '_EXTRA_PLAYLIST' in trackAPI and settings['createStructurePlaylist'])
 	):
 		if (track['id']<0 and not 'artist' in track['album']):
 			track['album']['artist'] = track['mainArtist']
@@ -76,19 +76,19 @@ def generateFilepath(track, trackAPI, settings):
 
 	if (settings['createAlbumFolder'] and
 		(not 'SINGLE_TRACK' in trackAPI or ('SINGLE_TRACK' in trackAPI and settings['createSingleFolder'])) and
-		(not 'PLAYLIST_EXTRA' in trackAPI or ('PLAYLIST_EXTRA' in trackAPI and settings['savePlaylistAsCompilation']) or ('PLAYLIST_EXTRA' in trackAPI and settings['createStructurePlaylist']))
+		(not '_EXTRA_PLAYLIST' in trackAPI or ('_EXTRA_PLAYLIST' in trackAPI and settings['savePlaylistAsCompilation']) or ('_EXTRA_PLAYLIST' in trackAPI and settings['createStructurePlaylist']))
 	):
 		filepath += antiDot(settingsRegexAlbum(settings['albumNameTemplate'], track['album'], settings)) + pathSep
 		coverPath = filepath
 
-	if not ('PLAYLIST_EXTRA' in trackAPI and not settings['savePlaylistAsCompilation']):
+	if not ('_EXTRA_PLAYLIST' in trackAPI and not settings['savePlaylistAsCompilation']):
 		extrasPath = filepath
 
 	if (
 		int(track['album']['discTotal']) > 1 and (
 		(settings['createAlbumFolder'] and settings['createCDFolder']) and
 		(not 'SINGLE_TRACK' in trackAPI or ('SINGLE_TRACK' in trackAPI and settings['createSingleFolder'])) and
-		(not 'PLAYLIST_EXTRA' in trackAPI or ('PLAYLIST_EXTRA' in trackAPI and settings['savePlaylistAsCompilation']) or ('PLAYLIST_EXTRA' in trackAPI and settings['createStructurePlaylist']))
+		(not '_EXTRA_PLAYLIST' in trackAPI or ('_EXTRA_PLAYLIST' in trackAPI and settings['savePlaylistAsCompilation']) or ('_EXTRA_PLAYLIST' in trackAPI and settings['createStructurePlaylist']))
 	)):
 		filepath += 'CD'+str(track['discNumber']) + pathSep
 
