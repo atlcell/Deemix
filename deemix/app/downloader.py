@@ -4,8 +4,8 @@ from deemix.utils.taggers import tagID3, tagFLAC
 from deemix.utils.pathtemplates import generateFilename, generateFilepath
 import os.path
 from os import makedirs
-from urllib.request import urlopen
-from urllib.error import HTTPError
+from requests import get
+from requests.exceptions import HTTPError
 from tempfile import gettempdir
 
 dz = Deezer()
@@ -264,7 +264,7 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 	if not os.path.isfile(track['album']['picPath']):
 		with open(track['album']['picPath'], 'wb') as f:
 			try:
-				f.write(urlopen(track['album']['picUrl']).read())
+				f.write(get(track['album']['picUrl']).content)
 			except HTTPError:
 				track['album']['picPath'] = None
 
