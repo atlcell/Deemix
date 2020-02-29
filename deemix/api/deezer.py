@@ -190,21 +190,7 @@ class Deezer:
 
 	def get_lyrics_gw(self, sng_id):
 		body = self.gw_api_call('song.getLyrics', {'sng_id': sng_id})
-		lyr = {
-			'unsyncLyrics': {
-				'description': "",
-				'lyrics': body["results"]["LYRICS_TEXT"]
-			},
-			'syncLyrics': "",
-		}
-		for i in range(len(body["results"]["LYRICS_SYNC_JSON"])):
-			if "lrc_timestamp" in body["results"]["LYRICS_SYNC_JSON"][i]:
-				lyr['syncLyrics'] += body["results"]["LYRICS_SYNC_JSON"][i]["lrc_timestamp"] + \
-									 body["results"]["LYRICS_SYNC_JSON"][i]["line"] + "\r\n"
-			elif i + 1 < len(body["results"]["LYRICS_SYNC_JSON"]):
-				lyr['syncLyrics'] += body["results"]["LYRICS_SYNC_JSON"][i + 1]["lrc_timestamp"] + \
-									 body["results"]["LYRICS_SYNC_JSON"][i]["line"] + "\r\n"
-		return lyr
+		return body["results"]
 
 	def get_user_playlist(self, user_id):
 		body = self.api_call('user/' + str(user_id) + '/playlists', {'limit': -1})

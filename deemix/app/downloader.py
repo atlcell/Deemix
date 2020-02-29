@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from deemix.api.deezer import Deezer, APIError
 from deemix.utils.taggers import tagID3, tagFLAC
-from deemix.utils.pathtemplates import generateFilename, generateFilepath
+from deemix.utils.pathtemplates import generateFilename, generateFilepath, settingsRegexAlbum, settingsRegexArtist
 import os.path
 from os import makedirs
 from requests import get
@@ -124,7 +124,9 @@ def getTrackData(trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI = No
 	track['lyrics'] = {}
 	if 'LYRICS_ID' in trackAPI_gw:
 		track['lyrics']['id'] = trackAPI_gw['LYRICS_ID']
-	if "LYRICS" in trackAPI_gw:
+	if not "LYRICS" in trackAPI_gw and int(track['lyrics']['id']) != 0:
+		trackAPI_gw["LYRICS"] = dz.get_lyrics_gw(track['id'])
+	if int(track['lyrics']['id']) != 0:
 		if "LYRICS_TEXT" in trackAPI_gw["LYRICS"]:
 			track['lyrics']['unsync'] = trackAPI_gw["LYRICS"]["LYRICS_TEXT"]
 		if "LYRICS_SYNC_JSON" in trackAPI_gw["LYRICS"]:
@@ -189,6 +191,8 @@ def getTrackData(trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI = No
 			'id': albumAPI_gw['ART_ID'],
 			'name': albumAPI_gw['ART_NAME']
 		}
+		artistAPI = dz.get_artist(track['album']['artist']['id'])
+		track['album']['artist']['pic'] = artistAPI['picture_small'][44:-24]
 		track['album']['trackTotal'] = albumAPI_gw['NUMBER_TRACK']
 		track['album']['discTotal'] = albumAPI_gw['NUMBER_DISK']
 		track['album']['recordType'] = "Album"
@@ -253,10 +257,10 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 	track['selectedFormat'] = format
 	track['selectedFilesize'] = filesize
 	track['album']['bitrate'] = format
-	track['album']['picUrl'] = "http://e-cdn-images.deezer.com/images/cover/{}/{}x{}-000000-80-0-0.{}".format(track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'], 'png' if settings['PNGcovers'] else 'jpg')
+	track['album']['picUrl'] = "https://e-cdn-images.deezer.com/images/cover/{}/{}x{}-000000-80-0-0.{}".format(track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'], 'png' if settings['PNGcovers'] else 'jpg')
 
 	# Generate filename and filepath from metadata
-	filename = generateFilename(track, trackAPI, settings) + extensions[track['selectedFormat']]
+	filename = generateFilename(track, trackAPI, settings)
 	(filepath, artistPath, coverPath, extrasPath) = generateFilepath(track, trackAPI, settings)
 
 	# Download and cache coverart
@@ -269,7 +273,32 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 				track['album']['picPath'] = None
 
 	makedirs(filepath, exist_ok=True)
-	writepath = os.path.join(filepath, filename)
+	writepath = os.path.join(filepath, filename + extensions[track['selectedFormat']])
+
+	# Save lyrics in lrc file
+	if settings['syncedLyrics'] and 'sync' in track['lyrics']:
+		with open(os.path.join(filepath, filename + '.lrc'), 'w') as f:
+			f.write(track['lyrics']['sync'])
+
+	# Save local album art
+	if coverPath:
+		track['album']['picPathLocal'] = os.path.join(coverPath, f"{settingsRegexAlbum(settings['coverImageTemplate'], track['album'], settings)}.{'png' if settings['PNGcovers'] else 'jpg'}")
+		if not os.path.isfile(track['album']['picPathLocal']):
+			with open(track['album']['picPathLocal'], 'wb') as f:
+				try:
+					f.write(urlopen(track['album']['picUrl'].replace(f"{settings['embeddedArtworkSize']}x{settings['embeddedArtworkSize']}", f"{settings['localArtworkSize']}x{settings['localArtworkSize']}")).read())
+				except HTTPError:
+					track['album']['picPathLocal'] = None
+	# Save artist art
+	if artistPath:
+		track['album']['artist']['picUrl'] = "https://cdns-images.dzcdn.net/images/artist/{}/{}x{}-000000-80-0-0.{}".format(track['album']['artist']['pic'], settings['localArtworkSize'], settings['localArtworkSize'], 'png' if settings['PNGcovers'] else 'jpg')
+		track['album']['artist']['picPathLocal'] = os.path.join(artistPath, f"{settingsRegexArtist(settings['artistImageTemplate'], track['album']['artist'], settings)}.{'png' if settings['PNGcovers'] else 'jpg'}")
+		if not os.path.isfile(track['album']['artist']['picPathLocal']):
+			with open(track['album']['artist']['picPathLocal'], 'wb') as f:
+				try:
+					f.write(urlopen(track['album']['artist']['picUrl']).read())
+				except HTTPError:
+					track['album']['artist']['picPathLocal'] = None
 
 	track['downloadUrl'] = dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], track['selectedFormat'])
 	with open(writepath, 'wb') as stream:
