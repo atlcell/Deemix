@@ -356,8 +356,9 @@ def download_album(id, settings, overwriteBitrate=False):
 def download_playlist(id, settings, overwriteBitrate=False):
 	playlistAPI = dz.get_playlist(id)
 	playlistTracksAPI = dz.get_playlist_tracks_gw(id)
-	for pos, trackAPI in enumerate(playlistTracksAPI, start=1):
-		trackAPI['_EXTRA_PLAYLIST'] = playlistAPI
-		trackAPI['POSITION'] = pos
-		trackAPI['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
-		downloadTrackObj(trackAPI, settings, overwriteBitrate)
+	with ThreadPoolExecutor(settings['queueConcurrency']) as executor:
+		for pos, trackAPI in enumerate(playlistTracksAPI, start=1):
+			trackAPI['_EXTRA_PLAYLIST'] = playlistAPI
+			trackAPI['POSITION'] = pos
+			trackAPI['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
+			executor.submit(downloadTrackObj, trackAPI, settings, overwriteBitrate)
