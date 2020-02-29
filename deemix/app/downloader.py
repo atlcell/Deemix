@@ -257,7 +257,7 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 	track['selectedFormat'] = format
 	track['selectedFilesize'] = filesize
 	track['album']['bitrate'] = format
-	track['album']['picUrl'] = "https://e-cdn-images.deezer.com/images/cover/{}/{}x{}-000000-80-0-0.{}".format(track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'], 'png' if settings['PNGcovers'] else 'jpg')
+	track['album']['picUrl'] = "https://e-cdns-images.dzcdn.net/images/cover/{}/{}x{}-000000-80-0-0.{}".format(track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'], 'png' if settings['PNGcovers'] else 'jpg')
 
 	# Generate filename and filepath from metadata
 	filename = generateFilename(track, trackAPI, settings)
@@ -282,11 +282,12 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 
 	# Save local album art
 	if coverPath:
+		track['album']['picUrlLocal'] = track['album']['picUrl'].replace(f"{settings['embeddedArtworkSize']}x{settings['embeddedArtworkSize']}", f"{settings['localArtworkSize']}x{settings['localArtworkSize']}")
 		track['album']['picPathLocal'] = os.path.join(coverPath, f"{settingsRegexAlbum(settings['coverImageTemplate'], track['album'], settings)}.{'png' if settings['PNGcovers'] else 'jpg'}")
 		if not os.path.isfile(track['album']['picPathLocal']):
 			with open(track['album']['picPathLocal'], 'wb') as f:
 				try:
-					f.write(get(track['album']['picUrl'].replace(f"{settings['embeddedArtworkSize']}x{settings['embeddedArtworkSize']}", f"{settings['localArtworkSize']}x{settings['localArtworkSize']}")).content)
+					f.write(get(track['album']['picUrlLocal']).content)
 				except HTTPError:
 					track['album']['picPathLocal'] = None
 	# Save artist art
