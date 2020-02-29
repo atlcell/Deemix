@@ -99,7 +99,7 @@ def settingsRegex(filename, track, settings, playlist=None):
 	filename = filename.replace("%artist%", fixName(track['mainArtist']['name'], settings['illegalCharacterReplacer']))
 	filename = filename.replace("%album%", fixName(track['album']['title'], settings['illegalCharacterReplacer']))
 	filename = filename.replace("%albumartist%", fixName(track['album']['artist']['name'], settings['illegalCharacterReplacer']))
-	filename = filename.replace("%tracknumber%", pad(track['trackNumber'], track['album']['trackTotal'], settings['padTracks']))
+	filename = filename.replace("%tracknumber%", pad(track['trackNumber'], track['album']['trackTotal'] if int(settings['paddingSize']) == 0 else 10 ** (int(settings['paddingSize'])-1), settings['padTracks']))
 	filename = filename.replace("%tracktotal%", str(track['album']['trackTotal']))
 	filename = filename.replace("%discnumber%", str(track['discNumber']))
 	filename = filename.replace("%disctotal%", str(track['album']['discTotal']))
@@ -120,9 +120,9 @@ def settingsRegex(filename, track, settings, playlist=None):
 	filename = filename.replace("%artist_id%", str(track['mainArtist']['id']))
 	if playlist:
 		filename = filename.replace("%playlist_id%", str(playlist['id']))
-		filename = filename.replace("%position%", pad(track['position'], playlist['nb_tracks'], settings['padTracks']))
+		filename = filename.replace("%position%", pad(track['position'], playlist['nb_tracks'] if int(settings['paddingSize']) == 0 else 10 ** (int(settings['paddingSize'])-1), settings['padTracks']))
 	else:
-		filename = filename.replace("%position%", pad(track['trackNumber'], track['album']['trackTotal'], settings['padTracks']))
+		filename = filename.replace("%position%", pad(track['trackNumber'], track['album']['trackTotal'] if int(settings['paddingSize']) == 0 else 10 ** (int(settings['paddingSize'])-1), settings['padTracks']))
 	filename = filename.replace('\\', pathSep).replace('/', pathSep)
 	return antiDot(fixLongName(filename))
 
