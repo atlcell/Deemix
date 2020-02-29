@@ -24,7 +24,7 @@ extensions = {
 }
 
 def getPreferredBitrare(filesize, bitrate):
-	bitrateFound = False;
+	bitrateFound = False
 	selectedFormat = 0
 	selectedFilesize = 0
 	if int(bitrate) == 9:
