@@ -23,7 +23,7 @@ extensions = {
 	13: '.mp4'
 }
 
-def getPreferredBitrare(filesize, bitrate):
+def getPreferredBitrate(filesize, bitrate):
 	bitrateFound = False
 	selectedFormat = 0
 	selectedFilesize = 0
@@ -249,7 +249,7 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 
 	# Get the selected bitrate
 	bitrate = overwriteBitrate if overwriteBitrate else settings['maxBitrate']
-	(format, filesize) = getPreferredBitrare(track['filesize'], bitrate)
+	(format, filesize) = getPreferredBitrate(track['filesize'], bitrate)
 	track['selectedFormat'] = format
 	track['selectedFilesize'] = filesize
 	track['album']['bitrate'] = format
