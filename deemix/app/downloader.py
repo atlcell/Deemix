@@ -124,7 +124,9 @@ def getTrackData(trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI = No
 	track['lyrics'] = {}
 	if 'LYRICS_ID' in trackAPI_gw:
 		track['lyrics']['id'] = trackAPI_gw['LYRICS_ID']
-	if "LYRICS" in trackAPI_gw:
+	if not "LYRICS" in trackAPI_gw and int(track['lyrics']['id']) != 0:
+		trackAPI_gw["LYRICS"] = dz.get_lyrics_gw(track['id'])
+	if int(track['lyrics']['id']) != 0:
 		if "LYRICS_TEXT" in trackAPI_gw["LYRICS"]:
 			track['lyrics']['unsync'] = trackAPI_gw["LYRICS"]["LYRICS_TEXT"]
 		if "LYRICS_SYNC_JSON" in trackAPI_gw["LYRICS"]:
@@ -256,7 +258,7 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 	track['album']['picUrl'] = "http://e-cdn-images.deezer.com/images/cover/{}/{}x{}-000000-80-0-0.{}".format(track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'], 'png' if settings['PNGcovers'] else 'jpg')
 
 	# Generate filename and filepath from metadata
-	filename = generateFilename(track, trackAPI, settings) + extensions[track['selectedFormat']]
+	filename = generateFilename(track, trackAPI, settings)
 	(filepath, artistPath, coverPath, extrasPath) = generateFilepath(track, trackAPI, settings)
 
 	# Download and cache coverart
@@ -269,7 +271,12 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 				track['album']['picPath'] = None
 
 	makedirs(filepath, exist_ok=True)
-	writepath = os.path.join(filepath, filename)
+	writepath = os.path.join(filepath, filename + extensions[track['selectedFormat']])
+
+	# Save lyrics in lrc file
+	if settings['syncedLyrics'] and 'sync' in track['lyrics']:
+		with open(os.path.join(filepath, filename + '.lrc'), 'w') as f:
+			f.write(track['lyrics']['sync'])
 
 	track['downloadUrl'] = dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], track['selectedFormat'])
 	with open(writepath, 'wb') as stream:
