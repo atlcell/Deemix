@@ -256,11 +256,10 @@ class Deezer:
 	def stream_track(self, track_id, url, stream):
 		request = requests.get(url, stream=True)
 		blowfish_key = str.encode(self._get_blowfish_key(str(track_id)))
-		blowfish = Blowfish.new(blowfish_key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07")
 		i = 0
 		for chunk in request.iter_content(2048):
 			if (i % 3) == 0 and len(chunk) == 2048:
-				chunk = blowfish.decrypt(chunk)
+				chunk = Blowfish.new(blowfish_key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07").decrypt(chunk)
 			stream.write(chunk)
 			i += 1
 
