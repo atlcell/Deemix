@@ -69,7 +69,7 @@ def generateFilepath(track, trackAPI, settings):
 		(settings['createArtistFolder'] and '_EXTRA_PLAYLIST' in trackAPI and settings['savePlaylistAsCompilation']) or
 		(settings['createArtistFolder'] and '_EXTRA_PLAYLIST' in trackAPI and settings['createStructurePlaylist'])
 	):
-		if (track['id']<0 and not 'artist' in track['album']):
+		if (int(track['id'])<0 and not 'artist' in track['album']):
 			track['album']['artist'] = track['mainArtist']
 		filepath += antiDot(settingsRegexArtist(settings['artistNameTemplate'], track['album']['artist'], settings)) + pathSep
 		artistPath = filepath
