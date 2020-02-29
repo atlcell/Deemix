@@ -286,7 +286,7 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 		if not os.path.isfile(track['album']['picPathLocal']):
 			with open(track['album']['picPathLocal'], 'wb') as f:
 				try:
-					f.write(urlopen(track['album']['picUrl'].replace(f"{settings['embeddedArtworkSize']}x{settings['embeddedArtworkSize']}", f"{settings['localArtworkSize']}x{settings['localArtworkSize']}")).read())
+					f.write(get(track['album']['picUrl'].replace(f"{settings['embeddedArtworkSize']}x{settings['embeddedArtworkSize']}", f"{settings['localArtworkSize']}x{settings['localArtworkSize']}")).content)
 				except HTTPError:
 					track['album']['picPathLocal'] = None
 	# Save artist art
@@ -296,7 +296,7 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 		if not os.path.isfile(track['album']['artist']['picPathLocal']):
 			with open(track['album']['artist']['picPathLocal'], 'wb') as f:
 				try:
-					f.write(urlopen(track['album']['artist']['picUrl']).read())
+					f.write(get(track['album']['artist']['picUrl']).content)
 				except HTTPError:
 					track['album']['artist']['picPathLocal'] = None
 
