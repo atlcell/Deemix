@@ -2,3 +2,4 @@ pyaes
 blowfish
 mutagen
 click
+requests
