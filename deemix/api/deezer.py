@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import binascii
 import hashlib
-from urllib.request import urlopen
 
 import blowfish
 import pyaes
@@ -254,13 +253,10 @@ class Deezer:
 			i += 1
 
 	def stream_track(self, track_id, url, stream):
-		response = urlopen(url)
+		request = requests.get(url, stream=True)
 		cipher = blowfish.Cipher(str.encode(self._get_blowfish_key(str(track_id))))
 		i = 0
-		while True:
-			chunk = response.read(2048)
-			if not chunk:
-				break
+		for chunk in request.iter_content(2048):
 			if (i % 3) == 0 and len(chunk) == 2048:
 				chunk = b"".join(cipher.decrypt_cbc(chunk, b"\x00\x01\x02\x03\x04\x05\x06\x07"))
 			stream.write(chunk)

@@ -4,8 +4,8 @@ from deemix.utils.taggers import tagID3, tagFLAC
 from deemix.utils.pathtemplates import generateFilename, generateFilepath, settingsRegexAlbum, settingsRegexArtist
 import os.path
 from os import makedirs
-from urllib.request import urlopen
-from urllib.error import HTTPError
+from requests import get
+from requests.exceptions import HTTPError
 from tempfile import gettempdir
 
 dz = Deezer()
@@ -23,8 +23,8 @@ extensions = {
 	13: '.mp4'
 }
 
-def getPreferredBitrare(filesize, bitrate):
-	bitrateFound = False;
+def getPreferredBitrate(filesize, bitrate):
+	bitrateFound = False
 	selectedFormat = 0
 	selectedFilesize = 0
 	if int(bitrate) == 9:
@@ -253,7 +253,7 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 
 	# Get the selected bitrate
 	bitrate = overwriteBitrate if overwriteBitrate else settings['maxBitrate']
-	(format, filesize) = getPreferredBitrare(track['filesize'], bitrate)
+	(format, filesize) = getPreferredBitrate(track['filesize'], bitrate)
 	track['selectedFormat'] = format
 	track['selectedFilesize'] = filesize
 	track['album']['bitrate'] = format
@@ -268,7 +268,7 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 	if not os.path.isfile(track['album']['picPath']):
 		with open(track['album']['picPath'], 'wb') as f:
 			try:
-				f.write(urlopen(track['album']['picUrl']).read())
+				f.write(get(track['album']['picUrl']).content)
 			except HTTPError:
 				track['album']['picPath'] = None
 
