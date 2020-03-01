@@ -241,6 +241,7 @@ def getTrackData(trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI = No
 	return track
 
 def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None):
+	result = [None, None]
 	# Get the metadata
 	if extraTrack:
 		track = extraTrack
@@ -302,6 +303,11 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 				except HTTPError:
 					track['album']['artist']['picPathLocal'] = None
 
+	# Data for m3u file
+	if extrasPath:
+		playlistPosition = writepath[len(extrasPath):]
+		result = [playlistPosition, extrasPath]
+
 	track['downloadUrl'] = dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], track['selectedFormat'])
 	with open(writepath, 'wb') as stream:
 		try:
@@ -326,7 +332,7 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 	elif track['selectedFormat'] == 9:
 		tagFLAC(writepath, track, settings['tags'])
 	print("Done!")
-	return True
+	return result
 
 def download_track(id, settings, overwriteBitrate=False):
 	trackAPI = dz.get_track_gw(id)
@@ -347,18 +353,44 @@ def download_album(id, settings, overwriteBitrate=False):
 		downloadTrackObj(trackAPI, settings, overwriteBitrate)
 	else:
 		tracksArray = dz.get_album_tracks_gw(id)
+		playlist = [None] * len(tracksArray)
 		with ThreadPoolExecutor(settings['queueConcurrency']) as executor:
-			for trackAPI in tracksArray:
+			for pos, trackAPI in enumerate(tracksArray, start=1):
 				trackAPI['_EXTRA_ALBUM'] = albumAPI
+				trackAPI['POSITION'] = pos
 				trackAPI['FILENAME_TEMPLATE'] = settings['albumTracknameTemplate']
-				executor.submit(downloadTrackObj, trackAPI, settings, overwriteBitrate)
+				playlist[pos-1] = executor.submit(downloadTrackObj, trackAPI, settings, overwriteBitrate)
+			executor.shutdown(wait=True)
+			if settings['createM3U8File']:
+				extrasPath = ""
+				for index in range(len(playlist)):
+					if extrasPath == "":
+						extrasPath = playlist[index].result()[1]
+					playlist[index] = playlist[index].result()[0]
+				if extrasPath:
+					with open(os.path.join(extrasPath, 'playlist.m3u8'), 'w') as f:
+						for line in playlist:
+							f.write(line+"\n")
+
 
 def download_playlist(id, settings, overwriteBitrate=False):
 	playlistAPI = dz.get_playlist(id)
 	playlistTracksAPI = dz.get_playlist_tracks_gw(id)
+	playlist = [None] * len(playlistTracksAPI)
 	with ThreadPoolExecutor(settings['queueConcurrency']) as executor:
 		for pos, trackAPI in enumerate(playlistTracksAPI, start=1):
 			trackAPI['_EXTRA_PLAYLIST'] = playlistAPI
 			trackAPI['POSITION'] = pos
 			trackAPI['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
-			executor.submit(downloadTrackObj, trackAPI, settings, overwriteBitrate)
+			playlist[pos-1] = executor.submit(downloadTrackObj, trackAPI, settings, overwriteBitrate)
+		executor.shutdown(wait=True)
+		if settings['createM3U8File']:
+			extrasPath = ""
+			for index in range(len(playlist)):
+				if extrasPath == "":
+					extrasPath = playlist[index].result()[1]
+				playlist[index] = playlist[index].result()[0]
+			if extrasPath:
+				with open(os.path.join(extrasPath, 'playlist.m3u8'), 'w') as f:
+					for line in playlist:
+						f.write(line+"\n")
