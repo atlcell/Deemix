@@ -59,9 +59,9 @@ def getPreferredBitrate(filesize, bitrate):
 			bitrateFound = False
 			bitrate = 1
 	if int(bitrate) == 1:
-		selectedFormat = 3
-		selectedFilesize = filesize['mp3_320']
-		if filesize['mp3_320'] > 0:
+		selectedFormat = 1
+		selectedFilesize = filesize['mp3_128']
+		if filesize['mp3_128'] > 0:
 			bitrateFound = True
 		else:
 			bitrateFound = False
