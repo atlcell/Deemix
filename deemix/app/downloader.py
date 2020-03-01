@@ -3,7 +3,7 @@ from deemix.api.deezer import Deezer, APIError
 from deemix.utils.taggers import tagID3, tagFLAC
 from deemix.utils.pathtemplates import generateFilename, generateFilepath, settingsRegexAlbum, settingsRegexArtist
 import os.path
-from os import makedirs
+from os import makedirs, remove
 from requests import get
 from requests.exceptions import HTTPError
 from tempfile import gettempdir
@@ -23,6 +23,20 @@ extensions = {
 	14: '.mp4',
 	13: '.mp4'
 }
+
+def downloadImage(url, path):
+	if not os.path.isfile(path):
+		with open(path, 'wb') as f:
+			try:
+				f.write(get(url).content)
+				return path
+			except HTTPError:
+				print("Couldn't download Image")
+		remove(path)
+		return None
+	else:
+		return path
+
 
 def getPreferredBitrate(filesize, bitrate):
 	bitrateFound = False
@@ -162,17 +176,18 @@ def getTrackData(trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI = No
 	try:
 		if not albumAPI:
 			albumAPI = dz.get_album(track['album']['id'])
+		print(albumAPI['artist']['picture_small'])
 		track['album']['artist'] = {
 			'id': albumAPI['artist']['id'],
 			'name': albumAPI['artist']['name'],
-			'pic': albumAPI['artist']['picture_small'][46:-24]
+			'pic': albumAPI['artist']['picture_small'][albumAPI['artist']['picture_small'].find('artist/')+7:-24]
 		}
 		track['album']['trackTotal'] = albumAPI['nb_tracks']
 		track['album']['recordType'] = albumAPI['record_type']
 		track['album']['barcode'] = albumAPI['upc'] if 'upc' in albumAPI else "Unknown"
 		track['album']['label'] = albumAPI['label'] if 'label' in albumAPI else "Unknown"
 		if not 'pic' in track['album']:
-			track['album']['pic'] = albumAPI['cover_small'][43:-24]
+			track['album']['pic'] = albumAPI['cover_small'][albumAPI['cover_small'].find('cover/')+6:-24]
 		if 'release_date' in albumAPI:
 			track['album']['date'] = {
 				'day': albumAPI["release_date"][8:10],
@@ -193,7 +208,7 @@ def getTrackData(trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI = No
 			'name': albumAPI_gw['ART_NAME']
 		}
 		artistAPI = dz.get_artist(track['album']['artist']['id'])
-		track['album']['artist']['pic'] = artistAPI['picture_small'][44:-24]
+		track['album']['artist']['pic'] = artistAPI['picture_small'][artistAPI['picture_small'].find('artist/')+7:-24]
 		track['album']['trackTotal'] = albumAPI_gw['NUMBER_TRACK']
 		track['album']['discTotal'] = albumAPI_gw['NUMBER_DISK']
 		track['album']['recordType'] = "Album"
@@ -241,7 +256,7 @@ def getTrackData(trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI = No
 	return track
 
 def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None):
-	result = [None, None]
+	result = {}
 	# Get the metadata
 	if extraTrack:
 		track = extraTrack
@@ -267,12 +282,7 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 
 	# Download and cache coverart
 	track['album']['picPath'] = os.path.join(TEMPDIR, f"alb{track['album']['id']}_{settings['embeddedArtworkSize']}.{'png' if settings['PNGcovers'] else 'jpg'}")
-	if not os.path.isfile(track['album']['picPath']):
-		with open(track['album']['picPath'], 'wb') as f:
-			try:
-				f.write(get(track['album']['picUrl']).content)
-			except HTTPError:
-				track['album']['picPath'] = None
+	track['album']['picPath'] = downloadImage(track['album']['picUrl'], track['album']['picPath'])
 
 	makedirs(filepath, exist_ok=True)
 	writepath = os.path.join(filepath, filename + extensions[track['selectedFormat']])
@@ -284,49 +294,39 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 
 	# Save local album art
 	if coverPath:
-		track['album']['picUrlLocal'] = track['album']['picUrl'].replace(f"{settings['embeddedArtworkSize']}x{settings['embeddedArtworkSize']}", f"{settings['localArtworkSize']}x{settings['localArtworkSize']}")
-		track['album']['picPathLocal'] = os.path.join(coverPath, f"{settingsRegexAlbum(settings['coverImageTemplate'], track['album'], settings)}.{'png' if settings['PNGcovers'] else 'jpg'}")
-		if not os.path.isfile(track['album']['picPathLocal']):
-			with open(track['album']['picPathLocal'], 'wb') as f:
-				try:
-					f.write(get(track['album']['picUrlLocal']).content)
-				except HTTPError:
-					track['album']['picPathLocal'] = None
+		result['albumURL'] = track['album']['picUrl'].replace(f"{settings['embeddedArtworkSize']}x{settings['embeddedArtworkSize']}", f"{settings['localArtworkSize']}x{settings['localArtworkSize']}")
+		result['albumPath'] = os.path.join(coverPath, f"{settingsRegexAlbum(settings['coverImageTemplate'], track['album'], settings)}.{'png' if settings['PNGcovers'] else 'jpg'}")
+
 	# Save artist art
 	if artistPath:
-		track['album']['artist']['picUrl'] = "https://e-cdns-images.dzcdn.net/images/artist/{}/{}x{}-000000-80-0-0.{}".format(track['album']['artist']['pic'], settings['localArtworkSize'], settings['localArtworkSize'], 'png' if settings['PNGcovers'] else 'jpg')
-		track['album']['artist']['picPathLocal'] = os.path.join(artistPath, f"{settingsRegexArtist(settings['artistImageTemplate'], track['album']['artist'], settings)}.{'png' if settings['PNGcovers'] else 'jpg'}")
-		if not os.path.isfile(track['album']['artist']['picPathLocal']):
-			with open(track['album']['artist']['picPathLocal'], 'wb') as f:
-				try:
-					f.write(get(track['album']['artist']['picUrl']).content)
-				except HTTPError:
-					track['album']['artist']['picPathLocal'] = None
+		result['artistURL'] = "https://e-cdns-images.dzcdn.net/images/artist/{}/{}x{}-000000-80-0-0.{}".format(track['album']['artist']['pic'], settings['localArtworkSize'], settings['localArtworkSize'], 'png' if settings['PNGcovers'] else 'jpg')
+		result['artistPath'] = os.path.join(artistPath, f"{settingsRegexArtist(settings['artistImageTemplate'], track['album']['artist'], settings)}.{'png' if settings['PNGcovers'] else 'jpg'}")
 
 	# Data for m3u file
 	if extrasPath:
-		playlistPosition = writepath[len(extrasPath):]
-		result = [playlistPosition, extrasPath]
+		result['extrasPath'] = extrasPath
+		result['playlistPosition'] = writepath[len(extrasPath):]
 
 	track['downloadUrl'] = dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], track['selectedFormat'])
-	with open(writepath, 'wb') as stream:
-		try:
+	try:
+		with open(writepath, 'wb') as stream:
 			dz.stream_track(track['id'], track['downloadUrl'], stream)
-		except HTTPError:
-			if track['selectedFormat'] == 9:
-				print("Track not available in flac, trying mp3")
-				track['filesize']['flac'] = 0
-				return downloadTrackObj(trackAPI, settings, extraTrack=track)
-			elif track['fallbackId'] != 0:
-				print("Track not available, using fallback id")
-				trackNew = dz.get_track_gw(track['fallbackId'])
-				if not 'MD5_ORIGIN' in trackNew:
-					trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
-				track = parseEssentialTrackData(track, trackNew)
-				return downloadTrackObj(trackNew, settings, extraTrack=track)
-			else:
-				print("ERROR: Track not available on deezer's servers!")
-				return False
+	except HTTPError:
+		remove(writePath)
+		if track['selectedFormat'] == 9:
+			print("Track not available in flac, trying mp3")
+			track['filesize']['flac'] = 0
+			return downloadTrackObj(trackAPI, settings, extraTrack=track)
+		elif track['fallbackId'] != 0:
+			print("Track not available, using fallback id")
+			trackNew = dz.get_track_gw(track['fallbackId'])
+			if not 'MD5_ORIGIN' in trackNew:
+				trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
+			track = parseEssentialTrackData(track, trackNew)
+			return downloadTrackObj(trackNew, settings, extraTrack=track)
+		else:
+			print("ERROR: Track not available on deezer's servers!")
+			return False
 	if track['selectedFormat'] in [3, 1, 8]:
 		tagID3(writepath, track, settings['tags'], settings['saveID3v1'], settings['useNullSeparator'])
 	elif track['selectedFormat'] == 9:
@@ -361,13 +361,20 @@ def download_album(id, settings, overwriteBitrate=False):
 				trackAPI['FILENAME_TEMPLATE'] = settings['albumTracknameTemplate']
 				playlist[pos-1] = executor.submit(downloadTrackObj, trackAPI, settings, overwriteBitrate)
 			executor.shutdown(wait=True)
+			extrasPath = None
+			for index in range(len(playlist)):
+				result = playlist[index].result()
+				if not extrasPath:
+					extrasPath = result['extrasPath']
+				if settings['saveArtwork'] and result['albumPath']:
+					print(result['albumURL'])
+					downloadImage(result['albumURL'], result['albumPath'])
+				if settings['saveArtworkArtist'] and result['artistPath']:
+					print(result['artistURL'])
+					downloadImage(result['artistURL'], result['artistPath'])
+				playlist[index] = result['playlistPosition']
 			if settings['createM3U8File']:
-				extrasPath = ""
-				for index in range(len(playlist)):
-					if extrasPath == "":
-						extrasPath = playlist[index].result()[1]
-					playlist[index] = playlist[index].result()[0]
-				if extrasPath:
+				if extrasPath != "" or extrasPath != None:
 					with open(os.path.join(extrasPath, 'playlist.m3u8'), 'w') as f:
 						for line in playlist:
 							f.write(line+"\n")
@@ -384,13 +391,20 @@ def download_playlist(id, settings, overwriteBitrate=False):
 			trackAPI['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
 			playlist[pos-1] = executor.submit(downloadTrackObj, trackAPI, settings, overwriteBitrate)
 		executor.shutdown(wait=True)
+		extrasPath = None
+		for index in range(len(playlist)):
+			result = playlist[index].result()
+			if not extrasPath:
+				extrasPath = result['extrasPath']
+			if settings['saveArtwork'] and result['albumPath']:
+				print(result['albumURL'])
+				downloadImage(result['albumURL'], result['albumPath'])
+			if settings['saveArtworkArtist'] and result['artistPath']:
+				print(result['artistURL'])
+				downloadImage(result['artistURL'], result['artistPath'])
+			playlist[index] = result['playlistPosition']
 		if settings['createM3U8File']:
-			extrasPath = ""
-			for index in range(len(playlist)):
-				if extrasPath == "":
-					extrasPath = playlist[index].result()[1]
-				playlist[index] = playlist[index].result()[0]
-			if extrasPath:
+			if extrasPath != "" or extrasPath != None:
 				with open(os.path.join(extrasPath, 'playlist.m3u8'), 'w') as f:
 					for line in playlist:
 						f.write(line+"\n")
