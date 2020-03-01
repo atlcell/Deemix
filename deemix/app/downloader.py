@@ -176,7 +176,6 @@ def getTrackData(trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI = No
 	try:
 		if not albumAPI:
 			albumAPI = dz.get_album(track['album']['id'])
-		print(albumAPI['artist']['picture_small'])
 		track['album']['artist'] = {
 			'id': albumAPI['artist']['id'],
 			'name': albumAPI['artist']['name'],
@@ -367,10 +366,8 @@ def download_album(id, settings, overwriteBitrate=False):
 				if not extrasPath:
 					extrasPath = result['extrasPath']
 				if settings['saveArtwork'] and result['albumPath']:
-					print(result['albumURL'])
 					downloadImage(result['albumURL'], result['albumPath'])
 				if settings['saveArtworkArtist'] and result['artistPath']:
-					print(result['artistURL'])
 					downloadImage(result['artistURL'], result['artistPath'])
 				playlist[index] = result['playlistPosition']
 			if settings['createM3U8File']:
@@ -397,10 +394,8 @@ def download_playlist(id, settings, overwriteBitrate=False):
 			if not extrasPath:
 				extrasPath = result['extrasPath']
 			if settings['saveArtwork'] and result['albumPath']:
-				print(result['albumURL'])
 				downloadImage(result['albumURL'], result['albumPath'])
 			if settings['saveArtworkArtist'] and result['artistPath']:
-				print(result['artistURL'])
 				downloadImage(result['artistURL'], result['artistPath'])
 			playlist[index] = result['playlistPosition']
 		if settings['createM3U8File']:
