@@ -255,6 +255,7 @@ class Deezer:
 
 	def stream_track(self, track_id, url, stream):
 		request = requests.get(url, stream=True)
+		request.raise_for_status()
 		blowfish_key = str.encode(self._get_blowfish_key(str(track_id)))
 		i = 0
 		for chunk in request.iter_content(2048):
