@@ -242,14 +242,13 @@ class Deezer:
 		response = open(input, 'rb')
 		outfile = open(output, 'wb')
 		blowfish_key = str.encode(self._get_blowfish_key(str(track_id)))
-		blowfish = Blowfish.new(blowfish_key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07")
 		i = 0
 		while True:
 			chunk = response.read(2048)
 			if not chunk:
 				break
 			if (i % 3) == 0 and len(chunk) == 2048:
-				chunk = blowfish.decrypt(chunk)
+				chunk = Blowfish.new(blowfish_key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07").decrypt(chunk)
 			outfile.write(chunk)
 			i += 1
 
