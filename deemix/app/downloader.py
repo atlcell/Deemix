@@ -311,7 +311,7 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 		with open(writepath, 'wb') as stream:
 			dz.stream_track(track['id'], track['downloadUrl'], stream)
 	except HTTPError:
-		remove(writePath)
+		remove(writepath)
 		if track['selectedFormat'] == 9:
 			print("Track not available in flac, trying mp3")
 			track['filesize']['flac'] = 0
