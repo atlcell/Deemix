@@ -294,7 +294,7 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 					track['album']['picPathLocal'] = None
 	# Save artist art
 	if artistPath:
-		track['album']['artist']['picUrl'] = "https://cdns-images.dzcdn.net/images/artist/{}/{}x{}-000000-80-0-0.{}".format(track['album']['artist']['pic'], settings['localArtworkSize'], settings['localArtworkSize'], 'png' if settings['PNGcovers'] else 'jpg')
+		track['album']['artist']['picUrl'] = "https://e-cdns-images.dzcdn.net/images/artist/{}/{}x{}-000000-80-0-0.{}".format(track['album']['artist']['pic'], settings['localArtworkSize'], settings['localArtworkSize'], 'png' if settings['PNGcovers'] else 'jpg')
 		track['album']['artist']['picPathLocal'] = os.path.join(artistPath, f"{settingsRegexArtist(settings['artistImageTemplate'], track['album']['artist'], settings)}.{'png' if settings['PNGcovers'] else 'jpg'}")
 		if not os.path.isfile(track['album']['artist']['picPathLocal']):
 			with open(track['album']['artist']['picPathLocal'], 'wb') as f:
