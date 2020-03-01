@@ -328,7 +328,7 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 				print("ERROR: Track not available on deezer's servers!")
 				return False
 	if track['selectedFormat'] in [3, 1, 8]:
-		tagID3(writepath, track, settings['tags'])
+		tagID3(writepath, track, settings['tags'], settings['saveID3v1'], settings['useNullSeparator'])
 	elif track['selectedFormat'] == 9:
 		tagFLAC(writepath, track, settings['tags'])
 	print("Done!")

@@ -4,7 +4,7 @@ from mutagen.id3 import ID3, ID3NoHeaderError, TXXX, TIT2, TPE1, TALB, TPE2, TRC
 	TPUB, TSRC, USLT, APIC, IPLS, TCOM, TCOP
 
 
-def tagID3(stream, track, save):
+def tagID3(stream, track, save, id3v1=False, nullSeparator=True):
 	try:
 		tag = ID3(stream)
 	except ID3NoHeaderError:
@@ -58,7 +58,7 @@ def tagID3(stream, track, save):
 		with open(track['album']['picPath'], 'rb') as f:
 			tag.add(APIC(3, 'image/jpeg' if track['album']['picPath'].endswith('jpg') else 'image/png', 3, data=f.read()))
 
-	tag.save(stream, v1=2, v2_version=3, v23_sep=None)
+	tag.save(stream, v1=2 if id3v1 else 0, v2_version=3, v23_sep=None if nullSeparator else '/')
 
 
 def tagFLAC(stream, track, save):
