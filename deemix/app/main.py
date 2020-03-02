@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+from deemix.api.deezer import Deezer
+from deemix.utils.misc import getIDFromLink, getTypeFromLink, getBitrateInt
+from deemix.app.downloader import download_track, download_album, download_playlist, download_artist
+
+dz = Deezer()
+
+def downloadLink(url, settings, bitrate=None):
+	forcedBitrate = getBitrateInt(bitrate)
+	type = getTypeFromLink(url)
+	id = getIDFromLink(url, type)
+	if type == None or id == None:
+		print("URL not recognized")
+	if type == "track":
+		download_track(dz, id, settings, forcedBitrate)
+	elif type == "album":
+		download_album(dz, id, settings, forcedBitrate)
+	elif type == "playlist":
+		download_playlist(dz, id, settings, forcedBitrate)
+	elif type == "artist":
+		download_artist(dz, id, settings, forcedBitrate)
+	else:
+		print("URL not supported yet")

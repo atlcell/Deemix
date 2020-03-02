@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from deemix.api.deezer import Deezer, APIError
+from deemix.api.deezer import APIError, USER_AGENT_HEADER
 from deemix.utils.taggers import tagID3, tagFLAC
 from deemix.utils.pathtemplates import generateFilename, generateFilepath, settingsRegexAlbum, settingsRegexArtist
 import os.path
@@ -8,8 +8,8 @@ from requests import get
 from requests.exceptions import HTTPError
 from tempfile import gettempdir
 from concurrent.futures import ThreadPoolExecutor
+import json
 
-dz = Deezer()
 TEMPDIR = os.path.join(gettempdir(), 'deezloader-imgs')
 if not os.path.isdir(TEMPDIR):
 	makedirs(TEMPDIR)
@@ -28,7 +28,7 @@ def downloadImage(url, path):
 	if not os.path.isfile(path):
 		with open(path, 'wb') as f:
 			try:
-				f.write(get(url).content)
+				f.write(get(url, headers={'User-Agent': USER_AGENT_HEADER}).content)
 				return path
 			except HTTPError:
 				print("Couldn't download Image")
@@ -90,7 +90,7 @@ def parseEssentialTrackData(track, trackAPI):
 
 	return track
 
-def getTrackData(trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI = None):
+def getTrackData(dz, trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI = None):
 	if not 'MD5_ORIGIN' in trackAPI_gw:
 		trackAPI_gw['MD5_ORIGIN'] = dz.get_track_md5(trackAPI_gw['SNG_ID'])
 
@@ -254,13 +254,13 @@ def getTrackData(trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI = No
 		track['copyright'] = albumAPI_gw['COPYRIGHT']
 	return track
 
-def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None):
+def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=None):
 	result = {}
 	# Get the metadata
 	if extraTrack:
 		track = extraTrack
 	else:
-		track = getTrackData(
+		track = getTrackData(dz,
 			trackAPI_gw = trackAPI,
 			trackAPI =  trackAPI['_EXTRA_TRACK'] if '_EXTRA_TRACK' in trackAPI else None,
 			albumAPI = trackAPI['_EXTRA_ALBUM'] if '_EXTRA_ALBUM' in trackAPI else None
@@ -315,14 +315,14 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 		if track['selectedFormat'] == 9:
 			print("Track not available in flac, trying mp3")
 			track['filesize']['flac'] = 0
-			return downloadTrackObj(trackAPI, settings, extraTrack=track)
+			return downloadTrackObj(dz, trackAPI, settings, extraTrack=track)
 		elif track['fallbackId'] != 0:
 			print("Track not available, using fallback id")
 			trackNew = dz.get_track_gw(track['fallbackId'])
 			if not 'MD5_ORIGIN' in trackNew:
 				trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
 			track = parseEssentialTrackData(track, trackNew)
-			return downloadTrackObj(trackNew, settings, extraTrack=track)
+			return downloadTrackObj(dz, trackNew, settings, extraTrack=track)
 		else:
 			print("ERROR: Track not available on deezer's servers!")
 			return False
@@ -333,13 +333,13 @@ def downloadTrackObj(trackAPI, settings, overwriteBitrate=False, extraTrack=None
 	print("Done!")
 	return result
 
-def download_track(id, settings, overwriteBitrate=False):
+def download_track(dz, id, settings, overwriteBitrate=False):
 	trackAPI = dz.get_track_gw(id)
 	trackAPI['FILENAME_TEMPLATE'] = settings['tracknameTemplate']
 	trackAPI['SINGLE_TRACK'] = True
-	downloadTrackObj(trackAPI, settings, overwriteBitrate)
+	downloadTrackObj(dz, trackAPI, settings, overwriteBitrate)
 
-def download_album(id, settings, overwriteBitrate=False):
+def download_album(dz, id, settings, overwriteBitrate=False):
 	albumAPI = dz.get_album(id)
 	albumAPI_gw = dz.get_album_gw(id)
 	albumAPI['nb_disk'] = albumAPI_gw['NUMBER_DISK']
@@ -349,7 +349,7 @@ def download_album(id, settings, overwriteBitrate=False):
 		trackAPI['_EXTRA_ALBUM'] = albumAPI
 		trackAPI['FILENAME_TEMPLATE'] = settings['tracknameTemplate']
 		trackAPI['SINGLE_TRACK'] = True
-		downloadTrackObj(trackAPI, settings, overwriteBitrate)
+		downloadTrackObj(dz, trackAPI, settings, overwriteBitrate)
 	else:
 		tracksArray = dz.get_album_tracks_gw(id)
 		playlist = [None] * len(tracksArray)
@@ -358,7 +358,7 @@ def download_album(id, settings, overwriteBitrate=False):
 				trackAPI['_EXTRA_ALBUM'] = albumAPI
 				trackAPI['POSITION'] = pos
 				trackAPI['FILENAME_TEMPLATE'] = settings['albumTracknameTemplate']
-				playlist[pos-1] = executor.submit(downloadTrackObj, trackAPI, settings, overwriteBitrate)
+				playlist[pos-1] = executor.submit(downloadTrackObj, dz, trackAPI, settings, overwriteBitrate)
 			executor.shutdown(wait=True)
 			extrasPath = None
 			for index in range(len(playlist)):
@@ -376,8 +376,13 @@ def download_album(id, settings, overwriteBitrate=False):
 						for line in playlist:
 							f.write(line+"\n")
 
+def download_artist(dz, id, settings, overwriteBitrate=False):
+	artistAPI = dz.get_artist_albums(id)
+	for album in artistAPI['data']:
+		print(f"Album: {album['title']}")
+		download_album(dz, album['id'], settings, overwriteBitrate)
 
-def download_playlist(id, settings, overwriteBitrate=False):
+def download_playlist(dz, id, settings, overwriteBitrate=False):
 	playlistAPI = dz.get_playlist(id)
 	playlistTracksAPI = dz.get_playlist_tracks_gw(id)
 	playlist = [None] * len(playlistTracksAPI)
@@ -386,7 +391,7 @@ def download_playlist(id, settings, overwriteBitrate=False):
 			trackAPI['_EXTRA_PLAYLIST'] = playlistAPI
 			trackAPI['POSITION'] = pos
 			trackAPI['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
-			playlist[pos-1] = executor.submit(downloadTrackObj, trackAPI, settings, overwriteBitrate)
+			playlist[pos-1] = executor.submit(downloadTrackObj, dz, trackAPI, settings, overwriteBitrate)
 		executor.shutdown(wait=True)
 		extrasPath = None
 		for index in range(len(playlist)):
