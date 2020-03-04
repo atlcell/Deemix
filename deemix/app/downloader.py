@@ -39,35 +39,14 @@ def downloadImage(url, path):
 
 
 def getPreferredBitrate(filesize, bitrate):
-	bitrateFound = False
-	selectedFormat = 0
-	selectedFilesize = 0
-	if int(bitrate) == 9:
-		selectedFormat = 9
-		selectedFilesize = filesize['flac']
-		if filesize['flac'] > 0:
-			bitrateFound = True
-		else:
-			bitrateFound = False
-			bitrate = 3
-	if int(bitrate) == 3:
-		selectedFormat = 3
-		selectedFilesize = filesize['mp3_320']
-		if filesize['mp3_320'] > 0:
-			bitrateFound = True
-		else:
-			bitrateFound = False
-			bitrate = 1
-	if int(bitrate) == 1:
-		selectedFormat = 1
-		selectedFilesize = filesize['mp3_128']
-		if filesize['mp3_128'] > 0:
-			bitrateFound = True
-		else:
-			bitrateFound = False
-	if not bitrateFound:
-		selectedFormat = 8
-		selectedFilesize = filesize['default']
+	formats = {'flac': 9, 'mp3_320': 3, 'mp3_128': 1}
+	selectedFormat = 8
+	selectedFilesize = filesize['default']
+	for format, formatNum in formats.items():
+		if formatNum <= int(bitrate) and filesize[format] > 0:
+			selectedFormat = formatNum
+			selectedFilesize = filesize[format]
+			break
 	return (selectedFormat, selectedFilesize)
 
 def parseEssentialTrackData(track, trackAPI):
@@ -359,22 +338,21 @@ def download_album(dz, id, settings, overwriteBitrate=False):
 				trackAPI['POSITION'] = pos
 				trackAPI['FILENAME_TEMPLATE'] = settings['albumTracknameTemplate']
 				playlist[pos-1] = executor.submit(downloadTrackObj, dz, trackAPI, settings, overwriteBitrate)
-			executor.shutdown(wait=True)
-			extrasPath = None
-			for index in range(len(playlist)):
-				result = playlist[index].result()
-				if not extrasPath:
-					extrasPath = result['extrasPath']
-				if settings['saveArtwork'] and result['albumPath']:
-					downloadImage(result['albumURL'], result['albumPath'])
-				if settings['saveArtworkArtist'] and result['artistPath']:
-					downloadImage(result['artistURL'], result['artistPath'])
-				playlist[index] = result['playlistPosition']
-			if settings['createM3U8File']:
-				if extrasPath != "" or extrasPath != None:
-					with open(os.path.join(extrasPath, 'playlist.m3u8'), 'w') as f:
-						for line in playlist:
-							f.write(line+"\n")
+
+		extrasPath = None
+		for index in range(len(playlist)):
+			result = playlist[index].result()
+			if not extrasPath:
+				extrasPath = result['extrasPath']
+			if settings['saveArtwork'] and result['albumPath']:
+				downloadImage(result['albumURL'], result['albumPath'])
+			if settings['saveArtworkArtist'] and result['artistPath']:
+				downloadImage(result['artistURL'], result['artistPath'])
+			playlist[index] = result['playlistPosition']
+		if settings['createM3U8File'] and extrasPath:
+			with open(os.path.join(extrasPath, 'playlist.m3u8'), 'w') as f:
+				for line in playlist:
+					f.write(line+"\n")
 
 def download_artist(dz, id, settings, overwriteBitrate=False):
 	artistAPI = dz.get_artist_albums(id)
@@ -392,19 +370,18 @@ def download_playlist(dz, id, settings, overwriteBitrate=False):
 			trackAPI['POSITION'] = pos
 			trackAPI['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
 			playlist[pos-1] = executor.submit(downloadTrackObj, dz, trackAPI, settings, overwriteBitrate)
-		executor.shutdown(wait=True)
-		extrasPath = None
-		for index in range(len(playlist)):
-			result = playlist[index].result()
-			if not extrasPath:
-				extrasPath = result['extrasPath']
-			if settings['saveArtwork'] and result['albumPath']:
-				downloadImage(result['albumURL'], result['albumPath'])
-			if settings['saveArtworkArtist'] and result['artistPath']:
-				downloadImage(result['artistURL'], result['artistPath'])
-			playlist[index] = result['playlistPosition']
-		if settings['createM3U8File']:
-			if extrasPath != "" or extrasPath != None:
-				with open(os.path.join(extrasPath, 'playlist.m3u8'), 'w') as f:
-					for line in playlist:
-						f.write(line+"\n")
+
+	extrasPath = None
+	for index in range(len(playlist)):
+		result = playlist[index].result()
+		if not extrasPath:
+			extrasPath = result['extrasPath']
+		if settings['saveArtwork'] and result['albumPath']:
+			downloadImage(result['albumURL'], result['albumPath'])
+		if settings['saveArtworkArtist'] and result['artistPath']:
+			downloadImage(result['artistURL'], result['artistPath'])
+		playlist[index] = result['playlistPosition']
+	if settings['createM3U8File'] and extrasPath:
+		with open(os.path.join(extrasPath, 'playlist.m3u8'), 'w') as f:
+			for line in playlist:
+				f.write(line+"\n")
