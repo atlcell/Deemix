@@ -6,6 +6,8 @@ from Crypto.Cipher import Blowfish
 import pyaes
 import requests
 
+import time
+
 USER_AGENT_HEADER = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36"
 
 
@@ -29,42 +31,57 @@ class Deezer:
 		return token_data["results"]["checkForm"]
 
 	def get_track_md5(self, sng_id):
-		site = self.session.post(
-			"https://api.deezer.com/1.0/gateway.php",
-			params={
-				'api_key': "4VCYIJUCDLOUELGD1V8WBVYBNVDYOXEWSLLZDONGBBDFVXTZJRXPR29JRLQFO6ZE",
-				'sid': self.sid,
-				'input': '3',
-				'output': '3',
-				'method': 'song_getData'
-			},
-			json={'sng_id': sng_id},
-			headers=self.http_headers
-		)
+		try:
+			site = self.session.post(
+				"https://api.deezer.com/1.0/gateway.php",
+				params={
+					'api_key': "4VCYIJUCDLOUELGD1V8WBVYBNVDYOXEWSLLZDONGBBDFVXTZJRXPR29JRLQFO6ZE",
+					'sid': self.sid,
+					'input': '3',
+					'output': '3',
+					'method': 'song_getData'
+				},
+				timeout=30,
+				json={'sng_id': sng_id},
+				headers=self.http_headers
+			)
+		except:
+			time.wait(2)
+			return self.get_track_md5(sng_id)
 		response = site.json()
 		return response['results']['PUID']
 
 	def gw_api_call(self, method, args={}):
-		result = self.session.post(
-			self.api_url,
-			params={
-				'api_version': "1.0",
-				'api_token': 'null' if method == 'deezer.getUserData' else self.get_token(),
-				'input': '3',
-				'method': method
-			},
-			json=args,
-			headers=self.http_headers
-		)
+		try:
+			result = self.session.post(
+				self.api_url,
+				params={
+					'api_version': "1.0",
+					'api_token': 'null' if method == 'deezer.getUserData' else self.get_token(),
+					'input': '3',
+					'method': method
+				},
+				timeout=30,
+				json=args,
+				headers=self.http_headers
+			)
+		except:
+			time.wait(2)
+			return self.gw_api_call(method, args)
 		return result.json()
 
 	def api_call(self, method, args={}):
-		result = self.session.get(
-			self.legacy_api_url + method,
-			params=args,
-			headers=self.http_headers
-		)
-		result_json = result.json()
+		try:
+			result = self.session.get(
+				self.legacy_api_url + method,
+				params=args,
+				headers=self.http_headers,
+				timeout=30
+			)
+			result_json = result.json()
+		except:
+			time.wait(2)
+			return self.api_call(method, args)
 		if 'error' in result_json.keys():
 			raise APIError()
 		return result_json
