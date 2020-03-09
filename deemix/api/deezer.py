@@ -46,7 +46,7 @@ class Deezer:
 				headers=self.http_headers
 			)
 		except:
-			time.wait(2)
+			time.sleep(2)
 			return self.get_track_md5(sng_id)
 		response = site.json()
 		return response['results']['PUID']
@@ -66,7 +66,7 @@ class Deezer:
 				headers=self.http_headers
 			)
 		except:
-			time.wait(2)
+			time.sleep(2)
 			return self.gw_api_call(method, args)
 		return result.json()
 
@@ -80,7 +80,7 @@ class Deezer:
 			)
 			result_json = result.json()
 		except:
-			time.wait(2)
+			time.sleep(2)
 			return self.api_call(method, args)
 		if 'error' in result_json.keys():
 			raise APIError()
