@@ -245,6 +245,17 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 			albumAPI = trackAPI['_EXTRA_ALBUM'] if '_EXTRA_ALBUM' in trackAPI else None
 		)
 	print('Downloading: {} - {}'.format(track['mainArtist']['name'], track['title']))
+	if track['MD5'] == '':
+		if track['fallbackId'] != 0:
+			print("Track not available, using fallback id")
+			trackNew = dz.get_track_gw(track['fallbackId'])
+			if not 'MD5_ORIGIN' in trackNew:
+				trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
+			track = parseEssentialTrackData(track, trackNew)
+			return downloadTrackObj(dz, trackNew, settings, extraTrack=track)
+		else:
+			print("ERROR: Track not yet encoded!")
+			return False
 
 	# Get the selected bitrate
 	bitrate = overwriteBitrate if overwriteBitrate else settings['maxBitrate']
