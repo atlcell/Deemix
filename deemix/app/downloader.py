@@ -75,7 +75,7 @@ def getTrackData(dz, trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI 
 
 	track = {}
 	track['title'] = trackAPI_gw['SNG_TITLE']
-	if trackAPI_gw['VERSION']:
+	if 'VERSION' in trackAPI_gw and trackAPI_gw['VERSION']:
 		track['title'] += " " + trackAPI_gw['VERSION']
 
 	track = parseEssentialTrackData(track, trackAPI_gw)
@@ -252,10 +252,10 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 			if not 'MD5_ORIGIN' in trackNew:
 				trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
 			track = parseEssentialTrackData(track, trackNew)
-			return downloadTrackObj(dz, trackNew, settings, extraTrack=track)
+			return downloadTrackObj(dz, trackAPI, settings, extraTrack=track)
 		else:
 			print("ERROR: Track not yet encoded!")
-			return False
+			return result
 
 	# Get the selected bitrate
 	bitrate = overwriteBitrate if overwriteBitrate else settings['maxBitrate']
@@ -312,10 +312,10 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 			if not 'MD5_ORIGIN' in trackNew:
 				trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
 			track = parseEssentialTrackData(track, trackNew)
-			return downloadTrackObj(dz, trackNew, settings, extraTrack=track)
+			return downloadTrackObj(dz, trackAPI, settings, extraTrack=track)
 		else:
 			print("ERROR: Track not available on deezer's servers!")
-			return False
+			return result
 	if track['selectedFormat'] in [3, 1, 8]:
 		tagID3(writepath, track, settings['tags'], settings['saveID3v1'], settings['useNullSeparator'])
 	elif track['selectedFormat'] == 9:
@@ -359,7 +359,10 @@ def download_album(dz, id, settings, overwriteBitrate=False):
 				downloadImage(result['albumURL'], result['albumPath'])
 			if settings['saveArtworkArtist'] and result['artistPath']:
 				downloadImage(result['artistURL'], result['artistPath'])
-			playlist[index] = result['playlistPosition']
+			if 'playlistPosition' in result:
+				playlist[index] = result['playlistPosition']
+			else:
+				playlist[index] = ""
 		if settings['createM3U8File'] and extrasPath:
 			with open(os.path.join(extrasPath, 'playlist.m3u8'), 'w') as f:
 				for line in playlist:
@@ -391,7 +394,10 @@ def download_playlist(dz, id, settings, overwriteBitrate=False):
 			downloadImage(result['albumURL'], result['albumPath'])
 		if settings['saveArtworkArtist'] and result['artistPath']:
 			downloadImage(result['artistURL'], result['artistPath'])
-		playlist[index] = result['playlistPosition']
+		if 'playlistPosition' in result:
+			playlist[index] = result['playlistPosition']
+		else:
+			playlist[index] = ""
 	if settings['createM3U8File'] and extrasPath:
 		with open(os.path.join(extrasPath, 'playlist.m3u8'), 'w') as f:
 			for line in playlist:
