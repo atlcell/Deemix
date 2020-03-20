@@ -17,7 +17,7 @@ def tagID3(stream, track, save, id3v1=False, nullSeparator=True):
 	if save['album']:
 		tag.add(TALB(text=track['album']['title']))
 	if save['albumArtist']:
-		tag.add(TPE2(text=track['album']['artist']['name']))
+		tag.add(TPE2(text=track['album']['artists']))
 	if save['trackNumber']:
 		tag.add(TRCK(text=str(track['trackNumber'])+("/"+str(track['album']['trackTotal']) if save['trackTotal'] else "")))
 	if save['discNumber']:
@@ -71,7 +71,7 @@ def tagFLAC(stream, track, save):
 	if save['album']:
 		tag["ALBUM"] = track['album']['title']
 	if save['albumArtist']:
-		tag["ALBUMARTIST"] = track['album']['artist']['name']
+		tag["ALBUMARTIST"] = track['album']['artists']
 	if save['trackNumber']:
 		tag["TRACKNUMBER"] = str(track['trackNumber'])
 	if save['trackTotal']:

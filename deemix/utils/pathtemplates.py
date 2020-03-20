@@ -69,9 +69,9 @@ def generateFilepath(track, trackAPI, settings):
 		(settings['createArtistFolder'] and '_EXTRA_PLAYLIST' in trackAPI and settings['savePlaylistAsCompilation']) or
 		(settings['createArtistFolder'] and '_EXTRA_PLAYLIST' in trackAPI and settings['createStructurePlaylist'])
 	):
-		if (int(track['id'])<0 and not 'artist' in track['album']):
-			track['album']['artist'] = track['mainArtist']
-		filepath += antiDot(settingsRegexArtist(settings['artistNameTemplate'], track['album']['artist'], settings)) + pathSep
+		if (int(track['id'])<0 and not 'mainArtist' in track['album']):
+			track['album']['mainArtist'] = track['mainArtist']
+		filepath += antiDot(settingsRegexArtist(settings['artistNameTemplate'], track['album']['mainArtist'], settings)) + pathSep
 		artistPath = filepath
 
 	if (settings['createAlbumFolder'] and
@@ -98,7 +98,7 @@ def settingsRegex(filename, track, settings, playlist=None):
 	filename = filename.replace("%title%", fixName(track['title'], settings['illegalCharacterReplacer']))
 	filename = filename.replace("%artist%", fixName(track['mainArtist']['name'], settings['illegalCharacterReplacer']))
 	filename = filename.replace("%album%", fixName(track['album']['title'], settings['illegalCharacterReplacer']))
-	filename = filename.replace("%albumartist%", fixName(track['album']['artist']['name'], settings['illegalCharacterReplacer']))
+	filename = filename.replace("%albumartist%", fixName(track['album']['mainArtist']['name'], settings['illegalCharacterReplacer']))
 	filename = filename.replace("%tracknumber%", pad(track['trackNumber'], track['album']['trackTotal'] if int(settings['paddingSize']) == 0 else 10 ** (int(settings['paddingSize'])-1), settings['padTracks']))
 	filename = filename.replace("%tracktotal%", str(track['album']['trackTotal']))
 	filename = filename.replace("%discnumber%", str(track['discNumber']))
@@ -129,8 +129,8 @@ def settingsRegex(filename, track, settings, playlist=None):
 def settingsRegexAlbum(foldername, album, settings):
 	foldername = foldername.replace("%album_id%", str(album['id']))
 	foldername = foldername.replace("%album%", fixName(album['title'], settings['illegalCharacterReplacer']))
-	foldername = foldername.replace("%artist%", fixName(album['artist']['name'], settings['illegalCharacterReplacer']))
-	foldername = foldername.replace("%artist_id%", str(album['artist']['id']))
+	foldername = foldername.replace("%artist%", fixName(album['mainArtist']['name'], settings['illegalCharacterReplacer']))
+	foldername = foldername.replace("%artist_id%", str(album['mainArtist']['id']))
 	foldername = foldername.replace("%tracktotal%", str(album['trackTotal']))
 	foldername = foldername.replace("%disctotal%", str(album['discTotal']))
 	foldername = foldername.replace("%type%", fixName(album['recordType'], settings['illegalCharacterReplacer']))

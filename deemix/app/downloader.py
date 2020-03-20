@@ -155,11 +155,19 @@ def getTrackData(dz, trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI 
 	try:
 		if not albumAPI:
 			albumAPI = dz.get_album(track['album']['id'])
-		track['album']['artist'] = {
+		track['album']['mainArtist'] = {
 			'id': albumAPI['artist']['id'],
 			'name': albumAPI['artist']['name'],
 			'pic': albumAPI['artist']['picture_small'][albumAPI['artist']['picture_small'].find('artist/')+7:-24]
 		}
+		track['album']['artist'] = {}
+		track['album']['artists'] = []
+		for artist in albumAPI['contributors']:
+			if artist['id'] != 5080:
+				track['album']['artists'].append(artist['name'])
+				if not artist['role'] in track['album']['artist']:
+					track['album']['artist'][artist['role']] = []
+				track['album']['artist'][artist['role']].append(artist['name'])
 		track['album']['trackTotal'] = albumAPI['nb_tracks']
 		track['album']['recordType'] = albumAPI['record_type']
 		track['album']['barcode'] = albumAPI['upc'] if 'upc' in albumAPI else "Unknown"
