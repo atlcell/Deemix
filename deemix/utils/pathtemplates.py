@@ -108,7 +108,7 @@ def settingsRegex(filename, track, settings, playlist=None):
 	else:
 		filename = filename.replace("%genre%", "Unknown")
 	filename = filename.replace("%year%", str(track['date']['year']))
-	filename = filename.replace("%date%", "{}-{}-{}".format(str(track['date']['year']), str(track['date']['month']), str(track['date']['day'])))
+	filename = filename.replace("%date%", track['dateString'])
 	filename = filename.replace("%bpm%", str(track['bpm']))
 	filename = filename.replace("%label%", fixName(track['album']['label'], settings['illegalCharacterReplacer']))
 	filename = filename.replace("%isrc%", track['ISRC'])
@@ -141,7 +141,7 @@ def settingsRegexAlbum(foldername, album, settings):
 	else:
 		foldername = foldername.replace("%genre%", "Unknown")
 	foldername = foldername.replace("%year%", str(album['date']['year']))
-	foldername = foldername.replace("%date%", "{}-{}-{}".format(str(album['date']['year']), str(album['date']['month']), str(album['date']['day'])))
+	foldername = foldername.replace("%date%", album['dateString'])
 	foldername = foldername.replace("%bitrate%", bitrateLabels[int(album['bitrate'])])
 
 	foldername = foldername.replace('\\', pathSep).replace('/', pathSep)

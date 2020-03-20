@@ -31,7 +31,7 @@
 	"artistImageTemplate": "folder",
 	"PNGcovers": false,
 	"multitagSeparator": "default",
-	"dateFormat": "YMD",
+	"dateFormat": "Y-M-D",
 	"savePlaylistAsCompilation": false,
 	"removeAlbumVersion": false,
 	"moveFeaturedToTitle": false,

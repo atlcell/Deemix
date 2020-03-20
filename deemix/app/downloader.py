@@ -37,6 +37,23 @@ def downloadImage(url, path):
 	else:
 		return path
 
+def formatDate(date, template):
+	if 'YYYY' in template:
+		template = template.replace('YYYY', str(date['year']))
+	if 'YY' in template:
+		template = template.replace('YY', str(date['year']))
+	if 'Y' in template:
+		template = template.replace('Y', str(date['year']))
+	if 'MM' in template:
+		template = template.replace('MM', str(date['month']))
+	if 'M' in template:
+		template = template.replace('M', str(date['month']))
+	if 'DD' in template:
+		template = template.replace('DD', str(date['day']))
+	if 'D' in template:
+		template = template.replace('D', str(date['day']))
+	return template
+
 
 def getPreferredBitrate(filesize, bitrate):
 	formats = {'flac': 9, 'mp3_320': 3, 'mp3_128': 1}
@@ -239,6 +256,16 @@ def getTrackData(dz, trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI 
 		if not albumAPI_gw:
 			albumAPI_gw = dz.get_album_gw(track['album']['id'])
 		track['copyright'] = albumAPI_gw['COPYRIGHT']
+
+	# Fix incorrect day month when detectable
+	if int(track['date']['month']) > 12:
+		monthTemp = track['date']['month']
+		track['date']['month'] = track['date']['day']
+		track['date']['day'] = monthTemp
+	if int(track['album']['date']['month']) > 12:
+		monthTemp = track['album']['date']['month']
+		track['album']['date']['month'] = track['album']['date']['day']
+		track['album']['date']['day'] = monthTemp
 	return track
 
 def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=None):
@@ -272,6 +299,8 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 	track['selectedFilesize'] = filesize
 	track['album']['bitrate'] = format
 	track['album']['picUrl'] = "https://e-cdns-images.dzcdn.net/images/cover/{}/{}x{}-000000-80-0-0.{}".format(track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'], 'png' if settings['PNGcovers'] else 'jpg')
+	track['dateString'] = formatDate(track['date'], settings['dateFormat'])
+	track['album']['dateString'] = formatDate(track['album']['date'], settings['dateFormat'])
 
 	# Generate filename and filepath from metadata
 	filename = generateFilename(track, trackAPI, settings)
