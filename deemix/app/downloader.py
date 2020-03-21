@@ -8,7 +8,6 @@ from requests import get
 from requests.exceptions import HTTPError
 from tempfile import gettempdir
 from concurrent.futures import ThreadPoolExecutor
-import json
 
 TEMPDIR = os.path.join(gettempdir(), 'deezloader-imgs')
 if not os.path.isdir(TEMPDIR):
@@ -206,12 +205,13 @@ def getTrackData(dz, trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI 
 	except APIError:
 		if not albumAPI_gw:
 			albumAPI_gw = dz.get_album_gw(track['album']['id'])
-		track['album']['artist'] = {
+		track['album']['mainArtist'] = {
 			'id': albumAPI_gw['ART_ID'],
 			'name': albumAPI_gw['ART_NAME']
 		}
-		artistAPI = dz.get_artist(track['album']['artist']['id'])
-		track['album']['artist']['pic'] = artistAPI['picture_small'][artistAPI['picture_small'].find('artist/')+7:-24]
+		artistAPI = dz.get_artist(track['album']['mainArtist']['id'])
+		track['album']['artists'] = albumAPI_gw['ART_NAME']
+		track['album']['mainArtist']['pic'] = artistAPI['picture_small'][artistAPI['picture_small'].find('artist/')+7:-24]
 		track['album']['trackTotal'] = albumAPI_gw['NUMBER_TRACK']
 		track['album']['discTotal'] = albumAPI_gw['NUMBER_DISK']
 		track['album']['recordType'] = "Album"
@@ -278,8 +278,8 @@ def getTrackData(dz, trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI 
 
 	# Create artists strings
 	track['mainArtistsString'] = ""
-	tot = len(track['artist']['Main'])
-	if tot > 0:
+	if 'Main' in track['artist']:
+		tot = len(track['artist']['Main'])
 		for i, art in enumerate(track['artist']['Main']):
 			track['mainArtistsString'] += art
 			if tot != i+1:
@@ -289,8 +289,8 @@ def getTrackData(dz, trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI 
 					track['mainArtistsString'] += ", "
 	else:
 		track['mainArtistsString'] = track['mainArtist']['name']
-	tot = len(track['artist']['Featured'])
-	if tot > 0:
+	if 'Featured' in track['artist']:
+		tot = len(track['artist']['Featured'])
 		track['featArtistsString'] = "feat. "
 		for i, art in enumerate(track['artist']['Featured']):
 			track['featArtistsString'] += art
@@ -303,7 +303,7 @@ def getTrackData(dz, trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI 
 	# Create title with feat
 	if "(feat." in track['title'].lower():
 		track['title_feat'] = track['title']
-	elif len(artists['Featured'])>0:
+	elif 'Featured' in track['artist']:
 		track['title_feat'] = track['title']+" ({})".format(track['featArtistsString'])
 	else:
 		track['title_feat'] = track['title']
@@ -332,6 +332,10 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 			return downloadTrackObj(dz, trackAPI, settings, extraTrack=track)
 		else:
 			print("ERROR: Track not yet encoded!")
+			result['error'] = {
+				'message': "Track not yet encoded!",
+				'data': track
+			}
 			return result
 
 	# Get the selected bitrate
@@ -378,7 +382,9 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 	# Generate artist tag if needed
 	if settings['multitagSeparator'] != "default":
 		if settings['multitagSeparator'] == "andFeat":
-			track['artistsString'] = track['mainArtistsString'] + " " + track['featArtistsString']
+			track['artistsString'] = track['mainArtistsString']
+			if 'featArtistsString' in track:
+				track['artistsString'] += " "+track['featArtistsString']
 		else:
 			track['artistsString'] = settings['multitagSeparator'].join(track[artists])
 
@@ -401,6 +407,10 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 			return downloadTrackObj(dz, trackAPI, settings, extraTrack=track)
 		else:
 			print("ERROR: Track not available on deezer's servers!")
+			result['error'] = {
+				'message': "Track not available on deezer's servers!",
+				'data': track
+			}
 			return result
 	if track['selectedFormat'] in [3, 1, 8]:
 		tagID3(writepath, track, settings['tags'], settings['saveID3v1'], settings['useNullSeparator'])
@@ -408,6 +418,33 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 		tagFLAC(writepath, track, settings['tags'])
 	print("Done!")
 	return result
+
+def after_download(tracks, settings):
+	extrasPath = None
+	playlist = [None] * len(tracks)
+	errors = ""
+	for index in range(len(tracks)):
+		result = tracks[index].result()
+		if 'error' in result:
+			errors += f"{result['error']['data']['id']} | {result['error']['data']['mainArtist']['name']} - {result['error']['data']['title']} | {result['error']['message']}\r\n"
+		if not extrasPath and 'extrasPath' in result:
+			extrasPath = result['extrasPath']
+		if settings['saveArtwork'] and result['albumPath']:
+			downloadImage(result['albumURL'], result['albumPath'])
+		if settings['saveArtworkArtist'] and result['artistPath']:
+			downloadImage(result['artistURL'], result['artistPath'])
+		if 'playlistPosition' in result:
+			playlist[index] = result['playlistPosition']
+		else:
+			playlist[index] = ""
+	if settings['logErrors'] and extrasPath and errors != "":
+		with open(os.path.join(extrasPath, 'errors.txt'), 'w') as f:
+			f.write(errors)
+	if settings['createM3U8File'] and extrasPath:
+		with open(os.path.join(extrasPath, 'playlist.m3u8'), 'w') as f:
+			for line in playlist:
+				f.write(line+"\n")
+	return extrasPath
 
 def download_track(dz, id, settings, overwriteBitrate=False):
 	trackAPI = dz.get_track_gw(id)
@@ -437,24 +474,7 @@ def download_album(dz, id, settings, overwriteBitrate=False):
 				trackAPI['FILENAME_TEMPLATE'] = settings['albumTracknameTemplate']
 				playlist[pos-1] = executor.submit(downloadTrackObj, dz, trackAPI, settings, overwriteBitrate)
 
-		extrasPath = None
-		for index in range(len(playlist)):
-			result = playlist[index].result()
-			if not extrasPath:
-				extrasPath = result['extrasPath']
-			if settings['saveArtwork'] and result['albumPath']:
-				downloadImage(result['albumURL'], result['albumPath'])
-			if settings['saveArtworkArtist'] and result['artistPath']:
-				downloadImage(result['artistURL'], result['artistPath'])
-			if 'playlistPosition' in result:
-				playlist[index] = result['playlistPosition']
-			else:
-				playlist[index] = ""
-		if settings['createM3U8File'] and extrasPath:
-			with open(os.path.join(extrasPath, 'playlist.m3u8'), 'w') as f:
-				for line in playlist:
-					f.write(line+"\n")
-		return extrasPath
+		return after_download(playlist, settings)
 
 def download_artist(dz, id, settings, overwriteBitrate=False):
 	artistAPI = dz.get_artist_albums(id)
@@ -472,22 +492,4 @@ def download_playlist(dz, id, settings, overwriteBitrate=False):
 			trackAPI['POSITION'] = pos
 			trackAPI['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
 			playlist[pos-1] = executor.submit(downloadTrackObj, dz, trackAPI, settings, overwriteBitrate)
-
-	extrasPath = None
-	for index in range(len(playlist)):
-		result = playlist[index].result()
-		if not extrasPath:
-			extrasPath = result['extrasPath']
-		if settings['saveArtwork'] and result['albumPath']:
-			downloadImage(result['albumURL'], result['albumPath'])
-		if settings['saveArtworkArtist'] and result['artistPath']:
-			downloadImage(result['artistURL'], result['artistPath'])
-		if 'playlistPosition' in result:
-			playlist[index] = result['playlistPosition']
-		else:
-			playlist[index] = ""
-	if settings['createM3U8File'] and extrasPath:
-		with open(os.path.join(extrasPath, 'playlist.m3u8'), 'w') as f:
-			for line in playlist:
-				f.write(line+"\n")
-	return extrasPath
+	return after_download(playlist, settings)
