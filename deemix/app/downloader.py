@@ -364,7 +364,8 @@ def download_track(dz, id, settings, overwriteBitrate=False):
 	trackAPI = dz.get_track_gw(id)
 	trackAPI['FILENAME_TEMPLATE'] = settings['tracknameTemplate']
 	trackAPI['SINGLE_TRACK'] = True
-	downloadTrackObj(dz, trackAPI, settings, overwriteBitrate)
+	result = downloadTrackObj(dz, trackAPI, settings, overwriteBitrate)
+	return result['extrasPath']
 
 def download_album(dz, id, settings, overwriteBitrate=False):
 	albumAPI = dz.get_album(id)
@@ -404,6 +405,7 @@ def download_album(dz, id, settings, overwriteBitrate=False):
 			with open(os.path.join(extrasPath, 'playlist.m3u8'), 'w') as f:
 				for line in playlist:
 					f.write(line+"\n")
+		return extrasPath
 
 def download_artist(dz, id, settings, overwriteBitrate=False):
 	artistAPI = dz.get_artist_albums(id)
@@ -439,3 +441,4 @@ def download_playlist(dz, id, settings, overwriteBitrate=False):
 		with open(os.path.join(extrasPath, 'playlist.m3u8'), 'w') as f:
 			for line in playlist:
 				f.write(line+"\n")
+	return extrasPath
