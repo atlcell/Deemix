@@ -386,7 +386,7 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 			if 'featArtistsString' in track:
 				track['artistsString'] += " "+track['featArtistsString']
 		else:
-			track['artistsString'] = settings['multitagSeparator'].join(track[artists])
+			track['artistsString'] = settings['multitagSeparator'].join(track['artists'])
 
 	track['downloadUrl'] = dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], track['selectedFormat'])
 	try:
