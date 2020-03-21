@@ -266,6 +266,48 @@ def getTrackData(dz, trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI 
 		monthTemp = track['album']['date']['month']
 		track['album']['date']['month'] = track['album']['date']['day']
 		track['album']['date']['day'] = monthTemp
+
+	# Remove featuring from the title
+	track['title_clean'] = track['title']
+	if "(feat." in track['title_clean'].lower():
+		pos = track['title_clean'].lower().find("(feat.")
+		tempTrack = track['title_clean'][:pos]
+		if ")" in track['title_clean']:
+			tempTrack += track['title_clean'][track['title_clean'].find(")",pos+1)+1:]
+		track['title_clean'] = tempTrack.strip()
+
+	# Create artists strings
+	track['mainArtistsString'] = ""
+	tot = len(track['artist']['Main'])
+	if tot > 0:
+		for i, art in enumerate(track['artist']['Main']):
+			track['mainArtistsString'] += art
+			if tot != i+1:
+				if tot-1 == i+1:
+					track['mainArtistsString'] += " & "
+				else:
+					track['mainArtistsString'] += ", "
+	else:
+		track['mainArtistsString'] = track['mainArtist']['name']
+	tot = len(track['artist']['Featured'])
+	if tot > 0:
+		track['featArtistsString'] = "feat. "
+		for i, art in enumerate(track['artist']['Featured']):
+			track['featArtistsString'] += art
+			if tot != i+1:
+				if tot-1 == i+1:
+					track['featArtistsString'] += " & "
+				else:
+					track['featArtistsString'] += ", "
+
+	# Create title with feat
+	if "(feat." in track['title'].lower():
+		track['title_feat'] = track['title']
+	elif len(artists['Featured'])>0:
+		track['title_feat'] = track['title']+" ({})".format(track['featArtistsString'])
+	else:
+		track['title_feat'] = track['title']
+
 	return track
 
 def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=None):
@@ -332,6 +374,13 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 	if extrasPath:
 		result['extrasPath'] = extrasPath
 		result['playlistPosition'] = writepath[len(extrasPath):]
+
+	# Generate artist tag if needed
+	if settings['multitagSeparator'] != "default":
+		if settings['multitagSeparator'] == "andFeat":
+			track['artistsString'] = track['mainArtistsString'] + " " + track['featArtistsString']
+		else:
+			track['artistsString'] = settings['multitagSeparator'].join(track[artists])
 
 	track['downloadUrl'] = dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], track['selectedFormat'])
 	try:

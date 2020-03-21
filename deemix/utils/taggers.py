@@ -13,7 +13,11 @@ def tagID3(stream, track, save, id3v1=False, nullSeparator=True):
 	if save['title']:
 		tag.add(TIT2(text=track['title']))
 	if save['artist']:
-		tag.add(TPE1(text=track['artists']))
+		if 'artistsString' in track:
+			tag.add(TPE1(text=track['artistsString']))
+			tag.add(TXXX(desc="ARTISTS", text=track['artists']))
+		else:
+			tag.add(TPE1(text=track['artists']))
 	if save['album']:
 		tag.add(TALB(text=track['album']['title']))
 	if save['albumArtist']:
@@ -67,7 +71,11 @@ def tagFLAC(stream, track, save):
 	if save['title']:
 		tag["TITLE"] = track['title']
 	if save['artist']:
-		tag["ARTIST"] = track['artists']
+		if 'artistsString' in track:
+			tag["ARTIST"] = track['artistsString']
+			tag["ARTISTS"] = track['artists']
+		else:
+			tag["ARTIST"] = track['artists']
 	if save['album']:
 		tag["ALBUM"] = track['album']['title']
 	if save['albumArtist']:
