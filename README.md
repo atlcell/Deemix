@@ -8,7 +8,6 @@ Finish porting all features:
 - ?
 
 Settings not yet implemented:
-- fallbackBitrate (on by default)
 - fallbackSearch (off by default)
 - logSearched
 - savePlaylistAsCompilation

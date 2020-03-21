@@ -7,8 +7,14 @@ def getBitrateInt(txt):
 		return 9
 	elif txt in ['mp3', '320', '3']:
 		return 3
-	elif txt in ['128']:
+	elif txt in ['128', '1']:
 		return 1
+	elif txt in ['360', '360_hq', '15']:
+		return 15
+	elif txt in ['360_mq', '14']:
+		return 14
+	elif txt in ['360_lq', '13']:
+		return 13
 	else:
 		return None
 

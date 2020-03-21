@@ -54,15 +54,31 @@ def formatDate(date, template):
 	return template
 
 
-def getPreferredBitrate(filesize, bitrate):
-	formats = {'flac': 9, 'mp3_320': 3, 'mp3_128': 1}
-	selectedFormat = 8
-	selectedFilesize = filesize['default']
-	for format, formatNum in formats.items():
-		if formatNum <= int(bitrate) and filesize[format] > 0:
-			selectedFormat = formatNum
-			selectedFilesize = filesize[format]
-			break
+def getPreferredBitrate(filesize, bitrate, fallback=True):
+	if not fallback:
+		formats = {9: 'flac', 3: 'mp3_320', 1: 'mp3_128', 15: '360_hq', 14: '360_mq', 13: '360_lq'}
+		if filesize[formats[int(bitrate)]] > 0:
+			return (int(bitrate), filesize[formats[int(bitrate)]])
+		else:
+			return (-100, 0)
+	if int(bitrate) in [13,14,15]:
+		formats = {'360_hq': 15, '360_mq': 14, '360_lq': 13}
+		selectedFormat = -200
+		selectedFilesize = 0
+		for format, formatNum in formats.items():
+			if formatNum <= int(bitrate) and filesize[format] > 0:
+				selectedFormat = formatNum
+				selectedFilesize = filesize[format]
+				break
+	else:
+		formats = {'flac': 9, 'mp3_320': 3, 'mp3_128': 1}
+		selectedFormat = 8
+		selectedFilesize = filesize['default']
+		for format, formatNum in formats.items():
+			if formatNum <= int(bitrate) and filesize[format] > 0:
+				selectedFormat = formatNum
+				selectedFilesize = filesize[format]
+				break
 	return (selectedFormat, selectedFilesize)
 
 def parseEssentialTrackData(track, trackAPI):
@@ -75,13 +91,13 @@ def parseEssentialTrackData(track, trackAPI):
 	else:
 		track['fallbackId'] = 0
 	track['filesize'] = {}
-	track['filesize']['default'] = int(trackAPI['FILESIZE']) if 'FILESIZE' in trackAPI else None
-	track['filesize']['mp3_128'] = int(trackAPI['FILESIZE_MP3_128']) if 'FILESIZE_MP3_128' in trackAPI else None
-	track['filesize']['mp3_320'] = int(trackAPI['FILESIZE_MP3_320']) if 'FILESIZE_MP3_320' in trackAPI else None
-	track['filesize']['flac'] = int(trackAPI['FILESIZE_FLAC']) if 'FILESIZE_FLAC' in trackAPI else None
-	track['filesize']['mp4_ra1'] = int(trackAPI['FILESIZE_MP4_RA1']) if 'FILESIZE_MP4_RA1' in trackAPI else None
-	track['filesize']['mp4_ra2'] = int(trackAPI['FILESIZE_MP4_RA2']) if 'FILESIZE_MP4_RA2' in trackAPI else None
-	track['filesize']['mp4_ra3'] = int(trackAPI['FILESIZE_MP4_RA3']) if 'FILESIZE_MP4_RA3' in trackAPI else None
+	track['filesize']['default'] = int(trackAPI['FILESIZE']) if 'FILESIZE' in trackAPI else 0
+	track['filesize']['mp3_128'] = int(trackAPI['FILESIZE_MP3_128']) if 'FILESIZE_MP3_128' in trackAPI else 0
+	track['filesize']['mp3_320'] = int(trackAPI['FILESIZE_MP3_320']) if 'FILESIZE_MP3_320' in trackAPI else 0
+	track['filesize']['flac'] = int(trackAPI['FILESIZE_FLAC']) if 'FILESIZE_FLAC' in trackAPI else 0
+	track['filesize']['360_lq'] = int(trackAPI['FILESIZE_MP4_RA1']) if 'FILESIZE_MP4_RA1' in trackAPI else 0
+	track['filesize']['360_mq'] = int(trackAPI['FILESIZE_MP4_RA2']) if 'FILESIZE_MP4_RA2' in trackAPI else 0
+	track['filesize']['360_hq'] = int(trackAPI['FILESIZE_MP4_RA3']) if 'FILESIZE_MP4_RA3' in trackAPI else 0
 
 	return track
 
@@ -340,7 +356,21 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 
 	# Get the selected bitrate
 	bitrate = overwriteBitrate if overwriteBitrate else settings['maxBitrate']
-	(format, filesize) = getPreferredBitrate(track['filesize'], bitrate)
+	(format, filesize) = getPreferredBitrate(track['filesize'], bitrate, settings['fallbackBitrate'])
+	if format == -100:
+		print("ERROR: Track not found at desired bitrate. Enable fallback to lower bitrates to fix this issue.")
+		result['error'] = {
+			'message': "Track not found at desired bitrate.",
+			'data': track
+		}
+		return result
+	elif format == -200:
+		print("ERROR: This track is not available in 360 Reality Audio format. Please select another format.")
+		result['error'] = {
+			'message': "Track is not available in Reality Audio 360.",
+			'data': track
+		}
+		return result
 	track['selectedFormat'] = format
 	track['selectedFilesize'] = filesize
 	track['album']['bitrate'] = format
@@ -394,7 +424,7 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 			dz.stream_track(track['id'], track['downloadUrl'], stream)
 	except HTTPError:
 		remove(writepath)
-		if track['selectedFormat'] == 9:
+		if track['selectedFormat'] == 9 and settings['fallbackBitrate']:
 			print("Track not available in flac, trying mp3")
 			track['filesize']['flac'] = 0
 			return downloadTrackObj(dz, trackAPI, settings, extraTrack=track)
@@ -451,7 +481,10 @@ def download_track(dz, id, settings, overwriteBitrate=False):
 	trackAPI['FILENAME_TEMPLATE'] = settings['tracknameTemplate']
 	trackAPI['SINGLE_TRACK'] = True
 	result = downloadTrackObj(dz, trackAPI, settings, overwriteBitrate)
-	return result['extrasPath']
+	if 'extrasPath' in result:
+		return result['extrasPath']
+	else:
+		return None
 
 def download_album(dz, id, settings, overwriteBitrate=False):
 	albumAPI = dz.get_album(id)
