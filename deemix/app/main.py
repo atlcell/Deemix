@@ -2,6 +2,7 @@
 from deemix.api.deezer import Deezer
 from deemix.utils.misc import getIDFromLink, getTypeFromLink, getBitrateInt
 from deemix.app.downloader import download_track, download_album, download_playlist, download_artist
+from os import system as execute
 
 dz = Deezer()
 
@@ -21,3 +22,6 @@ def downloadLink(url, settings, bitrate=None):
 		download_artist(dz, id, settings, forcedBitrate)
 	else:
 		print("URL not supported yet")
+		return None
+	if settings['executeCommand'] != "":
+		execute(settings['executeCommand'])

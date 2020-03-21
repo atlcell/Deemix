@@ -39,6 +39,7 @@
 	"saveID3v1": true,
 	"titleCasing": "nothing",
 	"artistCasing": "nothing",
+	"executeCommand": "",
 	"tags": {
 		"title": true,
 		"artist": true,
