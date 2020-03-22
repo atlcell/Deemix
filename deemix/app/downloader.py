@@ -8,6 +8,7 @@ from requests import get
 from requests.exceptions import HTTPError
 from tempfile import gettempdir
 from concurrent.futures import ThreadPoolExecutor
+import re
 
 TEMPDIR = os.path.join(gettempdir(), 'deezloader-imgs')
 if not os.path.isdir(TEMPDIR):
@@ -418,6 +419,13 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 	track['dateString'] = formatDate(track['date'], settings['dateFormat'])
 	track['album']['dateString'] = formatDate(track['album']['date'], settings['dateFormat'])
 
+	# Remove (Album Version) from tracks that have that
+	if settings['removeAlbumVersion']:
+		if "Album Version" in track['title']:
+			track['title'] = re.sub(r' ?\(Album Version\)', "", track['title']).strip()
+			track['title_clean'] = re.sub(r' ?\(Album Version\)', "", track['title_clean']).strip()
+			track['title_feat'] = re.sub(r' ?\(Album Version\)', "", track['title_feat']).strip()
+
 	# Generate filename and filepath from metadata
 	filename = generateFilename(track, trackAPI, settings)
 	(filepath, artistPath, coverPath, extrasPath) = generateFilepath(track, trackAPI, settings)
@@ -542,16 +550,16 @@ def after_download(tracks, settings):
 	return extrasPath
 
 def after_download_single(track, settings):
-	if settings['logSearched'] and 'extrasPath' in result and 'searched' in result:
-		with open(os.path.join(result['extrasPath'], 'searched.txt'), 'w+') as f:
+	if settings['logSearched'] and 'extrasPath' in track and 'searched' in track:
+		with open(os.path.join(track['extrasPath'], 'searched.txt'), 'w+') as f:
 			orig = f.read()
-			if not result['searched'] in orig:
+			if not track['searched'] in orig:
 				if orig != "":
 					orig += "\r\n"
-				orig += result['searched']+"\r\n"
+				orig += track['searched']+"\r\n"
 			f.write(orig)
-	if 'extrasPath' in result:
-		return result['extrasPath']
+	if 'extrasPath' in track:
+		return track['extrasPath']
 	else:
 		return None
 

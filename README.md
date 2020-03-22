@@ -6,6 +6,7 @@ Run `python -m deemix --help` to see how to use the app
 Finish porting all features:
 - logging
 - gui
+- spotify features
 - ?
 
 Settings not yet implemented:
