@@ -21,6 +21,8 @@ def getBitrateInt(txt):
 def getIDFromLink(link, type):
 	if '?' in link:
 		link = link[:link.find('?')]
+	if link.endswith("/"):
+		link = link[:-1]
 
 	if link.startswith("http") and 'open.spotify.com/' in link:
 		if type == "spotifyplaylist":

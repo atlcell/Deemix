@@ -5,11 +5,10 @@ Run `python -m deemix --help` to see how to use the app
 # TODO
 Finish porting all features:
 - logging
+- gui
 - ?
 
 Settings not yet implemented:
-- fallbackSearch (off by default)
-- logSearched
 - savePlaylistAsCompilation
 - removeAlbumVersion
 - moveFeaturedToTitle

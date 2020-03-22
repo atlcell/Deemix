@@ -81,6 +81,29 @@ def getPreferredBitrate(filesize, bitrate, fallback=True):
 				break
 	return (selectedFormat, selectedFilesize)
 
+def convertMetadata2Deezer(dz, artist, track, album):
+	artist = artist.replace("–","-").replace("’", "'")
+	track = track.replace("–","-").replace("’", "'")
+	album = album.replace("–","-").replace("’", "'")
+
+	resp = dz.search(f'artist:"{artist}" track:"{track}" album:"{album}"', "track", 1)
+	if len(resp['data'])>0:
+		return resp['data'][0]['id']
+	resp = dz.search(f'artist:"{artist}" track:"{track}"', "track", 1)
+	if len(resp['data'])>0:
+		return resp['data'][0]['id']
+	if "(" in track and ")" in track and track.find("(") < track.find(")"):
+		resp = dz.search(f'artist:"{artist}" track:"{track[:track.find("(")]}"', "track", 1)
+		if len(resp['data'])>0:
+			return resp['data'][0]['id']
+	elif " - " in track:
+		resp = dz.search(f'artist:"{artist}" track:"{track[:track.find(" - ")]}"', "track", 1)
+		if len(resp['data'])>0:
+			return resp['data'][0]['id']
+	else:
+		return 0
+	return 0
+
 def parseEssentialTrackData(track, trackAPI):
 	track['id'] = trackAPI['SNG_ID']
 	track['duration'] = trackAPI['DURATION']
@@ -340,12 +363,29 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 	print('Downloading: {} - {}'.format(track['mainArtist']['name'], track['title']))
 	if track['MD5'] == '':
 		if track['fallbackId'] != 0:
-			print("Track not available, using fallback id")
+			print("Track not yet encoded, using fallback id")
 			trackNew = dz.get_track_gw(track['fallbackId'])
 			if not 'MD5_ORIGIN' in trackNew:
 				trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
 			track = parseEssentialTrackData(track, trackNew)
 			return downloadTrackObj(dz, trackAPI, settings, extraTrack=track)
+		elif not 'searched' in track and settings['fallbackSearch']:
+			print("Track not yet encoded, searching for alternative")
+			searchedId = convertMetadata2Deezer(dz, track['mainArtist']['name'], track['title'], track['album']['title'])
+			if searchedId != 0:
+				trackNew = dz.get_track_gw(searchedId)
+				if not 'MD5_ORIGIN' in trackNew:
+					trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
+				track = parseEssentialTrackData(track, trackNew)
+				track['searched'] = True
+				return downloadTrackObj(dz, trackAPI, settings, extraTrack=track)
+			else:
+				print("ERROR: Track not yet encoded and no alternative found!")
+				result['error'] = {
+					'message': "Track not yet encoded and no alternative found!",
+					'data': track
+				}
+				return result
 		else:
 			print("ERROR: Track not yet encoded!")
 			result['error'] = {
@@ -435,6 +475,23 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 				trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
 			track = parseEssentialTrackData(track, trackNew)
 			return downloadTrackObj(dz, trackAPI, settings, extraTrack=track)
+		elif not 'searched' in track and settings['fallbackSearch']:
+			print("Track not available, searching for alternative")
+			searchedId = convertMetadata2Deezer(dz, track['mainArtist']['name'], track['title'], track['album']['title'])
+			if searchedId != 0:
+				trackNew = dz.get_track_gw(searchedId)
+				if not 'MD5_ORIGIN' in trackNew:
+					trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
+				track = parseEssentialTrackData(track, trackNew)
+				track['searched'] = True
+				return downloadTrackObj(dz, trackAPI, settings, extraTrack=track)
+			else:
+				print("ERROR: Track not available on deezer's servers and no alternative found!")
+				result['error'] = {
+					'message': "Track not available on deezer's servers and no alternative found!",
+					'data': track
+				}
+				return result
 		else:
 			print("ERROR: Track not available on deezer's servers!")
 			result['error'] = {
@@ -446,6 +503,8 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 		tagID3(writepath, track, settings['tags'], settings['saveID3v1'], settings['useNullSeparator'])
 	elif track['selectedFormat'] == 9:
 		tagFLAC(writepath, track, settings['tags'])
+	if 'searched' in track:
+		result['searched'] = f'{track["mainArtist"]["name"]} - {track["title"]}'
 	print("Done!")
 	return result
 
@@ -453,10 +512,13 @@ def after_download(tracks, settings):
 	extrasPath = None
 	playlist = [None] * len(tracks)
 	errors = ""
+	searched = ""
 	for index in range(len(tracks)):
 		result = tracks[index].result()
 		if 'error' in result:
 			errors += f"{result['error']['data']['id']} | {result['error']['data']['mainArtist']['name']} - {result['error']['data']['title']} | {result['error']['message']}\r\n"
+		if 'searched' in result:
+			searched += result['searched']+"\r\n"
 		if not extrasPath and 'extrasPath' in result:
 			extrasPath = result['extrasPath']
 		if settings['saveArtwork'] and result['albumPath']:
@@ -470,21 +532,36 @@ def after_download(tracks, settings):
 	if settings['logErrors'] and extrasPath and errors != "":
 		with open(os.path.join(extrasPath, 'errors.txt'), 'w') as f:
 			f.write(errors)
+	if settings['logSearched'] and extrasPath and searched != "":
+		with open(os.path.join(extrasPath, 'searched.txt'), 'w') as f:
+			f.write(searched)
 	if settings['createM3U8File'] and extrasPath:
 		with open(os.path.join(extrasPath, 'playlist.m3u8'), 'w') as f:
 			for line in playlist:
 				f.write(line+"\n")
 	return extrasPath
 
+def after_download_single(track, settings):
+	if settings['logSearched'] and 'extrasPath' in result and 'searched' in result:
+		with open(os.path.join(result['extrasPath'], 'searched.txt'), 'w+') as f:
+			orig = f.read()
+			if not result['searched'] in orig:
+				if orig != "":
+					orig += "\r\n"
+				orig += result['searched']+"\r\n"
+			f.write(orig)
+	if 'extrasPath' in result:
+		return result['extrasPath']
+	else:
+		return None
+
 def download_track(dz, id, settings, overwriteBitrate=False):
 	trackAPI = dz.get_track_gw(id)
 	trackAPI['FILENAME_TEMPLATE'] = settings['tracknameTemplate']
 	trackAPI['SINGLE_TRACK'] = True
 	result = downloadTrackObj(dz, trackAPI, settings, overwriteBitrate)
-	if 'extrasPath' in result:
-		return result['extrasPath']
-	else:
-		return None
+	return after_download_single(result, settings)
+
 
 def download_album(dz, id, settings, overwriteBitrate=False):
 	albumAPI = dz.get_album(id)
@@ -496,7 +573,8 @@ def download_album(dz, id, settings, overwriteBitrate=False):
 		trackAPI['_EXTRA_ALBUM'] = albumAPI
 		trackAPI['FILENAME_TEMPLATE'] = settings['tracknameTemplate']
 		trackAPI['SINGLE_TRACK'] = True
-		downloadTrackObj(dz, trackAPI, settings, overwriteBitrate)
+		result = downloadTrackObj(dz, trackAPI, settings, overwriteBitrate)
+		return after_download_single(result, settings)
 	else:
 		tracksArray = dz.get_album_tracks_gw(id)
 		playlist = [None] * len(tracksArray)
