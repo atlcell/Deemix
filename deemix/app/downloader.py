@@ -419,12 +419,19 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 	track['dateString'] = formatDate(track['date'], settings['dateFormat'])
 	track['album']['dateString'] = formatDate(track['album']['date'], settings['dateFormat'])
 
+	# Check if user wants the feat in the title
+	# 0 => do not change
+	# 1 => remove from title
+	# 2 => add to title
+	if settings['featuredToTitle'] == "1":
+		track['title'] = track['title_clean']
+	elif settings['featuredToTitle'] == "2":
+		track['title'] = track['title_feat']
+
 	# Remove (Album Version) from tracks that have that
 	if settings['removeAlbumVersion']:
 		if "Album Version" in track['title']:
 			track['title'] = re.sub(r' ?\(Album Version\)', "", track['title']).strip()
-			track['title_clean'] = re.sub(r' ?\(Album Version\)', "", track['title_clean']).strip()
-			track['title_feat'] = re.sub(r' ?\(Album Version\)', "", track['title_feat']).strip()
 
 	# Generate filename and filepath from metadata
 	filename = generateFilename(track, trackAPI, settings)
@@ -461,7 +468,7 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 	if settings['multitagSeparator'] != "default":
 		if settings['multitagSeparator'] == "andFeat":
 			track['artistsString'] = track['mainArtistsString']
-			if 'featArtistsString' in track:
+			if 'featArtistsString' in track and settings['featuredToTitle'] != "2":
 				track['artistsString'] += " "+track['featArtistsString']
 		else:
 			track['artistsString'] = settings['multitagSeparator'].join(track['artists'])
