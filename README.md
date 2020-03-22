@@ -11,7 +11,5 @@ Finish porting all features:
 
 Settings not yet implemented:
 - savePlaylistAsCompilation
-- removeAlbumVersion
-- moveFeaturedToTitle
 - titleCasing
 - artistCasing
