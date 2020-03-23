@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import binascii
-import hashlib
+from Crypto.Hash import MD5
 
-from Crypto.Cipher import Blowfish
+from Crypto.Cipher import Blowfish, AES
 import pyaes
 import requests
 
@@ -281,14 +281,14 @@ class Deezer:
 			i += 1
 
 	def _md5(self, data):
-		h = hashlib.new("md5")
+		h = MD5.new()
 		h.update(str.encode(data) if isinstance(data, str) else data)
 		return h.hexdigest()
 
 	def _ecb_crypt(self, key, data):
 		res = b''
 		for x in range(int(len(data) / 16)):
-			res += binascii.hexlify(pyaes.AESModeOfOperationECB(key).encrypt(data[:16]))
+			res += binascii.hexlify(AES.new(key, AES.MODE_ECB).encrypt(data[:16]))
 			data = data[16:]
 		return res
 
