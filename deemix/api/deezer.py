@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 import binascii
-from Crypto.Hash import MD5
+from Cryptodome.Hash import MD5
 
-from Crypto.Cipher import Blowfish, AES
+from Cryptodome.Cipher import Blowfish, AES
 import pyaes
 import requests
 
