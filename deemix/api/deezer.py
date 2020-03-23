@@ -3,7 +3,6 @@ import binascii
 from Cryptodome.Hash import MD5
 
 from Cryptodome.Cipher import Blowfish, AES
-import pyaes
 import requests
 
 import time
