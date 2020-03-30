@@ -97,7 +97,7 @@ def generateFilepath(track, trackAPI, settings):
 def settingsRegex(filename, track, settings, playlist=None):
 	filename = filename.replace("%title%", fixName(track['title'], settings['illegalCharacterReplacer']))
 	filename = filename.replace("%artist%", fixName(track['mainArtist']['name'], settings['illegalCharacterReplacer']))
-	filename = filename.replace("%artists%", fixName(track['artistString'], settings['illegalCharacterReplacer']))
+	filename = filename.replace("%artists%", fixName(track['mainArtistsString'], settings['illegalCharacterReplacer']))
 	filename = filename.replace("%album%", fixName(track['album']['title'], settings['illegalCharacterReplacer']))
 	filename = filename.replace("%albumartist%", fixName(track['album']['mainArtist']['name'], settings['illegalCharacterReplacer']))
 	filename = filename.replace("%tracknumber%", pad(track['trackNumber'], track['album']['trackTotal'] if int(settings['paddingSize']) == 0 else 10 ** (int(settings['paddingSize'])-1), settings['padTracks']))
