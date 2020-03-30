@@ -28,7 +28,6 @@ def changeCase(string, type):
 		res = []
 		for index, value in enumerate(string):
 			res.append(value[0].upper() + value[0:].lower())
-		})
 		res = " ".join(res)
 		return res
 	elif type == "sentence":
