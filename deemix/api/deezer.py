@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 import binascii
-import hashlib
+from Cryptodome.Hash import MD5
 
-from Crypto.Cipher import Blowfish
-import pyaes
+from Cryptodome.Cipher import Blowfish, AES
 import requests
 
 import time
@@ -169,8 +168,7 @@ class Deezer:
 		return tracks_array
 
 	def get_album_gw(self, alb_id):
-		body = self.gw_api_call('album.getData', {'alb_id': alb_id})
-		return body['results']
+		return self.gw_api_call('album.getData', {'alb_id': alb_id})['results']
 
 	def get_album_tracks_gw(self, alb_id):
 		tracks_array = []
@@ -182,12 +180,10 @@ class Deezer:
 		return tracks_array
 
 	def get_artist_gw(self, art_id):
-		body = self.gw_api_call('deezer.pageArtist', {'art_id': art_id})
-		return body
+		return self.gw_api_call('deezer.pageArtist', {'art_id': art_id})
 
 	def get_playlist_gw(self, playlist_id):
-		body = self.gw_api_call('deezer.pagePlaylist', {'playlist_id': playlist_id})
-		return body
+		return self.gw_api_call('deezer.pagePlaylist', {'playlist_id': playlist_id})
 
 	def get_playlist_tracks_gw(self, playlist_id):
 		tracks_array = []
@@ -206,54 +202,43 @@ class Deezer:
 		return tracks_array
 
 	def get_lyrics_gw(self, sng_id):
-		body = self.gw_api_call('song.getLyrics', {'sng_id': sng_id})
-		return body["results"]
+		return self.gw_api_call('song.getLyrics', {'sng_id': sng_id})["results"]
 
 	def get_user_playlist(self, user_id):
-		body = self.api_call('user/' + str(user_id) + '/playlists', {'limit': -1})
-		return body
+		return self.api_call('user/' + str(user_id) + '/playlists', {'limit': -1})
 
 	def get_track(self, user_id):
-		body = self.api_call('track/' + str(user_id))
-		return body
+		return self.api_call('track/' + str(user_id))
 
 	def get_track_by_ISRC(self, isrc):
-		body = self.api_call('track/isrc:' + isrc)
-		return body
+		return self.api_call('track/isrc:' + isrc)
 
 	def get_charts_top_country(self):
 		return self.get_user_playlist('637006841')
 
 	def get_playlist(self, playlist_id):
-		body = self.api_call('playlist/' + str(playlist_id))
-		return body
+		return self.api_call('playlist/' + str(playlist_id))
 
 	def get_playlist_tracks(self, playlist_id):
-		body = self.api_call('playlist/' + str(playlist_id) + '/tracks', {'limit': -1})
-		return body
+		return self.api_call('playlist/' + str(playlist_id) + '/tracks', {'limit': -1})
 
 	def get_album(self, album_id):
-		body = self.api_call('album/' + str(album_id))
-		return body
+		return self.api_call('album/' + str(album_id))
 
 	def get_album_by_UPC(self, upc):
-		body = self.api_call('album/upc:' + str(upc))
+		return self.api_call('album/upc:' + str(upc))
 
 	def get_album_tracks(self, album_id):
-		body = self.api_call('album/' + str(album_id) + '/tracks', {'limit': -1})
-		return body
+		return self.api_call('album/' + str(album_id) + '/tracks', {'limit': -1})
 
 	def get_artist(self, artist_id):
-		body = self.api_call('artist/' + str(artist_id))
-		return body
+		return self.api_call('artist/' + str(artist_id))
 
 	def get_artist_albums(self, artist_id):
-		body = self.api_call('artist/' + str(artist_id) + '/albums', {'limit': -1})
-		return body
+		return self.api_call('artist/' + str(artist_id) + '/albums', {'limit': -1})
 
 	def search(self, term, search_type, limit=30):
-		body = self.api_call('search/' + search_type, {'q': term, 'limit': limit})
-		return body
+		return self.api_call('search/' + search_type, {'q': term, 'limit': limit})
 
 	def decrypt_track(self, track_id, input, output):
 		response = open(input, 'rb')
@@ -281,14 +266,14 @@ class Deezer:
 			i += 1
 
 	def _md5(self, data):
-		h = hashlib.new("md5")
+		h = MD5.new()
 		h.update(str.encode(data) if isinstance(data, str) else data)
 		return h.hexdigest()
 
 	def _ecb_crypt(self, key, data):
 		res = b''
-		for x in range(int(len(data) / 16)):
-			res += binascii.hexlify(pyaes.AESModeOfOperationECB(key).encrypt(data[:16]))
+		for _ in range(int(len(data) / 16)):
+			res += binascii.hexlify(AES.new(key, AES.MODE_ECB).encrypt(data[:16]))
 			data = data[16:]
 		return res
 

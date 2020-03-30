@@ -90,7 +90,7 @@ def generateFilepath(track, trackAPI, settings):
 		(not 'SINGLE_TRACK' in trackAPI or ('SINGLE_TRACK' in trackAPI and settings['createSingleFolder'])) and
 		(not '_EXTRA_PLAYLIST' in trackAPI or ('_EXTRA_PLAYLIST' in trackAPI and settings['savePlaylistAsCompilation']) or ('_EXTRA_PLAYLIST' in trackAPI and settings['createStructurePlaylist']))
 	)):
-		filepath += 'CD'+str(track['discNumber']) + pathSep
+		filepath += 'CD' + str(track['discNumber']) + pathSep
 
 	return (filepath, artistPath, coverPath, extrasPath)
 
@@ -137,7 +137,7 @@ def settingsRegexAlbum(foldername, album, settings):
 	foldername = foldername.replace("%type%", fixName(album['recordType'], settings['illegalCharacterReplacer']))
 	foldername = foldername.replace("%upc%", album['barcode'])
 	foldername = foldername.replace("%label%", fixName(album['label'], settings['illegalCharacterReplacer']))
-	if len(album['genre'])>0:
+	if len(album['genre']) > 0:
 		foldername = foldername.replace("%genre%", fixName(album['genre'][0], settings['illegalCharacterReplacer']))
 	else:
 		foldername = foldername.replace("%genre%", "Unknown")

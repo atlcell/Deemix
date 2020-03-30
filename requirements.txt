@@ -1,5 +1,4 @@
-pyaes
-pycryptodome
+pycryptodomex
 mutagen
 click
 requests
