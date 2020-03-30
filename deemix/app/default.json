@@ -30,13 +30,10 @@
 	"saveArtworkArtist": false,
 	"artistImageTemplate": "folder",
 	"PNGcovers": false,
-	"multitagSeparator": "default",
 	"dateFormat": "Y-M-D",
 	"savePlaylistAsCompilation": false,
 	"removeAlbumVersion": false,
 	"featuredToTitle": "0",
-	"useNullSeparator": false,
-	"saveID3v1": true,
 	"titleCasing": "nothing",
 	"artistCasing": "nothing",
 	"executeCommand": "",
@@ -63,6 +60,9 @@
 		"lyrics": false,
 		"copyright": false,
 		"composer": false,
-		"involvedPeople": false
+		"involvedPeople": false,
+		"useNullSeparator": false,
+		"saveID3v1": true,
+		"multitagSeparator": "default"
 	}
 }

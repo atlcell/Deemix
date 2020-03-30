@@ -29,12 +29,12 @@ def fixLongName(name):
 		name = name[:200]
 	return name
 
-def antiDot(str):
-	while str[-1:] == "." or str[-1:] == " " or str[-1:] == "\n":
-		str = str[:-1]
-	if len(str) < 1:
-		str = "dot"
-	return str
+def antiDot(string):
+	while string[-1:] == "." or string[-1:] == " " or string[-1:] == "\n":
+		string = string[:-1]
+	if len(string) < 1:
+		string = "dot"
+	return string
 
 def pad(num, max, dopad=True):
 	paddingsize = len(str(max))
@@ -97,6 +97,7 @@ def generateFilepath(track, trackAPI, settings):
 def settingsRegex(filename, track, settings, playlist=None):
 	filename = filename.replace("%title%", fixName(track['title'], settings['illegalCharacterReplacer']))
 	filename = filename.replace("%artist%", fixName(track['mainArtist']['name'], settings['illegalCharacterReplacer']))
+	filename = filename.replace("%artists%", fixName(track['artistString'], settings['illegalCharacterReplacer']))
 	filename = filename.replace("%album%", fixName(track['album']['title'], settings['illegalCharacterReplacer']))
 	filename = filename.replace("%albumartist%", fixName(track['album']['mainArtist']['name'], settings['illegalCharacterReplacer']))
 	filename = filename.replace("%tracknumber%", pad(track['trackNumber'], track['album']['trackTotal'] if int(settings['paddingSize']) == 0 else 10 ** (int(settings['paddingSize'])-1), settings['padTracks']))

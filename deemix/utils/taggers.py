@@ -4,7 +4,7 @@ from mutagen.id3 import ID3, ID3NoHeaderError, TXXX, TIT2, TPE1, TALB, TPE2, TRC
 	TPUB, TSRC, USLT, APIC, IPLS, TCOM, TCOP
 
 
-def tagID3(stream, track, save, id3v1=False, nullSeparator=True):
+def tagID3(stream, track, save):
 	try:
 		tag = ID3(stream)
 	except ID3NoHeaderError:
@@ -13,7 +13,7 @@ def tagID3(stream, track, save, id3v1=False, nullSeparator=True):
 	if save['title']:
 		tag.add(TIT2(text=track['title']))
 	if save['artist']:
-		if 'artistsString' in track:
+		if save['multitagSeparator'] != "default":
 			tag.add(TPE1(text=track['artistsString']))
 			tag.add(TXXX(desc="ARTISTS", text=track['artists']))
 		else:
@@ -62,7 +62,7 @@ def tagID3(stream, track, save, id3v1=False, nullSeparator=True):
 		with open(track['album']['picPath'], 'rb') as f:
 			tag.add(APIC(3, 'image/jpeg' if track['album']['picPath'].endswith('jpg') else 'image/png', 3, data=f.read()))
 
-	tag.save(stream, v1=2 if id3v1 else 0, v2_version=3, v23_sep=None if nullSeparator else '/')
+	tag.save(stream, v1=2 if save['saveID3v1'] else 0, v2_version=3, v23_sep=None if save['useNullSeparator'] else ' / ')
 
 
 def tagFLAC(stream, track, save):
@@ -71,7 +71,7 @@ def tagFLAC(stream, track, save):
 	if save['title']:
 		tag["TITLE"] = track['title']
 	if save['artist']:
-		if 'artistsString' in track:
+		if save['multitagSeparator'] != "default":
 			tag["ARTIST"] = track['artistsString']
 			tag["ARTISTS"] = track['artists']
 		else:

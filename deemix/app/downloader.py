@@ -82,29 +82,6 @@ def getPreferredBitrate(filesize, bitrate, fallback=True):
 				break
 	return (selectedFormat, selectedFilesize)
 
-def convertMetadata2Deezer(dz, artist, track, album):
-	artist = artist.replace("–","-").replace("’", "'")
-	track = track.replace("–","-").replace("’", "'")
-	album = album.replace("–","-").replace("’", "'")
-
-	resp = dz.search(f'artist:"{artist}" track:"{track}" album:"{album}"', "track", 1)
-	if len(resp['data'])>0:
-		return resp['data'][0]['id']
-	resp = dz.search(f'artist:"{artist}" track:"{track}"', "track", 1)
-	if len(resp['data'])>0:
-		return resp['data'][0]['id']
-	if "(" in track and ")" in track and track.find("(") < track.find(")"):
-		resp = dz.search(f'artist:"{artist}" track:"{track[:track.find("(")]}"', "track", 1)
-		if len(resp['data'])>0:
-			return resp['data'][0]['id']
-	elif " - " in track:
-		resp = dz.search(f'artist:"{artist}" track:"{track[:track.find(" - ")]}"', "track", 1)
-		if len(resp['data'])>0:
-			return resp['data'][0]['id']
-	else:
-		return 0
-	return 0
-
 def parseEssentialTrackData(track, trackAPI):
 	track['id'] = trackAPI['SNG_ID']
 	track['duration'] = trackAPI['DURATION']
@@ -372,7 +349,7 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 			return downloadTrackObj(dz, trackAPI, settings, extraTrack=track)
 		elif not 'searched' in track and settings['fallbackSearch']:
 			print("Track not yet encoded, searching for alternative")
-			searchedId = convertMetadata2Deezer(dz, track['mainArtist']['name'], track['title'], track['album']['title'])
+			searchedId = dz.get_track_from_metadata(track['mainArtist']['name'], track['title'], track['album']['title'])
 			if searchedId != 0:
 				trackNew = dz.get_track_gw(searchedId)
 				if not 'MD5_ORIGIN' in trackNew:
@@ -433,6 +410,25 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 		if "Album Version" in track['title']:
 			track['title'] = re.sub(r' ?\(Album Version\)', "", track['title']).strip()
 
+	# Generate artist tag if needed
+	if settings['tags']['multitagSeparator'] != "default":
+		if settings['tags']['multitagSeparator'] == "andFeat":
+			track['artistsString'] = track['mainArtistsString']
+			if 'featArtistsString' in track and settings['featuredToTitle'] != "2":
+				track['artistsString'] += " "+track['featArtistsString']
+		else:
+			track['artistsString'] = settings['tags']['multitagSeparator'].join(track['artists'])
+	else:
+		track['artistsString'] = ", ".join(track['artists'])
+
+	# Change Title and Artists casing if needed
+	if settings['titleCasing'] != "nothing":
+		tags['title'] = changeCase(tags['title'], settings['titleCasing'])
+	if settings['artistCasing'] != "nothing":
+		track['artistsString'] = changeCase(track['artistsString'], settings['artistCasing'])
+		for i, artist in enumerate(track['artists']):
+			track['artists'][i] = changeCase(artist, settings['artistCasing'])
+
 	# Generate filename and filepath from metadata
 	filename = generateFilename(track, trackAPI, settings)
 	(filepath, artistPath, coverPath, extrasPath) = generateFilepath(track, trackAPI, settings)
@@ -464,15 +460,6 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 		result['extrasPath'] = extrasPath
 		result['playlistPosition'] = writepath[len(extrasPath):]
 
-	# Generate artist tag if needed
-	if settings['multitagSeparator'] != "default":
-		if settings['multitagSeparator'] == "andFeat":
-			track['artistsString'] = track['mainArtistsString']
-			if 'featArtistsString' in track and settings['featuredToTitle'] != "2":
-				track['artistsString'] += " "+track['featArtistsString']
-		else:
-			track['artistsString'] = settings['multitagSeparator'].join(track['artists'])
-
 	track['downloadUrl'] = dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], track['selectedFormat'])
 	try:
 		with open(writepath, 'wb') as stream:
@@ -492,7 +479,7 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 			return downloadTrackObj(dz, trackAPI, settings, extraTrack=track)
 		elif not 'searched' in track and settings['fallbackSearch']:
 			print("Track not available, searching for alternative")
-			searchedId = convertMetadata2Deezer(dz, track['mainArtist']['name'], track['title'], track['album']['title'])
+			searchedId = dz.get_track_from_metadata(track['mainArtist']['name'], track['title'], track['album']['title'])
 			if searchedId != 0:
 				trackNew = dz.get_track_gw(searchedId)
 				if not 'MD5_ORIGIN' in trackNew:
@@ -515,7 +502,7 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 			}
 			return result
 	if track['selectedFormat'] in [3, 1, 8]:
-		tagID3(writepath, track, settings['tags'], settings['saveID3v1'], settings['useNullSeparator'])
+		tagID3(writepath, track, settings['tags'])
 	elif track['selectedFormat'] == 9:
 		tagFLAC(writepath, track, settings['tags'])
 	if 'searched' in track:

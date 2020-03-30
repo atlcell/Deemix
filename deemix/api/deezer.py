@@ -310,6 +310,29 @@ class Deezer:
 		urlPart = self._ecb_crypt(b'jo6aey6haid2Teih', step2)
 		return "https://e-cdns-proxy-" + md5[0] + ".dzcdn.net/mobile/1/" + urlPart.decode("utf-8")
 
+	def get_track_from_metadata(self, artist, track, album):
+		artist = artist.replace("–","-").replace("’", "'")
+		track = track.replace("–","-").replace("’", "'")
+		album = album.replace("–","-").replace("’", "'")
+
+		resp = self.search(f'artist:"{artist}" track:"{track}" album:"{album}"', "track", 1)
+		if len(resp['data'])>0:
+			return resp['data'][0]['id']
+		resp = self.search(f'artist:"{artist}" track:"{track}"', "track", 1)
+		if len(resp['data'])>0:
+			return resp['data'][0]['id']
+		if "(" in track and ")" in track and track.find("(") < track.find(")"):
+			resp = self.search(f'artist:"{artist}" track:"{track[:track.find("(")]}"', "track", 1)
+			if len(resp['data'])>0:
+				return resp['data'][0]['id']
+		elif " - " in track:
+			resp = self.search(f'artist:"{artist}" track:"{track[:track.find(" - ")]}"', "track", 1)
+			if len(resp['data'])>0:
+				return resp['data'][0]['id']
+		else:
+			return 0
+		return 0
+
 
 class APIError(Exception):
 	pass

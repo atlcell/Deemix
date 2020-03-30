@@ -11,5 +11,3 @@ Finish porting all features:
 
 Settings not yet implemented:
 - savePlaylistAsCompilation
-- titleCasing
-- artistCasing
