@@ -2,6 +2,7 @@
 from deemix.api.deezer import APIError, USER_AGENT_HEADER
 from deemix.utils.taggers import tagID3, tagFLAC
 from deemix.utils.pathtemplates import generateFilename, generateFilepath, settingsRegexAlbum, settingsRegexArtist
+from deemix.utils.misc import changeCase
 import os.path
 from os import makedirs, remove
 from requests import get
@@ -423,7 +424,7 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 
 	# Change Title and Artists casing if needed
 	if settings['titleCasing'] != "nothing":
-		tags['title'] = changeCase(tags['title'], settings['titleCasing'])
+		track['title'] = changeCase(track['title'], settings['titleCasing'])
 	if settings['artistCasing'] != "nothing":
 		track['artistsString'] = changeCase(track['artistsString'], settings['artistCasing'])
 		for i, artist in enumerate(track['artists']):
