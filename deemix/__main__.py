@@ -8,6 +8,7 @@ from deemix.app.settings import initSettings
 @click.argument('url')
 def download(bitrate, url):
 	settings = initSettings()
+	app.login()
 	app.downloadLink(url, settings, bitrate)
 	click.echo("All done!")
 
