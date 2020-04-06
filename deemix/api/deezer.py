@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import binascii
 from Cryptodome.Hash import MD5
+from Cryptodome.Util.Padding import pad
 
 from Cryptodome.Cipher import Blowfish, AES
 import requests
@@ -270,13 +271,6 @@ class Deezer:
 		h.update(str.encode(data) if isinstance(data, str) else data)
 		return h.hexdigest()
 
-	def _ecb_crypt(self, key, data):
-		res = b''
-		for _ in range(int(len(data) / 16)):
-			res += binascii.hexlify(AES.new(key, AES.MODE_ECB).encrypt(data[:16]))
-			data = data[16:]
-		return res
-
 	def _get_blowfish_key(self, trackId):
 		SECRET = 'g4el58wc' + '0zvf9na1'
 		idMd5 = self._md5(trackId)
@@ -290,9 +284,8 @@ class Deezer:
 			[str.encode(md5), str.encode(str(format)), str.encode(str(sng_id)), str.encode(str(media_version))])
 		md5val = self._md5(urlPart)
 		step2 = str.encode(md5val) + b'\xa4' + urlPart + b'\xa4'
-		while len(step2) % 16 > 0:
-			step2 += b'.'
-		urlPart = self._ecb_crypt(b'jo6aey6haid2Teih', step2)
+		step2 = pad(step2, 16)
+		urlPart = binascii.hexlify(AES.new(b'jo6aey6haid2Teih', AES.MODE_ECB).encrypt(step2))
 		return "https://e-cdns-proxy-" + md5[0] + ".dzcdn.net/mobile/1/" + urlPart.decode("utf-8")
 
 	def get_track_from_metadata(self, artist, track, album):
