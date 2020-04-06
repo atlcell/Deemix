@@ -2,3 +2,4 @@ pycryptodomex
 mutagen
 click
 requests
+spotipy
