@@ -3,6 +3,7 @@ from deemix.api.deezer import APIError, USER_AGENT_HEADER
 from deemix.utils.taggers import tagID3, tagFLAC
 from deemix.utils.pathtemplates import generateFilename, generateFilepath, settingsRegexAlbum, settingsRegexArtist
 from deemix.utils.misc import changeCase
+from deemix.utils.spotifyHelper import get_trackid_spotify, get_albumid_spotify
 import os.path
 from os import makedirs, remove
 from requests import get
@@ -565,6 +566,15 @@ def download_track(dz, id, settings, overwriteBitrate=False):
 	result = downloadTrackObj(dz, trackAPI, settings, overwriteBitrate)
 	return after_download_single(result, settings)
 
+def download_spotifytrack(dz, id, settings, overwriteBitrate=False):
+	track_id = get_trackid_spotify(dz, id, settings['fallbackSearch'])
+	if track_id == "Not Enabled":
+		print("Spotify Features is not setted up correctly.")
+	if track_id != 0:
+		return download_track(dz, track_id, settings, overwriteBitrate)
+	else:
+		print("Track not found on deezer!")
+		return None
 
 def download_album(dz, id, settings, overwriteBitrate=False):
 	albumAPI = dz.get_album(id)
@@ -589,6 +599,16 @@ def download_album(dz, id, settings, overwriteBitrate=False):
 				playlist[pos-1] = executor.submit(downloadTrackObj, dz, trackAPI, settings, overwriteBitrate)
 
 		return after_download(playlist, settings)
+
+def download_spotifyalbum(dz, id, settings, overwriteBitrate=False):
+	album_id = get_albumid_spotify(dz, id)
+	if album_id == "Not Enabled":
+		print("Spotify Features is not setted up correctly.")
+	if album_id != 0:
+		return download_album(dz, album_id, settings, overwriteBitrate)
+	else:
+		print("Album not found on deezer!")
+		return None
 
 def download_artist(dz, id, settings, overwriteBitrate=False):
 	artistAPI = dz.get_artist_albums(id)

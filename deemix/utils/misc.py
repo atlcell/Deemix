@@ -44,18 +44,18 @@ def getIDFromLink(link, type):
 
 	if link.startswith("http") and 'open.spotify.com/' in link:
 		if type == "spotifyplaylist":
-			return link[link.find("/playlist/") + 10]
+			return link[link.find("/playlist/") + 10:]
 		if type == "spotifytrack":
-			return link[link.find("/track/") + 7]
+			return link[link.find("/track/") + 7:]
 		if type == "spotifyalbum":
-			return link[link.find("/album/") + 7]
+			return link[link.find("/album/") + 7:]
 	elif link.startswith("spotify:"):
 		if type == "spotifyplaylist":
-			return link[link.find("playlist:") + 9]
+			return link[link.find("playlist:") + 9:]
 		if type == "spotifytrack":
-			return link[link.find("track:") + 6]
+			return link[link.find("track:") + 6:]
 		if type == "spotifyalbum":
-			return link[link.find("album:") + 6]
+			return link[link.find("album:") + 6:]
 	elif type == "artisttop":
 		return re.search(r"\/artist\/(\d+)\/top_track", link)[1]
 	else:

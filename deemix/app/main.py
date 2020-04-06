@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from deemix.api.deezer import Deezer
 from deemix.utils.misc import getIDFromLink, getTypeFromLink, getBitrateInt
-from deemix.app.downloader import download_track, download_album, download_playlist, download_artist
+from deemix.app.downloader import download_track, download_album, download_playlist, download_artist, download_spotifytrack, download_spotifyalbum
 from os import system as execute
 
 dz = Deezer()
@@ -21,6 +21,10 @@ def downloadLink(url, settings, bitrate=None):
 		folder = download_playlist(dz, id, settings, forcedBitrate)
 	elif type == "artist":
 		download_artist(dz, id, settings, forcedBitrate)
+	elif type == "spotifytrack":
+		folder = download_spotifytrack(dz, id, settings, forcedBitrate)
+	elif type == "spotifyalbum":
+		folder = download_spotifyalbum(dz, id, settings, forcedBitrate)
 	else:
 		print("URL not supported yet")
 		return None
