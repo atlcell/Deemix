@@ -84,3 +84,11 @@ def getTypeFromLink(link):
 		elif '/artist' in link:
 			type = 'artist'
 	return type
+
+def isValidLink(text):
+	if text.lower().startswith("http"):
+		if "deezer.com" in text.lower() or "open.spotify.com" in text.lower():
+			return True
+	elif text.lower().startswith("spotify:"):
+		return True
+	return False

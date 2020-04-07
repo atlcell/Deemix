@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import click
-import deemix.app.main as app
+import deemix.app.cli as app
 from deemix.app.settings import initSettings
 
 @click.command()

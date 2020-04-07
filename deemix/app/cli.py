@@ -1,14 +1,13 @@
+#!/usr/bin/env python3
 from deemix.api.deezer import Deezer
 import deemix.utils.localpaths as localpaths
-from deemix.utils.misc import getIDFromLink, getTypeFromLink, getBitrateInt, isValidLink
+from deemix.utils.misc import getIDFromLink, getTypeFromLink, getBitrateInt
 from deemix.app.downloader import download_track, download_album, download_playlist, download_artist, download_spotifytrack, download_spotifyalbum
-from deemix.app.settings import initSettings
 from os import system as execute
 import os.path as path
-from os import mkdir, rmdir
+from os import mkdir
 
 dz = Deezer()
-settings = {}
 
 def requestValidArl():
 	while True:
@@ -31,22 +30,7 @@ def login():
 	with open(path.join(configFolder, '.arl'), 'w') as f:
 		f.write(arl)
 
-def initialize():
-	global settings
-	settings = initSettings()
-	login()
-	return True
-
-def search(term):
-	if isValidLink(term):
-		downloadLink(term)
-		return {"message": "Downloaded!"}
-	result = dz.search(term, "track")
-	print(result)
-	return result
-
-def downloadLink(url, bitrate=None):
-	global settings
+def downloadLink(url, settings, bitrate=None):
 	forcedBitrate = getBitrateInt(bitrate)
 	type = getTypeFromLink(url)
 	id = getIDFromLink(url, type)
