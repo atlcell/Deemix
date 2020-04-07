@@ -3,3 +3,4 @@ mutagen
 click
 requests
 spotipy
+pywebview
