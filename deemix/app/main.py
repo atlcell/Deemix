@@ -37,13 +37,16 @@ def initialize():
 	login()
 	return True
 
-def search(term):
+def search(term, type):
+	result = dz.search(term, type)
+	print(result)
+	return result
+
+def mainSearch(term):
 	if isValidLink(term):
 		downloadLink(term)
 		return {"message": "Downloaded!"}
-	result = dz.search(term, "track")
-	print(result)
-	return result
+	return dz.search_gw(term)
 
 def downloadLink(url, bitrate=None):
 	global settings
