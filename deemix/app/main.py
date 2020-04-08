@@ -43,9 +43,6 @@ def search(term, type):
 	return result
 
 def mainSearch(term):
-	if isValidLink(term):
-		downloadLink(term)
-		return {"message": "Downloaded!"}
 	return dz.search_gw(term)
 
 def downloadLink(url, bitrate=None):
