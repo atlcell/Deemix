@@ -202,7 +202,7 @@ class Deezer:
 			tracks_array.append(track)
 		return tracks_array
 
-	def search_gw(self, term):
+	def search_main_gw(self, term):
 		results = self.gw_api_call('deezer.pageSearch', {"query": term, "start": 0, "nb": 40, "suggest": True, "artist_suggest": True, "top_tracks": True})['results']
 		order = []
 		for x in results['ORDER']:
@@ -210,6 +210,9 @@ class Deezer:
 				order.append(x)
 		results['ORDER'] = order
 		return results
+
+	def search_gw(self, term, type, start, nb=20):
+		return self.gw_api_call('search.music', {"query": term, "filter":"ALL", "output":type, "start": start, "nb": nb})['results']
 
 	def get_lyrics_gw(self, sng_id):
 		return self.gw_api_call('song.getLyrics', {'sng_id': sng_id})["results"]

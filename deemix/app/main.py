@@ -37,13 +37,11 @@ def initialize():
 	login()
 	return True
 
-def search(term, type):
-	result = dz.search(term, type)
-	print(result)
-	return result
-
 def mainSearch(term):
-	return dz.search_gw(term)
+	return dz.search_main_gw(term)
+
+def search(term, type, start, nb):
+	return dz.search_gw(term, type, start, nb)
 
 def downloadLink(url, bitrate=None):
 	global settings
