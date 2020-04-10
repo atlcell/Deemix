@@ -47,7 +47,7 @@ def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None):
 		if 'VERSION' in trackAPI and trackAPI['VERSION']:
 			result['title'] += " " + trackAPI['VERSION']
 		result['artist'] = trackAPI['ART_NAME']
-		result['cover'] = f"https://e-cdns-images.dzcdn.net/images/cover/{trackAPI['ART_PICTURE']}/128x128-000000-80-0-0.jpg"
+		result['cover'] = f"https://e-cdns-images.dzcdn.net/images/cover/{trackAPI['ALB_PICTURE']}/75x75-000000-80-0-0.jpg"
 		result['size'] = 1
 		result['downloaded'] = 0
 		result['failed'] = 0
@@ -55,7 +55,7 @@ def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None):
 		result['type'] = 'track'
 		result['id'] = id
 		result['bitrate'] = bitrate
-		result['uuid'] = f"{result['type']}:{id}:{bitrate}"
+		result['uuid'] = f"{result['type']}_{id}_{bitrate}"
 		result['settings'] = settings or {}
 		result['single'] = trackAPI
 
@@ -70,7 +70,7 @@ def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None):
 
 		result['title'] = albumAPI['title']
 		result['artist'] = albumAPI['artist']['name']
-		result['cover'] = albumAPI['cover_small'][:-24]+'/128x128-000000-80-0-0.jpg'
+		result['cover'] = albumAPI['cover_small'][:-24]+'/75x75-000000-80-0-0.jpg'
 		result['size'] = albumAPI['nb_tracks']
 		result['downloaded'] = 0
 		result['failed'] = 0
@@ -78,7 +78,7 @@ def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None):
 		result['type'] = 'album'
 		result['id'] = id
 		result['bitrate'] = bitrate
-		result['uuid'] = f"{result['type']}:{id}:{bitrate}"
+		result['uuid'] = f"{result['type']}_{id}_{bitrate}"
 		result['settings'] = settings or {}
 		result['collection'] = []
 		for pos, trackAPI in enumerate(tracksArray, start=1):
@@ -93,7 +93,7 @@ def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None):
 
 		result['title'] = playlistAPI['title']
 		result['artist'] = playlistAPI['creator']['name']
-		result['cover'] = playlistAPI['picture_small'][:-24]+'/128x128-000000-80-0-0.jpg'
+		result['cover'] = playlistAPI['picture_small'][:-24]+'/75x75-000000-80-0-0.jpg'
 		result['size'] = playlistAPI['nb_tracks']
 		result['downloaded'] = 0
 		result['failed'] = 0
@@ -101,7 +101,7 @@ def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None):
 		result['type'] = 'playlist'
 		result['id'] = id
 		result['bitrate'] = bitrate
-		result['uuid'] = f"{result['type']}:{id}:{bitrate}"
+		result['uuid'] = f"{result['type']}_{id}_{bitrate}"
 		result['settings'] = settings or {}
 		result['collection'] = []
 		for pos, trackAPI in enumerate(playlistTracksAPI, start=1):
