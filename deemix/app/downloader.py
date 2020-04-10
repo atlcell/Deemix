@@ -10,6 +10,7 @@ from requests import get
 from requests.exceptions import HTTPError, ConnectionError
 from tempfile import gettempdir
 from concurrent.futures import ThreadPoolExecutor
+from Cryptodome.Cipher import Blowfish
 from time import sleep
 import re
 
@@ -26,6 +27,38 @@ extensions = {
 	14: '.mp4',
 	13: '.mp4'
 }
+downloadPercentage = 0
+lastPercentage = 0
+
+def stream_track(dz, track, stream, trackAPI, uuid, socket=None):
+	global downloadPercentage, lastPercentage
+	try:
+		request = get(track['downloadUrl'], headers=dz.http_headers, stream=True, timeout=30)
+	except Exception as e:
+		sleep(2)
+		return stream_track(dz, track, stream, trackAPI, uuid, socket)
+	request.raise_for_status()
+	blowfish_key = str.encode(dz._get_blowfish_key(str(track['id'])))
+	complete = track['selectedFilesize']
+	chunkLength = 0
+	percentage = 0
+	i = 0
+	for chunk in request.iter_content(2048):
+		if (i % 3) == 0 and len(chunk) == 2048:
+			chunk = Blowfish.new(blowfish_key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07").decrypt(chunk)
+		stream.write(chunk)
+		chunkLength += len(chunk)
+		if 'SINGLE_TRACK' in trackAPI:
+			percentage = (chunkLength / complete) * 100
+			downloadPercentage = percentage
+		else:
+			chunkProgres = (len(chunk) / complete) / trackAPI['SIZE'] * 100
+			downloadPercentage += chunkProgres
+		if round(downloadPercentage) != lastPercentage and round(percentage) % 5 == 0:
+				lastPercentage = round(downloadPercentage)
+				if socket:
+					socket.emit("updateQueue", {'uuid': uuid, 'progress': lastPercentage})
+		i += 1
 
 def downloadImage(url, path):
 	if not os.path.isfile(path):
@@ -59,7 +92,6 @@ def formatDate(date, template):
 	if 'D' in template:
 		template = template.replace('D', str(date['day']))
 	return template
-
 
 def getPreferredBitrate(filesize, bitrate, fallback=True):
 	if not fallback:
@@ -468,7 +500,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, uuid, extraTrack=None, soc
 	track['downloadUrl'] = dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], track['selectedFormat'])
 	try:
 		with open(writepath, 'wb') as stream:
-			dz.stream_track(track['id'], track['downloadUrl'], stream)
+			stream_track(dz, track, stream, trackAPI, uuid, socket)
 	except HTTPError:
 		remove(writepath)
 		if track['selectedFormat'] == 9 and settings['fallbackBitrate']:
@@ -518,8 +550,11 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, uuid, extraTrack=None, soc
 	return result
 
 def download(dz, queueItem, socket=None):
+	global downloadPercentage, lastPercentage
 	settings = queueItem['settings']
 	bitrate = queueItem['bitrate']
+	downloadPercentage = 0
+	lastPercentage = 0
 	if 'single' in queueItem:
 		result = downloadTrackObj(dz, queueItem['single'], settings, bitrate, queueItem['uuid'], socket=socket)
 		download_path = after_download_single(result, settings)

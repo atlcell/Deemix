@@ -80,10 +80,12 @@ def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None):
 		result['bitrate'] = bitrate
 		result['uuid'] = f"{result['type']}_{id}_{bitrate}"
 		result['settings'] = settings or {}
+		totalSize = len(tracksArray)
 		result['collection'] = []
 		for pos, trackAPI in enumerate(tracksArray, start=1):
 			trackAPI['_EXTRA_ALBUM'] = albumAPI
 			trackAPI['POSITION'] = pos
+			trackAPI['SIZE'] = totalSize
 			trackAPI['FILENAME_TEMPLATE'] = settings['albumTracknameTemplate']
 			result['collection'].append(trackAPI)
 
@@ -103,10 +105,12 @@ def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None):
 		result['bitrate'] = bitrate
 		result['uuid'] = f"{result['type']}_{id}_{bitrate}"
 		result['settings'] = settings or {}
+		totalSize = len(playlistTracksAPI)
 		result['collection'] = []
 		for pos, trackAPI in enumerate(playlistTracksAPI, start=1):
 			trackAPI['_EXTRA_PLAYLIST'] = playlistAPI
 			trackAPI['POSITION'] = pos
+			trackAPI['SIZE'] = totalSize
 			trackAPI['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
 			result['collection'].append(trackAPI)
 
