@@ -329,7 +329,7 @@ def getTrackData(dz, trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI 
 
 	return track
 
-def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=None):
+def downloadTrackObj(dz, trackAPI, settings, bitrate, uuid, extraTrack=None, socket=None):
 	result = {}
 	# Get the metadata
 	if extraTrack:
@@ -348,7 +348,7 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 			if not 'MD5_ORIGIN' in trackNew:
 				trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
 			track = parseEssentialTrackData(track, trackNew)
-			return downloadTrackObj(dz, trackAPI, settings, extraTrack=track)
+			return downloadTrackObj(dz, trackAPI, settings, bitrate, uuid, extraTrack=track, socket=socket)
 		elif not 'searched' in track and settings['fallbackSearch']:
 			print("Track not yet encoded, searching for alternative")
 			searchedId = dz.get_track_from_metadata(track['mainArtist']['name'], track['title'], track['album']['title'])
@@ -358,7 +358,7 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 					trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
 				track = parseEssentialTrackData(track, trackNew)
 				track['searched'] = True
-				return downloadTrackObj(dz, trackAPI, settings, extraTrack=track)
+				return downloadTrackObj(dz, trackAPI, settings, bitrate, uuid, extraTrack=track, socket=socket)
 			else:
 				print("ERROR: Track not yet encoded and no alternative found!")
 				result['error'] = {
@@ -375,7 +375,6 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 			return result
 
 	# Get the selected bitrate
-	bitrate = overwriteBitrate if overwriteBitrate else settings['maxBitrate']
 	(format, filesize) = getPreferredBitrate(track['filesize'], bitrate, settings['fallbackBitrate'])
 	if format == -100:
 		print("ERROR: Track not found at desired bitrate. Enable fallback to lower bitrates to fix this issue.")
@@ -471,14 +470,14 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 		if track['selectedFormat'] == 9 and settings['fallbackBitrate']:
 			print("Track not available in flac, trying mp3")
 			track['filesize']['flac'] = 0
-			return downloadTrackObj(dz, trackAPI, settings, extraTrack=track)
+			return downloadTrackObj(dz, trackAPI, settings, bitrate, uuid, extraTrack=track, socket=socket)
 		elif track['fallbackId'] != 0:
 			print("Track not available, using fallback id")
 			trackNew = dz.get_track_gw(track['fallbackId'])
 			if not 'MD5_ORIGIN' in trackNew:
 				trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
 			track = parseEssentialTrackData(track, trackNew)
-			return downloadTrackObj(dz, trackAPI, settings, extraTrack=track)
+			return downloadTrackObj(dz, trackAPI, settings, bitrate, uuid, extraTrack=track, socket=socket)
 		elif not 'searched' in track and settings['fallbackSearch']:
 			print("Track not available, searching for alternative")
 			searchedId = dz.get_track_from_metadata(track['mainArtist']['name'], track['title'], track['album']['title'])
@@ -488,7 +487,7 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 					trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
 				track = parseEssentialTrackData(track, trackNew)
 				track['searched'] = True
-				return downloadTrackObj(dz, trackAPI, settings, extraTrack=track)
+				return downloadTrackObj(dz, trackAPI, settings, bitrate, uuid, extraTrack=track, socket=socket)
 			else:
 				print("ERROR: Track not available on deezer's servers and no alternative found!")
 				result['error'] = {
@@ -510,7 +509,28 @@ def downloadTrackObj(dz, trackAPI, settings, overwriteBitrate=False, extraTrack=
 	if 'searched' in track:
 		result['searched'] = f'{track["mainArtist"]["name"]} - {track["title"]}'
 	print("Done!")
+	if socket:
+		socket.emit("updateQueue", {'uuid': uuid, 'downloaded': True})
 	return result
+
+def download(dz, queueItem, socket=None):
+	settings = queueItem['settings']
+	bitrate = queueItem['bitrate']
+	if 'single' in queueItem:
+		result = downloadTrackObj(dz, queueItem['single'], settings, bitrate, queueItem['uuid'], socket=socket)
+		download_path = after_download_single(result, settings)
+	elif 'collection' in queueItem:
+		print("Downloading collection")
+		playlist = [None] * len(queueItem['collection'])
+		with ThreadPoolExecutor(settings['queueConcurrency']) as executor:
+			for pos, track in enumerate(queueItem['collection'], start=0):
+				playlist[pos] = executor.submit(downloadTrackObj, dz, track, settings, bitrate, queueItem['uuid'], socket=socket)
+		download_path = after_download(playlist, settings)
+	return {
+		'dz': dz,
+		'socket': socket,
+		'download_path': download_path
+	}
 
 def after_download(tracks, settings):
 	extrasPath = None
@@ -558,72 +578,3 @@ def after_download_single(track, settings):
 		return track['extrasPath']
 	else:
 		return None
-
-def download_track(dz, id, settings, overwriteBitrate=False):
-	trackAPI = dz.get_track_gw(id)
-	trackAPI['FILENAME_TEMPLATE'] = settings['tracknameTemplate']
-	trackAPI['SINGLE_TRACK'] = True
-	result = downloadTrackObj(dz, trackAPI, settings, overwriteBitrate)
-	return after_download_single(result, settings)
-
-def download_spotifytrack(dz, id, settings, overwriteBitrate=False):
-	track_id = get_trackid_spotify(dz, id, settings['fallbackSearch'])
-	if track_id == "Not Enabled":
-		print("Spotify Features is not setted up correctly.")
-	if track_id != 0:
-		return download_track(dz, track_id, settings, overwriteBitrate)
-	else:
-		print("Track not found on deezer!")
-		return None
-
-def download_album(dz, id, settings, overwriteBitrate=False):
-	albumAPI = dz.get_album(id)
-	albumAPI_gw = dz.get_album_gw(id)
-	albumAPI['nb_disk'] = albumAPI_gw['NUMBER_DISK']
-	albumAPI['copyright'] = albumAPI_gw['COPYRIGHT']
-	if albumAPI['nb_tracks'] == 1:
-		trackAPI = dz.get_track_gw(albumAPI['tracks']['data'][0]['id'])
-		trackAPI['_EXTRA_ALBUM'] = albumAPI
-		trackAPI['FILENAME_TEMPLATE'] = settings['tracknameTemplate']
-		trackAPI['SINGLE_TRACK'] = True
-		result = downloadTrackObj(dz, trackAPI, settings, overwriteBitrate)
-		return after_download_single(result, settings)
-	else:
-		tracksArray = dz.get_album_tracks_gw(id)
-		playlist = [None] * len(tracksArray)
-		with ThreadPoolExecutor(settings['queueConcurrency']) as executor:
-			for pos, trackAPI in enumerate(tracksArray, start=1):
-				trackAPI['_EXTRA_ALBUM'] = albumAPI
-				trackAPI['POSITION'] = pos
-				trackAPI['FILENAME_TEMPLATE'] = settings['albumTracknameTemplate']
-				playlist[pos-1] = executor.submit(downloadTrackObj, dz, trackAPI, settings, overwriteBitrate)
-
-		return after_download(playlist, settings)
-
-def download_spotifyalbum(dz, id, settings, overwriteBitrate=False):
-	album_id = get_albumid_spotify(dz, id)
-	if album_id == "Not Enabled":
-		print("Spotify Features is not setted up correctly.")
-	if album_id != 0:
-		return download_album(dz, album_id, settings, overwriteBitrate)
-	else:
-		print("Album not found on deezer!")
-		return None
-
-def download_artist(dz, id, settings, overwriteBitrate=False):
-	artistAPI = dz.get_artist_albums(id)
-	for album in artistAPI['data']:
-		print(f"Album: {album['title']}")
-		download_album(dz, album['id'], settings, overwriteBitrate)
-
-def download_playlist(dz, id, settings, overwriteBitrate=False):
-	playlistAPI = dz.get_playlist(id)
-	playlistTracksAPI = dz.get_playlist_tracks_gw(id)
-	playlist = [None] * len(playlistTracksAPI)
-	with ThreadPoolExecutor(settings['queueConcurrency']) as executor:
-		for pos, trackAPI in enumerate(playlistTracksAPI, start=1):
-			trackAPI['_EXTRA_PLAYLIST'] = playlistAPI
-			trackAPI['POSITION'] = pos
-			trackAPI['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
-			playlist[pos-1] = executor.submit(downloadTrackObj, dz, trackAPI, settings, overwriteBitrate)
-	return after_download(playlist, settings)

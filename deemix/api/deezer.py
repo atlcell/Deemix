@@ -268,7 +268,11 @@ class Deezer:
 			i += 1
 
 	def stream_track(self, track_id, url, stream):
-		request = requests.get(url, headers=self.http_headers, stream=True)
+		try:
+			request = requests.get(url, headers=self.http_headers, stream=True, timeout=30)
+		except:
+			time.sleep(2)
+			return self.stream_track(track_id, url, stream)
 		request.raise_for_status()
 		blowfish_key = str.encode(self._get_blowfish_key(str(track_id)))
 		i = 0
