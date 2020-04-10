@@ -177,7 +177,7 @@ def nextItem(dz, socket=None):
 		else:
 			return None
 		if socket:
-			socket.emit("message", f"Started downloading {currentItem}")
+			socket.emit("startDownload", currentItem)
 		result = download(dz, queueList[currentItem], socket)
 		callbackQueueDone(result)
 
