@@ -7,9 +7,10 @@ from deemix.utils.spotifyHelper import get_trackid_spotify, get_albumid_spotify
 import os.path
 from os import makedirs, remove
 from requests import get
-from requests.exceptions import HTTPError
+from requests.exceptions import HTTPError, ConnectionError
 from tempfile import gettempdir
 from concurrent.futures import ThreadPoolExecutor
+from time import sleep
 import re
 
 TEMPDIR = os.path.join(gettempdir(), 'deezloader-imgs')
@@ -30,8 +31,11 @@ def downloadImage(url, path):
 	if not os.path.isfile(path):
 		with open(path, 'wb') as f:
 			try:
-				f.write(get(url, headers={'User-Agent': USER_AGENT_HEADER}).content)
+				f.write(get(url, headers={'User-Agent': USER_AGENT_HEADER}, timeout=30).content)
 				return path
+			except ConnectionError:
+				sleep(2)
+				return downloadImage(url, path)
 			except HTTPError:
 				print("Couldn't download Image")
 		remove(path)

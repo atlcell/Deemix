@@ -145,22 +145,31 @@ def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None):
 def addToQueue(dz, url, settings, bitrate=None, socket=None):
 	global currentItem, currentJob, queueList, queue
 	queueItem = generateQueueItem(dz, url, settings, bitrate)
-	if 'error' in queueItem:
-		if socket:
-			socket.emit("message", queueItem['error'])
-		return None
-	if queueItem['uuid'] in list(queueList.keys()):
-		print("Already in queue!")
-		if socket:
-			socket.emit("message", "Already in queue!")
-		return None
 	if type(queueItem) is list:
 		for x in queueItem:
+			if 'error' in x:
+				if socket:
+					socket.emit("message", x['error'])
+				return None
+			if x['uuid'] in list(queueList.keys()):
+				print("Already in queue!")
+				if socket:
+					socket.emit("message", "Already in queue!")
+				return None
 			if socket:
 				socket.emit("addedToQueue", x)
 			queue.append(x['uuid'])
 			queueList[x['uuid']] = x
 	else:
+		if 'error' in queueItem:
+			if socket:
+				socket.emit("message", queueItem['error'])
+			return None
+		if queueItem['uuid'] in list(queueList.keys()):
+			print("Already in queue!")
+			if socket:
+				socket.emit("message", "Already in queue!")
+			return None
 		if socket:
 			socket.emit("addedToQueue", queueItem)
 		queue.append(queueItem['uuid'])
