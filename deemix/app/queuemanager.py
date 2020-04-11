@@ -198,10 +198,12 @@ def nextItem(dz, socket=None):
 
 def callbackQueueDone(result):
 	global currentItem, currentJob, queueList, queue
-	result['socket']
 	del queueList[currentItem]
 	currentItem = ""
 	nextItem(result['dz'], result['socket'])
+
+def getQueue():
+	return (queue, queueList)
 
 def removeFromQueue(uuid, socket=None):
 	if uuid == currentItem:
@@ -211,3 +213,13 @@ def removeFromQueue(uuid, socket=None):
 		del queueList[uuid]
 		if socket:
 			socket.emit("removedFromQueue", uuid)
+
+def cancelAllDownloads(socket=None):
+	queue = []
+	if currentItem != "":
+		queueList[currentItem]['cancel'] = True
+	for uuid in list(queueList.keys()):
+		if uuid != currentItem:
+			del queueList[uuid]
+	if socket:
+		socket.emit("removedAllDownloads")

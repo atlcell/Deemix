@@ -1,6 +1,6 @@
 from deemix.api.deezer import Deezer
 import deemix.utils.localpaths as localpaths
-from deemix.app.queuemanager import addToQueue, removeFromQueue
+from deemix.app.queuemanager import addToQueue, removeFromQueue, getQueue, cancelAllDownloads
 from deemix.app.settings import initSettings
 from os import system as execute
 import os.path as path
@@ -35,6 +35,12 @@ def initialize():
 	settings = initSettings()
 	login()
 	return True
+
+def shutdown(socket=None):
+	print(getQueue())
+	cancelAllDownloads(socket)
+	if socket:
+		socket.emit("toast", {'msg': "Server is closed."})
 
 def mainSearch(term):
 	return dz.search_main_gw(term)
