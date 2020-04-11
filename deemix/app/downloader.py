@@ -563,7 +563,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 		result['searched'] = f'{track["mainArtist"]["name"]} - {track["title"]}'
 	print("Done!")
 	if socket:
-		socket.emit("updateQueue", {'uuid': uuid, 'downloaded': True})
+		socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'downloaded': True})
 	return result
 
 def download(dz, queueItem, socket=None):
