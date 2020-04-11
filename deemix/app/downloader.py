@@ -565,6 +565,8 @@ def download(dz, queueItem, socket=None):
 			for pos, track in enumerate(queueItem['collection'], start=0):
 				playlist[pos] = executor.submit(downloadTrackObj, dz, track, settings, bitrate, queueItem['uuid'], socket=socket)
 		download_path = after_download(playlist, settings)
+	if socket:
+		socket.emit("finishDownload", queueItem['uuid'])
 	return {
 		'dz': dz,
 		'socket': socket,

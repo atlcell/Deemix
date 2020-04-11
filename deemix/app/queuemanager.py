@@ -27,7 +27,7 @@ if its an album/playlist
 	collection
 """
 
-def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None):
+def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None, socket=None):
 	forcedBitrate = getBitrateInt(bitrate)
 	bitrate = forcedBitrate if forcedBitrate else settings['maxBitrate']
 	type = getTypeFromLink(url)
@@ -115,10 +115,15 @@ def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None):
 			result['collection'].append(trackAPI)
 
 	elif type == "artist":
-		artistAPI = dz.get_artist_albums(id)
+		artistAPI = dz.get_artist(id)
+		if socket:
+			socket.emit("toast", {'msg': f"Adding {artistAPI['name']} albums to queue", 'icon': 'loading', 'dismiss': False, 'id': 'artist_'+str(artistAPI['id'])})
+		artistAPITracks = dz.get_artist_albums(id)
 		albumList = []
-		for album in artistAPI['data']:
+		for album in artistAPITracks['data']:
 			albumList.append(generateQueueItem(dz, album['link'], settings, bitrate))
+		if socket:
+			socket.emit("updateToast", {'msg': f"Added {artistAPI['name']} albums to queue", 'icon': 'done', 'dismiss': True, 'id': 'artist_'+str(artistAPI['id'])})
 		return albumList
 	elif type == "spotifytrack":
 		track_id = get_trackid_spotify(dz, id, settings['fallbackSearch'])
@@ -148,18 +153,14 @@ def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None):
 
 def addToQueue(dz, url, settings, bitrate=None, socket=None):
 	global currentItem, currentJob, queueList, queue
-	queueItem = generateQueueItem(dz, url, settings, bitrate)
+	queueItem = generateQueueItem(dz, url, settings, bitrate, socket=socket)
 	if type(queueItem) is list:
 		for x in queueItem:
 			if 'error' in x:
-				if socket:
-					socket.emit("message", x['error'])
-				return None
+				continue
 			if x['uuid'] in list(queueList.keys()):
 				print("Already in queue!")
-				if socket:
-					socket.emit("message", "Already in queue!")
-				return None
+				continue
 			if socket:
 				socket.emit("addedToQueue", x)
 			queue.append(x['uuid'])
@@ -167,15 +168,16 @@ def addToQueue(dz, url, settings, bitrate=None, socket=None):
 	else:
 		if 'error' in queueItem:
 			if socket:
-				socket.emit("message", queueItem['error'])
+				socket.emit("toast", {'msg': queueItem['error']})
 			return None
 		if queueItem['uuid'] in list(queueList.keys()):
 			print("Already in queue!")
 			if socket:
-				socket.emit("message", "Already in queue!")
+				socket.emit("toast", {'msg': f"{queueItem['title']} is already in queue!"})
 			return None
 		if socket:
 			socket.emit("addedToQueue", queueItem)
+			socket.emit("toast", {'msg': f"{queueItem['title']} added to queue"})
 		queue.append(queueItem['uuid'])
 		queueList[queueItem['uuid']] = queueItem
 	nextItem(dz, socket)
