@@ -30,13 +30,15 @@ extensions = {
 downloadPercentage = 0
 lastPercentage = 0
 
-def stream_track(dz, track, stream, trackAPI, uuid, socket=None):
+def stream_track(dz, track, stream, trackAPI, queueItem, socket=None):
 	global downloadPercentage, lastPercentage
+	if 'cancel' in queueItem:
+		raise downloadCancelled
 	try:
 		request = get(track['downloadUrl'], headers=dz.http_headers, stream=True, timeout=30)
-	except Exception as e:
+	except ConnectionError:
 		sleep(2)
-		return stream_track(dz, track, stream, trackAPI, uuid, socket)
+		return stream_track(dz, track, stream, trackAPI, queueItem, socket)
 	request.raise_for_status()
 	blowfish_key = str.encode(dz._get_blowfish_key(str(track['id'])))
 	complete = track['selectedFilesize']
@@ -44,6 +46,8 @@ def stream_track(dz, track, stream, trackAPI, uuid, socket=None):
 	percentage = 0
 	i = 0
 	for chunk in request.iter_content(2048):
+		if 'cancel' in queueItem:
+			raise downloadCancelled
 		if (i % 3) == 0 and len(chunk) == 2048:
 			chunk = Blowfish.new(blowfish_key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07").decrypt(chunk)
 		stream.write(chunk)
@@ -57,7 +61,7 @@ def stream_track(dz, track, stream, trackAPI, uuid, socket=None):
 		if round(downloadPercentage) != lastPercentage and round(percentage) % 5 == 0:
 				lastPercentage = round(downloadPercentage)
 				if socket:
-					socket.emit("updateQueue", {'uuid': uuid, 'progress': lastPercentage})
+					socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'progress': lastPercentage})
 		i += 1
 
 def downloadImage(url, path):
@@ -365,8 +369,11 @@ def getTrackData(dz, trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI 
 
 	return track
 
-def downloadTrackObj(dz, trackAPI, settings, bitrate, uuid, extraTrack=None, socket=None):
+def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None, socket=None):
 	result = {}
+	if 'cancel' in queueItem:
+		result['cancel'] = True
+		return result
 	# Get the metadata
 	if extraTrack:
 		track = extraTrack
@@ -376,6 +383,9 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, uuid, extraTrack=None, soc
 			trackAPI =  trackAPI['_EXTRA_TRACK'] if '_EXTRA_TRACK' in trackAPI else None,
 			albumAPI = trackAPI['_EXTRA_ALBUM'] if '_EXTRA_ALBUM' in trackAPI else None
 		)
+	if 'cancel' in queueItem:
+		result['cancel'] = True
+		return result
 	print('Downloading: {} - {}'.format(track['mainArtist']['name'], track['title']))
 	if track['MD5'] == '':
 		if track['fallbackId'] != 0:
@@ -384,7 +394,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, uuid, extraTrack=None, soc
 			if not 'MD5_ORIGIN' in trackNew:
 				trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
 			track = parseEssentialTrackData(track, trackNew)
-			return downloadTrackObj(dz, trackAPI, settings, bitrate, uuid, extraTrack=track, socket=socket)
+			return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, socket=socket)
 		elif not 'searched' in track and settings['fallbackSearch']:
 			print("Track not yet encoded, searching for alternative")
 			searchedId = dz.get_track_from_metadata(track['mainArtist']['name'], track['title'], track['album']['title'])
@@ -394,7 +404,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, uuid, extraTrack=None, soc
 					trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
 				track = parseEssentialTrackData(track, trackNew)
 				track['searched'] = True
-				return downloadTrackObj(dz, trackAPI, settings, bitrate, uuid, extraTrack=track, socket=socket)
+				return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, socket=socket)
 			else:
 				print("ERROR: Track not yet encoded and no alternative found!")
 				result['error'] = {
@@ -470,6 +480,9 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, uuid, extraTrack=None, soc
 	filename = generateFilename(track, trackAPI, settings)
 	(filepath, artistPath, coverPath, extrasPath) = generateFilepath(track, trackAPI, settings)
 
+	if 'cancel' in queueItem:
+		result['cancel'] = True
+		return result
 	# Download and cache coverart
 	track['album']['picPath'] = os.path.join(TEMPDIR, f"alb{track['album']['id']}_{settings['embeddedArtworkSize']}.{'png' if settings['PNGcovers'] else 'jpg'}")
 	track['album']['picPath'] = downloadImage(track['album']['picUrl'], track['album']['picPath'])
@@ -500,20 +513,24 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, uuid, extraTrack=None, soc
 	track['downloadUrl'] = dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], track['selectedFormat'])
 	try:
 		with open(writepath, 'wb') as stream:
-			stream_track(dz, track, stream, trackAPI, uuid, socket)
+			stream_track(dz, track, stream, trackAPI, queueItem, socket)
+	except downloadCancelled:
+		remove(writepath)
+		result['cancel'] = True
+		return result
 	except HTTPError:
 		remove(writepath)
 		if track['selectedFormat'] == 9 and settings['fallbackBitrate']:
 			print("Track not available in flac, trying mp3")
 			track['filesize']['flac'] = 0
-			return downloadTrackObj(dz, trackAPI, settings, bitrate, uuid, extraTrack=track, socket=socket)
+			return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, socket=socket)
 		elif track['fallbackId'] != 0:
 			print("Track not available, using fallback id")
 			trackNew = dz.get_track_gw(track['fallbackId'])
 			if not 'MD5_ORIGIN' in trackNew:
 				trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
 			track = parseEssentialTrackData(track, trackNew)
-			return downloadTrackObj(dz, trackAPI, settings, bitrate, uuid, extraTrack=track, socket=socket)
+			return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, socket=socket)
 		elif not 'searched' in track and settings['fallbackSearch']:
 			print("Track not available, searching for alternative")
 			searchedId = dz.get_track_from_metadata(track['mainArtist']['name'], track['title'], track['album']['title'])
@@ -523,7 +540,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, uuid, extraTrack=None, soc
 					trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
 				track = parseEssentialTrackData(track, trackNew)
 				track['searched'] = True
-				return downloadTrackObj(dz, trackAPI, settings, bitrate, uuid, extraTrack=track, socket=socket)
+				return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, socket=socket)
 			else:
 				print("ERROR: Track not available on deezer's servers and no alternative found!")
 				result['error'] = {
@@ -556,17 +573,20 @@ def download(dz, queueItem, socket=None):
 	downloadPercentage = 0
 	lastPercentage = 0
 	if 'single' in queueItem:
-		result = downloadTrackObj(dz, queueItem['single'], settings, bitrate, queueItem['uuid'], socket=socket)
+		result = downloadTrackObj(dz, queueItem['single'], settings, bitrate, queueItem, socket=socket)
 		download_path = after_download_single(result, settings)
 	elif 'collection' in queueItem:
 		print("Downloading collection")
 		playlist = [None] * len(queueItem['collection'])
 		with ThreadPoolExecutor(settings['queueConcurrency']) as executor:
 			for pos, track in enumerate(queueItem['collection'], start=0):
-				playlist[pos] = executor.submit(downloadTrackObj, dz, track, settings, bitrate, queueItem['uuid'], socket=socket)
+				playlist[pos] = executor.submit(downloadTrackObj, dz, track, settings, bitrate, queueItem, socket=socket)
 		download_path = after_download(playlist, settings)
 	if socket:
-		socket.emit("finishDownload", queueItem['uuid'])
+		if 'cancel' in queueItem:
+			socket.emit("removedFromQueue", queueItem['uuid'])
+		else:
+			socket.emit("finishDownload", queueItem['uuid'])
 	return {
 		'dz': dz,
 		'socket': socket,
@@ -580,6 +600,8 @@ def after_download(tracks, settings):
 	searched = ""
 	for index in range(len(tracks)):
 		result = tracks[index].result()
+		if 'cancel' in result:
+			return None
 		if 'error' in result:
 			errors += f"{result['error']['data']['id']} | {result['error']['data']['mainArtist']['name']} - {result['error']['data']['title']} | {result['error']['message']}\r\n"
 		if 'searched' in result:
@@ -607,6 +629,8 @@ def after_download(tracks, settings):
 	return extrasPath
 
 def after_download_single(track, settings):
+	if 'cancel' in track:
+		return None
 	if settings['logSearched'] and 'extrasPath' in track and 'searched' in track:
 		with open(os.path.join(track['extrasPath'], 'searched.txt'), 'w+') as f:
 			orig = f.read()
@@ -619,3 +643,7 @@ def after_download_single(track, settings):
 		return track['extrasPath']
 	else:
 		return None
+
+class downloadCancelled(Exception):
+    """Base class for exceptions in this module."""
+    pass

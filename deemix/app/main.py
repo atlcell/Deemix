@@ -1,6 +1,6 @@
 from deemix.api.deezer import Deezer
 import deemix.utils.localpaths as localpaths
-from deemix.app.queuemanager import addToQueue
+from deemix.app.queuemanager import addToQueue, removeFromQueue
 from deemix.app.settings import initSettings
 from os import system as execute
 import os.path as path
@@ -44,6 +44,9 @@ def search(term, type, start, nb):
 
 def addToQueue_link(url, bitrate=None, socket=None):
 	addToQueue(dz, url, settings, bitrate, socket)
+
+def removeFromQueue_link(uuid, socket=None):
+	removeFromQueue(uuid, socket)
 
 def downloadLink(url, bitrate=None):
 	if settings['executeCommand'] != "":

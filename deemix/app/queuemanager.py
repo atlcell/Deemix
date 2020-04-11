@@ -202,3 +202,12 @@ def callbackQueueDone(result):
 	del queueList[currentItem]
 	currentItem = ""
 	nextItem(result['dz'], result['socket'])
+
+def removeFromQueue(uuid, socket=None):
+	if uuid == currentItem:
+		queueList[uuid]['cancel'] = True
+	elif uuid in queue:
+		queue.remove(uuid)
+		del queueList[uuid]
+		if socket:
+			socket.emit("removedFromQueue", uuid)
