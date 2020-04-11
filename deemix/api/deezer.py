@@ -125,7 +125,7 @@ class Deezer:
 		user_data = self.gw_api_call("deezer.getUserData")
 		if user_data["results"]["USER"]["USER_ID"] == 0:
 			self.logged_in = False
-			return False
+			return 0
 		self.user = {
 			'id': user_data["results"]["USER"]["USER_ID"],
 			'name': user_data["results"]["USER"]["BLOG_NAME"],
@@ -133,7 +133,7 @@ class Deezer:
 				"USER"] else ""
 		}
 		self.logged_in = True
-		return True
+		return 1
 
 	def get_track_gw(self, sng_id):
 		if int(sng_id) < 0:

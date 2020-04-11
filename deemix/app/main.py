@@ -9,32 +9,19 @@ from os import mkdir, rmdir
 dz = Deezer()
 settings = {}
 
-def requestValidArl():
-	while True:
-		arl = input("Paste here your arl:")
-		if dz.login_via_arl(arl):
-			break
-	return arl
-
-def login():
-	configFolder = localpaths.getConfigFolder()
-	if not path.isdir(configFolder):
-		mkdir(configFolder)
-	if path.isfile(path.join(configFolder, '.arl')):
-		with open(path.join(configFolder, '.arl'), 'r') as f:
-			arl = f.read()
-		if not dz.login_via_arl(arl):
-			arl = requestValidArl()
+def login(arl):
+	if not dz.logged_in:
+		return dz.login_via_arl(arl)
 	else:
-		arl = requestValidArl()
-	with open(path.join(configFolder, '.arl'), 'w') as f:
-		f.write(arl)
+		return 2
+
+def getUser():
+	return dz.user
 
 def initialize():
 	global settings
 	settings = initSettings()
-	login()
-	return True
+	return {'settings': settings}
 
 def shutdown(socket=None):
 	print(getQueue())
