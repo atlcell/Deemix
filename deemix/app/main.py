@@ -7,12 +7,6 @@ from os import mkdir, rmdir
 
 settings = {}
 
-def login(dz, arl):
-	if not dz.logged_in:
-		return dz.login_via_arl(arl)
-	else:
-		return 2
-
 def getUser(dz):
 	return dz.user
 
