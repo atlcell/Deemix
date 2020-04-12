@@ -566,6 +566,20 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 		socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'downloaded': True})
 	return result
 
+def downloadTrackObj_wrap(dz, track, settings, bitrate, queueItem, socket):
+	try:
+		result = downloadTrackObj(dz, track, settings, bitrate, queueItem, socket=socket)
+	except Exception as e:
+		result = {'error': {
+			'message': str(e)},
+			'data': {
+				'id': track['SNG_ID'],
+				'title': track['SNG_TITLE'] + (" "+track['VERSION'] if 'VERSION' in track and track['VERSION'] else ""),
+				'mainArtist': {'name': track['ART_NAME']}
+			}
+		}
+	return result
+
 def download(dz, queueItem, socket=None):
 	global downloadPercentage, lastPercentage
 	settings = queueItem['settings']
@@ -573,14 +587,24 @@ def download(dz, queueItem, socket=None):
 	downloadPercentage = 0
 	lastPercentage = 0
 	if 'single' in queueItem:
-		result = downloadTrackObj(dz, queueItem['single'], settings, bitrate, queueItem, socket=socket)
+		try:
+			result = downloadTrackObj(dz, queueItem['single'], settings, bitrate, queueItem, socket=socket)
+		except Exception as e:
+			result = {'error': {
+				'message': str(e)},
+				'data': {
+					'id': track['SNG_ID'],
+					'title': track['SNG_TITLE'] + (" "+track['VERSION'] if 'VERSION' in track and track['VERSION'] else ""),
+					'mainArtist': {'name': track['ART_NAME']}
+				}
+			}
 		download_path = after_download_single(result, settings)
 	elif 'collection' in queueItem:
 		print("Downloading collection")
 		playlist = [None] * len(queueItem['collection'])
 		with ThreadPoolExecutor(settings['queueConcurrency']) as executor:
 			for pos, track in enumerate(queueItem['collection'], start=0):
-				playlist[pos] = executor.submit(downloadTrackObj, dz, track, settings, bitrate, queueItem, socket=socket)
+				playlist[pos] = executor.submit(downloadTrackObj_wrap, dz, track, settings, bitrate, queueItem, socket=socket)
 		download_path = after_download(playlist, settings)
 	if socket:
 		if 'cancel' in queueItem:
