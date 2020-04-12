@@ -412,6 +412,8 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 					'message': "Track not yet encoded and no alternative found!",
 					'data': track
 				}
+				if socket:
+					socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track not yet encoded and no alternative found!"})
 				return result
 		else:
 			print("ERROR: Track not yet encoded!")
@@ -419,6 +421,8 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 				'message': "Track not yet encoded!",
 				'data': track
 			}
+			if socket:
+				socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track not yet encoded!"})
 			return result
 
 	# Get the selected bitrate
@@ -429,6 +433,8 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 			'message': "Track not found at desired bitrate.",
 			'data': track
 		}
+		if socket:
+			socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track not found at desired bitrate."})
 		return result
 	elif format == -200:
 		print("ERROR: This track is not available in 360 Reality Audio format. Please select another format.")
@@ -436,6 +442,8 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 			'message': "Track is not available in Reality Audio 360.",
 			'data': track
 		}
+		if socket:
+			socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track is not available in Reality Audio 360."})
 		return result
 	track['selectedFormat'] = format
 	track['selectedFilesize'] = filesize
@@ -548,6 +556,8 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 					'message': "Track not available on deezer's servers and no alternative found!",
 					'data': track
 				}
+				if socket:
+					socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track not available on deezer's servers and no alternative found!"})
 				return result
 		else:
 			print("ERROR: Track not available on deezer's servers!")
@@ -555,6 +565,8 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 				'message': "Track not available on deezer's servers!",
 				'data': track
 			}
+			if socket:
+				socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track not available on deezer's servers!"})
 			return result
 	if track['selectedFormat'] in [3, 1, 8]:
 		tagID3(writepath, track, settings['tags'])
