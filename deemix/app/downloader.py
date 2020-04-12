@@ -571,11 +571,12 @@ def downloadTrackObj_wrap(dz, track, settings, bitrate, queueItem, socket):
 		result = downloadTrackObj(dz, track, settings, bitrate, queueItem, socket=socket)
 	except Exception as e:
 		result = {'error': {
-			'message': str(e)},
-			'data': {
-				'id': track['SNG_ID'],
-				'title': track['SNG_TITLE'] + (" "+track['VERSION'] if 'VERSION' in track and track['VERSION'] else ""),
-				'mainArtist': {'name': track['ART_NAME']}
+				'message': str(e),
+				'data': {
+					'id': track['SNG_ID'],
+					'title': track['SNG_TITLE'] + (" "+track['VERSION'] if 'VERSION' in track and track['VERSION'] else ""),
+					'mainArtist': {'name': track['ART_NAME']}
+				}
 			}
 		}
 	return result
@@ -591,11 +592,12 @@ def download(dz, queueItem, socket=None):
 			result = downloadTrackObj(dz, queueItem['single'], settings, bitrate, queueItem, socket=socket)
 		except Exception as e:
 			result = {'error': {
-				'message': str(e)},
-				'data': {
-					'id': track['SNG_ID'],
-					'title': track['SNG_TITLE'] + (" "+track['VERSION'] if 'VERSION' in track and track['VERSION'] else ""),
-					'mainArtist': {'name': track['ART_NAME']}
+					'message': str(e),
+					'data': {
+						'id': track['SNG_ID'],
+						'title': track['SNG_TITLE'] + (" "+track['VERSION'] if 'VERSION' in track and track['VERSION'] else ""),
+						'mainArtist': {'name': track['ART_NAME']}
+					}
 				}
 			}
 		download_path = after_download_single(result, settings)
