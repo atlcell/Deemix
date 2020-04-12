@@ -200,13 +200,14 @@ def getTrackData(dz, trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI 
 			track['lyrics']['unsync'] = trackAPI_gw["LYRICS"]["LYRICS_TEXT"]
 		if "LYRICS_SYNC_JSON" in trackAPI_gw["LYRICS"]:
 			track['lyrics']['sync'] = ""
+			lastTimestamp = ""
 			for i in range(len(trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"])):
 				if "lrc_timestamp" in trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]:
-					track['lyrics']['sync'] += trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["lrc_timestamp"] + \
-											   trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["line"] + "\r\n"
-				elif i + 1 < len(trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"]):
-					track['lyrics']['sync'] += trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i + 1]["lrc_timestamp"] + \
-											   trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["line"] + "\r\n"
+					track['lyrics']['sync'] += trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["lrc_timestamp"]
+					lastTimestamp = trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["lrc_timestamp"]
+				else:
+					track['lyrics']['sync'] += lastTimestamp
+				track['lyrics']['sync'] += trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["line"] + "\r\n"
 
 	track['mainArtist'] = {}
 	track['mainArtist']['id'] = trackAPI_gw['ART_ID']
@@ -600,14 +601,14 @@ def download(dz, queueItem, socket=None):
 					}
 				}
 			}
-		download_path = after_download_single(result, settings)
+		download_path = after_download_single(result, settings, queueItem)
 	elif 'collection' in queueItem:
 		print("Downloading collection")
 		playlist = [None] * len(queueItem['collection'])
 		with ThreadPoolExecutor(settings['queueConcurrency']) as executor:
 			for pos, track in enumerate(queueItem['collection'], start=0):
 				playlist[pos] = executor.submit(downloadTrackObj_wrap, dz, track, settings, bitrate, queueItem, socket=socket)
-		download_path = after_download(playlist, settings)
+		download_path = after_download(playlist, settings, queueItem)
 	if socket:
 		if 'cancel' in queueItem:
 			socket.emit("removedFromQueue", queueItem['uuid'])
@@ -619,7 +620,7 @@ def download(dz, queueItem, socket=None):
 		'download_path': download_path
 	}
 
-def after_download(tracks, settings):
+def after_download(tracks, settings, queueItem):
 	extrasPath = None
 	playlist = [None] * len(tracks)
 	errors = ""
@@ -642,22 +643,26 @@ def after_download(tracks, settings):
 			playlist[index] = result['playlistPosition']
 		else:
 			playlist[index] = ""
-	if settings['logErrors'] and extrasPath and errors != "":
+	if not extrasPath:
+		extrasPath = settings['downloadLocation']
+	if settings['logErrors'] and errors != "":
 		with open(os.path.join(extrasPath, 'errors.txt'), 'w') as f:
 			f.write(errors)
-	if settings['logSearched'] and extrasPath and searched != "":
+	if settings['logSearched'] and searched != "":
 		with open(os.path.join(extrasPath, 'searched.txt'), 'w') as f:
 			f.write(searched)
-	if settings['createM3U8File'] and extrasPath:
+	if settings['createM3U8File']:
 		with open(os.path.join(extrasPath, 'playlist.m3u8'), 'w') as f:
 			for line in playlist:
 				f.write(line+"\n")
 	return extrasPath
 
-def after_download_single(track, settings):
+def after_download_single(track, settings, queueItem):
 	if 'cancel' in track:
 		return None
-	if settings['logSearched'] and 'extrasPath' in track and 'searched' in track:
+	if 'extrasPath' not in track:
+		track['extrasPath'] = settings['downloadLocation']
+	if settings['logSearched'] and 'searched' in track:
 		with open(os.path.join(track['extrasPath'], 'searched.txt'), 'w+') as f:
 			orig = f.read()
 			if not track['searched'] in orig:
@@ -665,10 +670,7 @@ def after_download_single(track, settings):
 					orig += "\r\n"
 				orig += track['searched']+"\r\n"
 			f.write(orig)
-	if 'extrasPath' in track:
-		return track['extrasPath']
-	else:
-		return None
+	return track['extrasPath']
 
 class downloadCancelled(Exception):
     """Base class for exceptions in this module."""
