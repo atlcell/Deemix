@@ -3,6 +3,6 @@ mutagen
 click
 requests
 spotipy
-git+git://notabug.org/RemixDev/pywebview-useragent.git
+git+https://notabug.org/RemixDev/pywebview-useragent.git
 flask
 flask-socketio
