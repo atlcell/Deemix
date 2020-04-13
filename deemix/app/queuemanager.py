@@ -123,7 +123,7 @@ def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None, socket=Non
 		for album in artistAPITracks['data']:
 			albumList.append(generateQueueItem(dz, album['link'], settings, bitrate))
 		if socket:
-			socket.emit("updateToast", {'msg': f"Added {artistAPI['name']} albums to queue", 'icon': 'done', 'dismiss': True, 'id': 'artist_'+str(artistAPI['id'])})
+			socket.emit("toast", {'msg': f"Added {artistAPI['name']} albums to queue", 'icon': 'done', 'dismiss': True, 'id': 'artist_'+str(artistAPI['id'])})
 		return albumList
 	elif type == "spotifytrack":
 		track_id = get_trackid_spotify(dz, id, settings['fallbackSearch'])
