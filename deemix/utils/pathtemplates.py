@@ -21,7 +21,7 @@ def fixLongName(name):
 	if pathSep in name:
 		name2 = name.split(pathSep)
 		name = ""
-		for txt in name:
+		for txt in name2:
 			txt = txt[:200]
 			name += txt+pathSep
 		name = name[:-1]
@@ -134,7 +134,7 @@ def settingsRegexAlbum(foldername, album, settings):
 	foldername = foldername.replace("%artist_id%", str(album['mainArtist']['id']))
 	foldername = foldername.replace("%tracktotal%", str(album['trackTotal']))
 	foldername = foldername.replace("%disctotal%", str(album['discTotal']))
-	foldername = foldername.replace("%type%", fixName(album['recordType'], settings['illegalCharacterReplacer']))
+	foldername = foldername.replace("%type%", fixName(album['recordType'][0].upper()+album['recordType'][1:].lower(), settings['illegalCharacterReplacer']))
 	foldername = foldername.replace("%upc%", album['barcode'])
 	foldername = foldername.replace("%label%", fixName(album['label'], settings['illegalCharacterReplacer']))
 	if len(album['genre']) > 0:

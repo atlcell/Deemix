@@ -511,8 +511,8 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 
 	# Save artist art
 	if artistPath:
-		result['artistURL'] = "https://e-cdns-images.dzcdn.net/images/artist/{}/{}x{}-000000-80-0-0.{}".format(track['album']['artist']['pic'], settings['localArtworkSize'], settings['localArtworkSize'], 'png' if settings['PNGcovers'] else 'jpg')
-		result['artistPath'] = os.path.join(artistPath, f"{settingsRegexArtist(settings['artistImageTemplate'], track['album']['artist'], settings)}.{'png' if settings['PNGcovers'] else 'jpg'}")
+		result['artistURL'] = "https://e-cdns-images.dzcdn.net/images/artist/{}/{}x{}-000000-80-0-0.{}".format(track['album']['mainArtist']['pic'], settings['localArtworkSize'], settings['localArtworkSize'], 'png' if settings['PNGcovers'] else 'jpg')
+		result['artistPath'] = os.path.join(artistPath, f"{settingsRegexArtist(settings['artistImageTemplate'], track['album']['mainArtist'], settings)}.{'png' if settings['PNGcovers'] else 'jpg'}")
 
 	# Data for m3u file
 	if extrasPath:
@@ -647,9 +647,9 @@ def after_download(tracks, settings, queueItem):
 			searched += result['searched']+"\r\n"
 		if not extrasPath and 'extrasPath' in result:
 			extrasPath = result['extrasPath']
-		if settings['saveArtwork'] and result['albumPath']:
+		if settings['saveArtwork'] and 'albumPath' in result:
 			downloadImage(result['albumURL'], result['albumPath'])
-		if settings['saveArtworkArtist'] and result['artistPath']:
+		if settings['saveArtworkArtist'] and 'artistPath' in result:
 			downloadImage(result['artistURL'], result['artistPath'])
 		if 'playlistPosition' in result:
 			playlist[index] = result['playlistPosition']
