@@ -496,6 +496,10 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 	track['album']['picPath'] = os.path.join(TEMPDIR, f"alb{track['album']['id']}_{settings['embeddedArtworkSize']}.{'png' if settings['PNGcovers'] else 'jpg'}")
 	track['album']['picPath'] = downloadImage(track['album']['picUrl'], track['album']['picPath'])
 
+	if os.path.sep in filename:
+		tempPath = filename[:filename.rfind(os.path.sep)]
+		filepath = os.path.join(filepath, tempPath)
+		filename = filename[filename.rfind(os.path.sep)+len(os.path.sep):]
 	makedirs(filepath, exist_ok=True)
 	writepath = os.path.join(filepath, filename + extensions[track['selectedFormat']])
 
@@ -607,9 +611,9 @@ def download(dz, queueItem, socket=None):
 			result = {'error': {
 					'message': str(e),
 					'data': {
-						'id': track['SNG_ID'],
-						'title': track['SNG_TITLE'] + (" "+track['VERSION'] if 'VERSION' in track and track['VERSION'] else ""),
-						'mainArtist': {'name': track['ART_NAME']}
+						'id': queueItem['single']['SNG_ID'],
+						'title': queueItem['single']['SNG_TITLE'] + (" "+queueItem['single']['VERSION'] if 'VERSION' in queueItem['single'] and queueItem['single']['VERSION'] else ""),
+						'mainArtist': {'name': queueItem['single']['ART_NAME']}
 					}
 				}
 			}

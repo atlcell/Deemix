@@ -1,6 +1,6 @@
 import deemix.utils.localpaths as localpaths
 from deemix.app.queuemanager import addToQueue, removeFromQueue, getQueue, cancelAllDownloads
-from deemix.app.settings import initSettings
+from deemix.app.settings import initSettings, getSettings, saveSettings
 from os import system as execute
 import os.path as path
 from os import mkdir, rmdir
@@ -13,7 +13,6 @@ def getUser(dz):
 def initialize():
 	global settings
 	settings = initSettings()
-	return {'settings': settings}
 
 def shutdown(socket=None):
 	print(getQueue())
@@ -32,6 +31,18 @@ def addToQueue_link(dz, url, bitrate=None, socket=None):
 
 def removeFromQueue_link(uuid, socket=None):
 	removeFromQueue(uuid, socket)
+
+def getSettings_link():
+	return getSettings()
+
+def getSettings_link():
+	return getSettings()
+
+def getQueue_link():
+	return getQueue()
+
+def saveSettings_link(newSettings):
+	return saveSettings(newSettings)
 
 def downloadLink(url, bitrate=None):
 	if settings['executeCommand'] != "":
