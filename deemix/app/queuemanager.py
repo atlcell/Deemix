@@ -5,8 +5,8 @@ from deemix.app.downloader import download
 
 queue = []
 queueList = {}
+queueComplete = []
 currentItem = ""
-currentJob = None
 
 """
 queueItem base structure
@@ -142,7 +142,7 @@ def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None, socket=Non
 			print("Spotify Features is not setted up correctly.")
 			result['error'] = "Spotify Features is not setted up correctly."
 		elif album_id != 0:
-			return generateQueueItem(dz, f'https://www.deezer.com/album/{track_id}', settings, bitrate)
+			return generateQueueItem(dz, f'https://www.deezer.com/album/{album_id}', settings, bitrate)
 		else:
 			print("Album not found on deezer!")
 			result['error'] = "Album not found on deezer!"
@@ -152,7 +152,7 @@ def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None, socket=Non
 	return result
 
 def addToQueue(dz, url, settings, bitrate=None, socket=None):
-	global currentItem, currentJob, queueList, queue
+	global currentItem, queueList, queue
 	if not dz.logged_in:
 		return "Not logged in"
 	queueItem = generateQueueItem(dz, url, settings, bitrate, socket=socket)
@@ -170,23 +170,23 @@ def addToQueue(dz, url, settings, bitrate=None, socket=None):
 	else:
 		if 'error' in queueItem:
 			if socket:
-				socket.emit("toast", {'msg': queueItem['error']})
+				socket.emit("toast", {'msg': queueItem['error'], 'icon': 'error'})
 			return False
 		if queueItem['uuid'] in list(queueList.keys()):
 			print("Already in queue!")
 			if socket:
-				socket.emit("toast", {'msg': f"{queueItem['title']} is already in queue!"})
+				socket.emit("toast", {'msg': f"{queueItem['title']} is already in queue!", 'icon': 'playlist_add_check'})
 			return False
 		if socket:
 			socket.emit("addedToQueue", queueItem)
-			socket.emit("toast", {'msg': f"{queueItem['title']} added to queue"})
+			socket.emit("toast", {'msg': f"{queueItem['title']} added to queue", 'icon': 'playlist_add'})
 		queue.append(queueItem['uuid'])
 		queueList[queueItem['uuid']] = queueItem
 	nextItem(dz, socket)
 	return True
 
 def nextItem(dz, socket=None):
-	global currentItem, currentJob, queueList, queue
+	global currentItem, queueList, queue
 	if currentItem != "":
 		return None
 	else:
@@ -200,15 +200,20 @@ def nextItem(dz, socket=None):
 		callbackQueueDone(result)
 
 def callbackQueueDone(result):
-	global currentItem, currentJob, queueList, queue
-	del queueList[currentItem]
+	global currentItem, queueList, queueComplete
+	if 'cancel' in queueList[currentItem]:
+		del queueList[currentItem]
+	else:
+		queueComplete.append(currentItem)
 	currentItem = ""
 	nextItem(result['dz'], result['socket'])
 
 def getQueue():
-	return (queue, queueList, currentItem)
+	global currentItem, queueList, queue, queueComplete
+	return (queue, queueComplete, queueList, currentItem)
 
 def removeFromQueue(uuid, socket=None):
+	global currentItem, queueList, queue, queueComplete
 	if uuid == currentItem:
 		queueList[uuid]['cancel'] = True
 	elif uuid in queue:
@@ -216,9 +221,16 @@ def removeFromQueue(uuid, socket=None):
 		del queueList[uuid]
 		if socket:
 			socket.emit("removedFromQueue", uuid)
+	elif uuid in queueComplete:
+		queueComplete.remove(uuid)
+		del queueList[uuid]
+		if socket:
+			socket.emit("removedFromQueue", uuid)
 
 def cancelAllDownloads(socket=None):
+	global currentItem, queueList, queue, queueComplete
 	queue = []
+	queueComplete = []
 	if currentItem != "":
 		queueList[currentItem]['cancel'] = True
 	for uuid in list(queueList.keys()):
@@ -226,3 +238,11 @@ def cancelAllDownloads(socket=None):
 			del queueList[uuid]
 	if socket:
 		socket.emit("removedAllDownloads")
+
+def removeFinishedDownloads(socket=None):
+	global queueList, queueComplete
+	for uuid in queueComplete:
+		del queueList[uuid]
+	queueComplete = []
+	if socket:
+		socket.emit("removedFinishedDownloads")

@@ -688,7 +688,7 @@ def after_download(tracks, settings, queueItem):
 				f.write(line+"\n")
 	if settings['executeCommand'] != "":
 		execute(settings['executeCommand'].replace("%folder%", extrasPath))
-	return track['extrasPath']
+	return extrasPath
 
 def after_download_single(track, settings, queueItem):
 	if 'cancel' in track:
