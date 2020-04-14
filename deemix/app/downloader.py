@@ -642,6 +642,7 @@ def download(dz, queueItem, socket=None):
 		download_path = after_download(playlist, settings, queueItem)
 	if socket:
 		if 'cancel' in queueItem:
+			socket.emit('toast', {'msg': "Current item cancelled.", 'icon':'done', 'dismiss': True, 'id':'cancelling_'+queueItem['uuid']})
 			socket.emit("removedFromQueue", queueItem['uuid'])
 		else:
 			socket.emit("finishDownload", queueItem['uuid'])

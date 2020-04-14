@@ -215,6 +215,8 @@ def getQueue():
 def removeFromQueue(uuid, socket=None):
 	global currentItem, queueList, queue, queueComplete
 	if uuid == currentItem:
+		if socket:
+			socket.emit('toast', {'msg': "Cancelling current item.", 'icon':'loading', 'dismiss': False, 'id':'cancelling_'+uuid})
 		queueList[uuid]['cancel'] = True
 	elif uuid in queue:
 		queue.remove(uuid)
@@ -232,12 +234,14 @@ def cancelAllDownloads(socket=None):
 	queue = []
 	queueComplete = []
 	if currentItem != "":
+		if socket:
+			socket.emit('toast', {'msg': "Cancelling current item.", 'icon':'loading', 'dismiss': False, 'id':'cancelling_'+currentItem})
 		queueList[currentItem]['cancel'] = True
 	for uuid in list(queueList.keys()):
 		if uuid != currentItem:
 			del queueList[uuid]
 	if socket:
-		socket.emit("removedAllDownloads")
+		socket.emit("removedAllDownloads", currentItem)
 
 def removeFinishedDownloads(socket=None):
 	global queueList, queueComplete
