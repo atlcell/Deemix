@@ -14,7 +14,7 @@ from Cryptodome.Cipher import Blowfish
 from time import sleep
 import re
 
-TEMPDIR = os.path.join(gettempdir(), 'deezloader-imgs')
+TEMPDIR = os.path.join(gettempdir(), 'deemix-imgs')
 if not os.path.isdir(TEMPDIR):
 	makedirs(TEMPDIR)
 
@@ -61,20 +61,22 @@ def stream_track(dz, track, stream, trackAPI, queueItem, socket=None):
 		if round(downloadPercentage) != lastPercentage and round(percentage) % 5 == 0:
 				lastPercentage = round(downloadPercentage)
 				if socket:
+					queueItem['progress'] = lastPercentage
 					socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'progress': lastPercentage})
 		i += 1
 
 def downloadImage(url, path):
 	if not os.path.isfile(path):
-		with open(path, 'wb') as f:
-			try:
-				f.write(get(url, headers={'User-Agent': USER_AGENT_HEADER}, timeout=30).content)
+		try:
+			image = get(url, headers={'User-Agent': USER_AGENT_HEADER}, timeout=30)
+			with open(path, 'wb') as f:
+				f.write(image.content)
 				return path
-			except ConnectionError:
-				sleep(2)
-				return downloadImage(url, path)
-			except HTTPError:
-				print("Couldn't download Image")
+		except ConnectionError:
+			sleep(1)
+			return downloadImage(url, path)
+		except HTTPError:
+			print("Couldn't download Image")
 		remove(path)
 		return None
 	else:
@@ -413,6 +415,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 					'data': track
 				}
 				if socket:
+					queueItem['failed'] += 1
 					socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track not yet encoded and no alternative found!"})
 				return result
 		else:
@@ -422,6 +425,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 				'data': track
 			}
 			if socket:
+				queueItem['failed'] += 1
 				socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track not yet encoded!"})
 			return result
 
@@ -434,6 +438,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 			'data': track
 		}
 		if socket:
+			queueItem['failed'] += 1
 			socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track not found at desired bitrate."})
 		return result
 	elif format == -200:
@@ -443,6 +448,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 			'data': track
 		}
 		if socket:
+			queueItem['failed'] += 1
 			socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track is not available in Reality Audio 360."})
 		return result
 	track['selectedFormat'] = format
@@ -561,6 +567,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 					'data': track
 				}
 				if socket:
+					queueItem['failed'] += 1
 					socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track not available on deezer's servers and no alternative found!"})
 				return result
 		else:
@@ -570,6 +577,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 				'data': track
 			}
 			if socket:
+				queueItem['failed'] += 1
 				socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track not available on deezer's servers!"})
 			return result
 	if track['selectedFormat'] in [3, 1, 8]:
@@ -580,6 +588,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 		result['searched'] = f'{track["mainArtist"]["name"]} - {track["title"]}'
 	print("Done!")
 	if socket:
+		queueItem['downloaded'] += 1
 		socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'downloaded': True})
 	return result
 
@@ -596,6 +605,9 @@ def downloadTrackObj_wrap(dz, track, settings, bitrate, queueItem, socket):
 				}
 			}
 		}
+		if socket:
+			queueItem['failed'] += 1
+			socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True})
 	return result
 
 def download(dz, queueItem, socket=None):
@@ -617,6 +629,9 @@ def download(dz, queueItem, socket=None):
 					}
 				}
 			}
+			if socket:
+				queueItem['failed'] += 1
+				socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True})
 		download_path = after_download_single(result, settings, queueItem)
 	elif 'collection' in queueItem:
 		print("Downloading collection")

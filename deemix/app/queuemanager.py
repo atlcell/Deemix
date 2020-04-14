@@ -206,7 +206,7 @@ def callbackQueueDone(result):
 	nextItem(result['dz'], result['socket'])
 
 def getQueue():
-	return (queue, queueList)
+	return (queue, queueList, currentItem)
 
 def removeFromQueue(uuid, socket=None):
 	if uuid == currentItem:
