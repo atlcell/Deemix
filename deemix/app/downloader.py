@@ -686,7 +686,9 @@ def after_download(tracks, settings, queueItem):
 		with open(os.path.join(extrasPath, 'playlist.m3u8'), 'w') as f:
 			for line in playlist:
 				f.write(line+"\n")
-	return extrasPath
+	if settings['executeCommand'] != "":
+		execute(settings['executeCommand'].replace("%folder%", extrasPath))
+	return track['extrasPath']
 
 def after_download_single(track, settings, queueItem):
 	if 'cancel' in track:
@@ -701,6 +703,8 @@ def after_download_single(track, settings, queueItem):
 					orig += "\r\n"
 				orig += track['searched']+"\r\n"
 			f.write(orig)
+	if settings['executeCommand'] != "":
+		execute(settings['executeCommand'].replace("%folder%", track['extrasPath']))
 	return track['extrasPath']
 
 class downloadCancelled(Exception):
