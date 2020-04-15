@@ -30,7 +30,7 @@ extensions = {
 downloadPercentage = 0
 lastPercentage = 0
 
-def stream_track(dz, track, stream, trackAPI, queueItem, socket=None):
+def stream_track(dz, track, stream, trackAPI, queueItem, interface=None):
 	global downloadPercentage, lastPercentage
 	if 'cancel' in queueItem:
 		raise downloadCancelled
@@ -38,7 +38,7 @@ def stream_track(dz, track, stream, trackAPI, queueItem, socket=None):
 		request = get(track['downloadUrl'], headers=dz.http_headers, stream=True, timeout=30)
 	except ConnectionError:
 		sleep(2)
-		return stream_track(dz, track, stream, trackAPI, queueItem, socket)
+		return stream_track(dz, track, stream, trackAPI, queueItem, interface)
 	request.raise_for_status()
 	blowfish_key = str.encode(dz._get_blowfish_key(str(track['id'])))
 	complete = track['selectedFilesize']
@@ -60,9 +60,9 @@ def stream_track(dz, track, stream, trackAPI, queueItem, socket=None):
 			downloadPercentage += chunkProgres
 		if round(downloadPercentage) != lastPercentage and round(percentage) % 5 == 0:
 				lastPercentage = round(downloadPercentage)
-				if socket:
+				if interface:
 					queueItem['progress'] = lastPercentage
-					socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'progress': lastPercentage})
+					interface.send("updateQueue", {'uuid': queueItem['uuid'], 'progress': lastPercentage})
 		i += 1
 
 def downloadImage(url, path):
@@ -372,7 +372,7 @@ def getTrackData(dz, trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI 
 
 	return track
 
-def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None, socket=None):
+def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None, interface=None):
 	result = {}
 	if 'cancel' in queueItem:
 		result['cancel'] = True
@@ -388,9 +388,9 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 				'title': trackAPI['SNG_TITLE'],
 				'mainArtist': {'name': trackAPI['ART_NAME']}
 			}
-		if socket:
+		if interface:
 			queueItem['failed'] += 1
-			socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'], 'error': "Track not available on Deezer!"})
+			interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'], 'error': "Track not available on Deezer!"})
 		return result
 	# Get the metadata
 	if extraTrack:
@@ -412,7 +412,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 			if not 'MD5_ORIGIN' in trackNew:
 				trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
 			track = parseEssentialTrackData(track, trackNew)
-			return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, socket=socket)
+			return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, interface=interface)
 		elif not 'searched' in track and settings['fallbackSearch']:
 			print("Track not yet encoded, searching for alternative")
 			searchedId = dz.get_track_from_metadata(track['mainArtist']['name'], track['title'], track['album']['title'])
@@ -422,16 +422,16 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 					trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
 				track = parseEssentialTrackData(track, trackNew)
 				track['searched'] = True
-				return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, socket=socket)
+				return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, interface=interface)
 			else:
 				print("ERROR: Track not yet encoded and no alternative found!")
 				result['error'] = {
 					'message': "Track not yet encoded and no alternative found!",
 					'data': track
 				}
-				if socket:
+				if interface:
 					queueItem['failed'] += 1
-					socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track not yet encoded and no alternative found!"})
+					interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track not yet encoded and no alternative found!"})
 				return result
 		else:
 			print("ERROR: Track not yet encoded!")
@@ -439,9 +439,9 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 				'message': "Track not yet encoded!",
 				'data': track
 			}
-			if socket:
+			if interface:
 				queueItem['failed'] += 1
-				socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track not yet encoded!"})
+				interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track not yet encoded!"})
 			return result
 
 	# Get the selected bitrate
@@ -452,9 +452,9 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 			'message': "Track not found at desired bitrate.",
 			'data': track
 		}
-		if socket:
+		if interface:
 			queueItem['failed'] += 1
-			socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track not found at desired bitrate."})
+			interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track not found at desired bitrate."})
 		return result
 	elif format == -200:
 		print("ERROR: This track is not available in 360 Reality Audio format. Please select another format.")
@@ -462,9 +462,9 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 			'message': "Track is not available in Reality Audio 360.",
 			'data': track
 		}
-		if socket:
+		if interface:
 			queueItem['failed'] += 1
-			socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track is not available in Reality Audio 360."})
+			interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track is not available in Reality Audio 360."})
 		return result
 	track['selectedFormat'] = format
 	track['selectedFilesize'] = filesize
@@ -547,7 +547,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 	track['downloadUrl'] = dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], track['selectedFormat'])
 	try:
 		with open(writepath, 'wb') as stream:
-			stream_track(dz, track, stream, trackAPI, queueItem, socket)
+			stream_track(dz, track, stream, trackAPI, queueItem, interface)
 	except downloadCancelled:
 		remove(writepath)
 		result['cancel'] = True
@@ -557,14 +557,14 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 		if track['selectedFormat'] == 9 and settings['fallbackBitrate']:
 			print("Track not available in flac, trying mp3")
 			track['filesize']['flac'] = 0
-			return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, socket=socket)
+			return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, interface=interface)
 		elif track['fallbackId'] != 0:
 			print("Track not available, using fallback id")
 			trackNew = dz.get_track_gw(track['fallbackId'])
 			if not 'MD5_ORIGIN' in trackNew:
 				trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
 			track = parseEssentialTrackData(track, trackNew)
-			return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, socket=socket)
+			return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, interface=interface)
 		elif not 'searched' in track and settings['fallbackSearch']:
 			print("Track not available, searching for alternative")
 			searchedId = dz.get_track_from_metadata(track['mainArtist']['name'], track['title'], track['album']['title'])
@@ -574,16 +574,16 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 					trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
 				track = parseEssentialTrackData(track, trackNew)
 				track['searched'] = True
-				return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, socket=socket)
+				return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, interface=interface)
 			else:
 				print("ERROR: Track not available on deezer's servers and no alternative found!")
 				result['error'] = {
 					'message': "Track not available on deezer's servers and no alternative found!",
 					'data': track
 				}
-				if socket:
+				if interface:
 					queueItem['failed'] += 1
-					socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track not available on deezer's servers and no alternative found!"})
+					interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track not available on deezer's servers and no alternative found!"})
 				return result
 		else:
 			print("ERROR: Track not available on deezer's servers!")
@@ -591,9 +591,9 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 				'message': "Track not available on deezer's servers!",
 				'data': track
 			}
-			if socket:
+			if interface:
 				queueItem['failed'] += 1
-				socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track not available on deezer's servers!"})
+				interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track, 'error': "Track not available on deezer's servers!"})
 			return result
 	if track['selectedFormat'] in [3, 1, 8]:
 		tagID3(writepath, track, settings['tags'])
@@ -602,14 +602,14 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 	if 'searched' in track:
 		result['searched'] = f'{track["mainArtist"]["name"]} - {track["title"]}'
 	print("Done!")
-	if socket:
+	if interface:
 		queueItem['downloaded'] += 1
-		socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'downloaded': True})
+		interface.send("updateQueue", {'uuid': queueItem['uuid'], 'downloaded': True})
 	return result
 
-def downloadTrackObj_wrap(dz, track, settings, bitrate, queueItem, socket):
+def downloadTrackObj_wrap(dz, track, settings, bitrate, queueItem, interface):
 	try:
-		result = downloadTrackObj(dz, track, settings, bitrate, queueItem, socket=socket)
+		result = downloadTrackObj(dz, track, settings, bitrate, queueItem, interface=interface)
 	except Exception as e:
 		result = {'error': {
 				'message': str(e),
@@ -620,12 +620,12 @@ def downloadTrackObj_wrap(dz, track, settings, bitrate, queueItem, socket):
 				}
 			}
 		}
-		if socket:
+		if interface:
 			queueItem['failed'] += 1
-			socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True})
+			interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True})
 	return result
 
-def download(dz, queueItem, socket=None):
+def download(dz, queueItem, interface=None):
 	global downloadPercentage, lastPercentage
 	settings = queueItem['settings']
 	bitrate = queueItem['bitrate']
@@ -633,7 +633,7 @@ def download(dz, queueItem, socket=None):
 	lastPercentage = 0
 	if 'single' in queueItem:
 		try:
-			result = downloadTrackObj(dz, queueItem['single'], settings, bitrate, queueItem, socket=socket)
+			result = downloadTrackObj(dz, queueItem['single'], settings, bitrate, queueItem, interface=interface)
 		except Exception as e:
 			result = {'error': {
 					'message': str(e),
@@ -644,26 +644,26 @@ def download(dz, queueItem, socket=None):
 					}
 				}
 			}
-			if socket:
+			if interface:
 				queueItem['failed'] += 1
-				socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True})
+				interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True})
 		download_path = after_download_single(result, settings, queueItem)
 	elif 'collection' in queueItem:
 		print("Downloading collection")
 		playlist = [None] * len(queueItem['collection'])
 		with ThreadPoolExecutor(settings['queueConcurrency']) as executor:
 			for pos, track in enumerate(queueItem['collection'], start=0):
-				playlist[pos] = executor.submit(downloadTrackObj_wrap, dz, track, settings, bitrate, queueItem, socket=socket)
+				playlist[pos] = executor.submit(downloadTrackObj_wrap, dz, track, settings, bitrate, queueItem, interface=interface)
 		download_path = after_download(playlist, settings, queueItem)
-	if socket:
+	if interface:
 		if 'cancel' in queueItem:
-			socket.emit('toast', {'msg': "Current item cancelled.", 'icon':'done', 'dismiss': True, 'id':'cancelling_'+queueItem['uuid']})
-			socket.emit("removedFromQueue", queueItem['uuid'])
+			interface.send('toast', {'msg': "Current item cancelled.", 'icon':'done', 'dismiss': True, 'id':'cancelling_'+queueItem['uuid']})
+			interface.send("removedFromQueue", queueItem['uuid'])
 		else:
-			socket.emit("finishDownload", queueItem['uuid'])
+			interface.send("finishDownload", queueItem['uuid'])
 	return {
 		'dz': dz,
-		'socket': socket,
+		'interface': interface,
 		'download_path': download_path
 	}
 

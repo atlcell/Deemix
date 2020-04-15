@@ -27,7 +27,7 @@ if its an album/playlist
 	collection
 """
 
-def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None, socket=None):
+def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None, interface=None):
 	forcedBitrate = getBitrateInt(bitrate)
 	bitrate = forcedBitrate if forcedBitrate else settings['maxBitrate']
 	type = getTypeFromLink(url)
@@ -116,14 +116,14 @@ def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None, socket=Non
 
 	elif type == "artist":
 		artistAPI = dz.get_artist(id)
-		if socket:
-			socket.emit("toast", {'msg': f"Adding {artistAPI['name']} albums to queue", 'icon': 'loading', 'dismiss': False, 'id': 'artist_'+str(artistAPI['id'])})
+		if interface:
+			interface.send("toast", {'msg': f"Adding {artistAPI['name']} albums to queue", 'icon': 'loading', 'dismiss': False, 'id': 'artist_'+str(artistAPI['id'])})
 		artistAPITracks = dz.get_artist_albums(id)
 		albumList = []
 		for album in artistAPITracks['data']:
 			albumList.append(generateQueueItem(dz, album['link'], settings, bitrate))
-		if socket:
-			socket.emit("toast", {'msg': f"Added {artistAPI['name']} albums to queue", 'icon': 'done', 'dismiss': True, 'id': 'artist_'+str(artistAPI['id'])})
+		if interface:
+			interface.send("toast", {'msg': f"Added {artistAPI['name']} albums to queue", 'icon': 'done', 'dismiss': True, 'id': 'artist_'+str(artistAPI['id'])})
 		return albumList
 	elif type == "spotifytrack":
 		track_id = get_trackid_spotify(dz, id, settings['fallbackSearch'])
@@ -147,23 +147,23 @@ def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None, socket=Non
 			print("Album not found on deezer!")
 			result['error'] = "Album not found on deezer!"
 	elif type == "spotifyplaylist":
-		if socket:
-			socket.emit("toast", {'msg': f"Converting spotify tracks to deezer tracks", 'icon': 'loading', 'dismiss': False, 'id': 'spotifyplaylist_'+str(id)})
+		if interface:
+			interface.send("toast", {'msg': f"Converting spotify tracks to deezer tracks", 'icon': 'loading', 'dismiss': False, 'id': 'spotifyplaylist_'+str(id)})
 		result = convert_spotify_playlist(dz, id, settings)
 		result['bitrate'] = bitrate
 		result['uuid'] = f"{result['type']}_{id}_{bitrate}"
-		if socket:
-			socket.emit("toast", {'msg': f"Spotify playlist converted", 'icon': 'done', 'dismiss': True, 'id': 'spotifyplaylist_'+str(id)})
+		if interface:
+			interface.send("toast", {'msg': f"Spotify playlist converted", 'icon': 'done', 'dismiss': True, 'id': 'spotifyplaylist_'+str(id)})
 	else:
 		print("URL not supported yet")
 		result['error'] = "URL not supported yet"
 	return result
 
-def addToQueue(dz, url, settings, bitrate=None, socket=None):
+def addToQueue(dz, url, settings, bitrate=None, interface=None):
 	global currentItem, queueList, queue
 	if not dz.logged_in:
 		return "Not logged in"
-	queueItem = generateQueueItem(dz, url, settings, bitrate, socket=socket)
+	queueItem = generateQueueItem(dz, url, settings, bitrate, interface=interface)
 	if type(queueItem) is list:
 		for x in queueItem:
 			if 'error' in x:
@@ -171,29 +171,29 @@ def addToQueue(dz, url, settings, bitrate=None, socket=None):
 			if x['uuid'] in list(queueList.keys()):
 				print("Already in queue!")
 				continue
-			if socket:
-				socket.emit("addedToQueue", x)
+			if interface:
+				interface.send("addedToQueue", x)
 			queue.append(x['uuid'])
 			queueList[x['uuid']] = x
 	else:
 		if 'error' in queueItem:
-			if socket:
-				socket.emit("toast", {'msg': queueItem['error'], 'icon': 'error'})
+			if interface:
+				interface.send("toast", {'msg': queueItem['error'], 'icon': 'error'})
 			return False
 		if queueItem['uuid'] in list(queueList.keys()):
 			print("Already in queue!")
-			if socket:
-				socket.emit("toast", {'msg': f"{queueItem['title']} is already in queue!", 'icon': 'playlist_add_check'})
+			if interface:
+				interface.send("toast", {'msg': f"{queueItem['title']} is already in queue!", 'icon': 'playlist_add_check'})
 			return False
-		if socket:
-			socket.emit("addedToQueue", queueItem)
-			socket.emit("toast", {'msg': f"{queueItem['title']} added to queue", 'icon': 'playlist_add'})
+		if interface:
+			interface.send("addedToQueue", queueItem)
+			interface.send("toast", {'msg': f"{queueItem['title']} added to queue", 'icon': 'playlist_add'})
 		queue.append(queueItem['uuid'])
 		queueList[queueItem['uuid']] = queueItem
-	nextItem(dz, socket)
+	nextItem(dz, interface)
 	return True
 
-def nextItem(dz, socket=None):
+def nextItem(dz, interface=None):
 	global currentItem, queueList, queue
 	if currentItem != "":
 		return None
@@ -202,9 +202,9 @@ def nextItem(dz, socket=None):
 			currentItem = queue.pop(0)
 		else:
 			return None
-		if socket:
-			socket.emit("startDownload", currentItem)
-		result = download(dz, queueList[currentItem], socket)
+		if interface:
+			interface.send("startDownload", currentItem)
+		result = download(dz, queueList[currentItem], interface)
 		callbackQueueDone(result)
 
 def callbackQueueDone(result):
@@ -214,47 +214,47 @@ def callbackQueueDone(result):
 	else:
 		queueComplete.append(currentItem)
 	currentItem = ""
-	nextItem(result['dz'], result['socket'])
+	nextItem(result['dz'], result['interface'])
 
 def getQueue():
 	global currentItem, queueList, queue, queueComplete
 	return (queue, queueComplete, queueList, currentItem)
 
-def removeFromQueue(uuid, socket=None):
+def removeFromQueue(uuid, interface=None):
 	global currentItem, queueList, queue, queueComplete
 	if uuid == currentItem:
-		if socket:
-			socket.emit('toast', {'msg': "Cancelling current item.", 'icon':'loading', 'dismiss': False, 'id':'cancelling_'+uuid})
+		if interface:
+			interface.send('toast', {'msg': "Cancelling current item.", 'icon':'loading', 'dismiss': False, 'id':'cancelling_'+uuid})
 		queueList[uuid]['cancel'] = True
 	elif uuid in queue:
 		queue.remove(uuid)
 		del queueList[uuid]
-		if socket:
-			socket.emit("removedFromQueue", uuid)
+		if interface:
+			interface.send("removedFromQueue", uuid)
 	elif uuid in queueComplete:
 		queueComplete.remove(uuid)
 		del queueList[uuid]
-		if socket:
-			socket.emit("removedFromQueue", uuid)
+		if interface:
+			interface.send("removedFromQueue", uuid)
 
-def cancelAllDownloads(socket=None):
+def cancelAllDownloads(interface=None):
 	global currentItem, queueList, queue, queueComplete
 	queue = []
 	queueComplete = []
 	if currentItem != "":
-		if socket:
-			socket.emit('toast', {'msg': "Cancelling current item.", 'icon':'loading', 'dismiss': False, 'id':'cancelling_'+currentItem})
+		if interface:
+			interface.send('toast', {'msg': "Cancelling current item.", 'icon':'loading', 'dismiss': False, 'id':'cancelling_'+currentItem})
 		queueList[currentItem]['cancel'] = True
 	for uuid in list(queueList.keys()):
 		if uuid != currentItem:
 			del queueList[uuid]
-	if socket:
-		socket.emit("removedAllDownloads", currentItem)
+	if interface:
+		interface.send("removedAllDownloads", currentItem)
 
-def removeFinishedDownloads(socket=None):
+def removeFinishedDownloads(interface=None):
 	global queueList, queueComplete
 	for uuid in queueComplete:
 		del queueList[uuid]
 	queueComplete = []
-	if socket:
-		socket.emit("removedFinishedDownloads")
+	if interface:
+		interface.send("removedFinishedDownloads")
