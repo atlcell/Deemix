@@ -2,11 +2,11 @@
 This app is not finished, some functions may not work.
 
 # How to use
-NOTE: Python 3 is required fot this app. If you're on windows you need Python 3.7 or you won't be able to install the dependencies<br>
+NOTE: Python 3 is required for this app.<br>
 <br>
 Install the dependencies using `pip install -r requirements.txt`<br>
 Run `python -m deemix --help` to see how to use the app<br>
-Run `python server.py` to start just the server<br>
+Run `python server.py` to start the server and then connect to 127.0.0.1:33333.Enjoy!<br>
 
 # TODO
 Finish porting all features:
