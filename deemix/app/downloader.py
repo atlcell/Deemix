@@ -377,6 +377,21 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 	if 'cancel' in queueItem:
 		result['cancel'] = True
 		return result
+
+	if trackAPI['SNG_ID'] == 0:
+		result['error'] = {
+			'message': "Track not available on Deezer!",
+		}
+		if 'SNG_TITLE' in trackAPI:
+			result['error']['data'] = {
+				'id': trackAPI['SNG_ID'],
+				'title': trackAPI['SNG_TITLE'],
+				'mainArtist': {'name': trackAPI['ART_NAME']}
+			}
+		if socket:
+			queueItem['failed'] += 1
+			socket.emit("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'], 'error': "Track not available on Deezer!"})
+		return result
 	# Get the metadata
 	if extraTrack:
 		track = extraTrack
@@ -662,6 +677,8 @@ def after_download(tracks, settings, queueItem):
 		if 'cancel' in result:
 			return None
 		if 'error' in result:
+			if not 'data' in result['error']:
+				result['error']['data'] = {'id': 0, 'title': 'Unknown', 'mainArtist': {'name': 'Unknown'}}
 			errors += f"{result['error']['data']['id']} | {result['error']['data']['mainArtist']['name']} - {result['error']['data']['title']} | {result['error']['message']}\r\n"
 		if 'searched' in result:
 			searched += result['searched']+"\r\n"

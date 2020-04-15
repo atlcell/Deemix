@@ -1,5 +1,5 @@
 from deemix.utils.misc import getIDFromLink, getTypeFromLink, getBitrateInt
-from deemix.utils.spotifyHelper import get_trackid_spotify, get_albumid_spotify
+from deemix.utils.spotifyHelper import get_trackid_spotify, get_albumid_spotify, convert_spotify_playlist
 from concurrent.futures import ProcessPoolExecutor
 from deemix.app.downloader import download
 
@@ -146,6 +146,14 @@ def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None, socket=Non
 		else:
 			print("Album not found on deezer!")
 			result['error'] = "Album not found on deezer!"
+	elif type == "spotifyplaylist":
+		if socket:
+			socket.emit("toast", {'msg': f"Converting spotify tracks to deezer tracks", 'icon': 'loading', 'dismiss': False, 'id': 'spotifyplaylist_'+str(id)})
+		result = convert_spotify_playlist(dz, id, settings)
+		result['bitrate'] = bitrate
+		result['uuid'] = f"{result['type']}_{id}_{bitrate}"
+		if socket:
+			socket.emit("toast", {'msg': f"Spotify playlist converted", 'icon': 'done', 'dismiss': True, 'id': 'spotifyplaylist_'+str(id)})
 	else:
 		print("URL not supported yet")
 		result['error'] = "URL not supported yet"

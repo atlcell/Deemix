@@ -13,7 +13,6 @@ Run `python server.py` to start just the server<br>
 Finish porting all features:
 - logging
 - finish the gui
-- spotify playlist support
 - ?
 
 Settings not yet implemented:
