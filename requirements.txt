@@ -3,6 +3,5 @@ mutagen
 click
 requests
 spotipy
-webview
 flask
 flask-socketio
