@@ -467,7 +467,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 	track['selectedFilesize'] = filesize
 	track['dateString'] = formatDate(track['date'], settings['dateFormat'])
 	if settings['tags']['savePlaylistAsCompilation'] and "_EXTRA_PLAYLIST" in trackAPI:
-		track['album']['picUrl'] = trackAPI["_EXTRA_PLAYLIST"]['picture_small'].replace("56x56", f"{settings['embeddedArtworkSize']}x{settings['embeddedArtworkSize']}").replace(".jpg", '.png' if settings['PNGcovers'] else '.jpg')
+		track['album']['picUrl'] = trackAPI["_EXTRA_PLAYLIST"]['picture_small'].replace("56x56", f"{settings['embeddedArtworkSize']}x{settings['embeddedArtworkSize']}")[:-24]+f"-{'none-100-0-0.png' if settings['PNGcovers'] else '000000-'+settings["jpegImageQuality"]+'-0-0.jpg'}"
 		track['album']['title'] = trackAPI["_EXTRA_PLAYLIST"]['title']
 		track['album']['mainArtist'] = {
 			'id': trackAPI["_EXTRA_PLAYLIST"]['various_artist']['id'],
@@ -491,7 +491,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 	else:
 		if 'date' in track['album']:
 			track['date'] = track['album']['date']
-		track['album']['picUrl'] = "https://e-cdns-images.dzcdn.net/images/cover/{}/{}x{}-000000-80-0-0.{}".format(track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'], 'png' if settings['PNGcovers'] else 'jpg')
+		track['album']['picUrl'] = "https://e-cdns-images.dzcdn.net/images/cover/{}/{}x{}-{}".format(track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'], 'none-100-0-0.png' if settings['PNGcovers'] else f'000000-{settings["jpegImageQuality"]}-0-0.jpg')
 	track['album']['bitrate'] = format
 	track['album']['dateString'] = formatDate(track['album']['date'], settings['dateFormat'])
 
@@ -558,7 +558,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 
 	# Save artist art
 	if artistPath:
-		result['artistURL'] = "https://e-cdns-images.dzcdn.net/images/artist/{}/{}x{}-000000-80-0-0.{}".format(track['album']['mainArtist']['pic'], settings['localArtworkSize'], settings['localArtworkSize'], 'png' if settings['PNGcovers'] else 'jpg')
+		result['artistURL'] = "https://e-cdns-images.dzcdn.net/images/artist/{}/{}x{}-{}".format(track['album']['mainArtist']['pic'], settings['localArtworkSize'], settings['localArtworkSize'], 'none-100-0-0.png' if settings['PNGcovers'] else f'000000-{settings["jpegImageQuality"]}-0-0.jpg')
 		result['artistPath'] = os.path.join(artistPath, f"{settingsRegexArtist(settings['artistImageTemplate'], track['album']['mainArtist'], settings)}.{'png' if settings['PNGcovers'] else 'jpg'}")
 
 	# Data for m3u file

@@ -30,6 +30,7 @@
 	"saveArtworkArtist": false,
 	"artistImageTemplate": "folder",
 	"PNGcovers": false,
+	"jpegImageQuality": 80,
 	"dateFormat": "Y-M-D",
 	"removeAlbumVersion": false,
 	"featuredToTitle": "0",
