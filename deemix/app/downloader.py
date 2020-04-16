@@ -4,7 +4,7 @@ from deemix.utils.taggers import tagID3, tagFLAC
 from deemix.utils.pathtemplates import generateFilename, generateFilepath, settingsRegexAlbum, settingsRegexArtist
 from deemix.utils.misc import changeCase
 import os.path
-from os import makedirs, remove
+from os import makedirs, remove, system as execute
 from requests import get
 from requests.exceptions import HTTPError, ConnectionError
 from tempfile import gettempdir
