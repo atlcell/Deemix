@@ -29,7 +29,6 @@ WebUI:
 - Favorites / Playlists tab
 - Link Analyzer
 - About Section
-- Right click quality selection modal
 - Track preview (might not be possible with current search layout)
 - Artist, Album and Playlist pages for track selection
 - Stylize and separate the options in the Settings tab
