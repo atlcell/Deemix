@@ -468,7 +468,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 	track['selectedFormat'] = format
 	track['selectedFilesize'] = filesize
 	track['album']['bitrate'] = format
-	track['album']['picUrl'] = "https://e-cdns-images.dzcdn.net/images/cover/{}/{}x{}-000000-80-0-0.{}".format(track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'], 'png' if settings['PNGcovers'] else 'jpg')
+	track['album']['picUrl'] = "https://e-cdns-images.dzcdn.net/images/cover/{}/{}x{}-{}".format(track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'], 'none-100-0-0.png' if settings['PNGcovers'] else '000000-80-0-0.jpg')
 	track['dateString'] = formatDate(track['date'], settings['dateFormat'])
 	track['album']['dateString'] = formatDate(track['album']['date'], settings['dateFormat'])
 
@@ -535,7 +535,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 
 	# Save artist art
 	if artistPath:
-		result['artistURL'] = "https://e-cdns-images.dzcdn.net/images/artist/{}/{}x{}-000000-80-0-0.{}".format(track['album']['mainArtist']['pic'], settings['localArtworkSize'], settings['localArtworkSize'], 'png' if settings['PNGcovers'] else 'jpg')
+		result['artistURL'] = "https://e-cdns-images.dzcdn.net/images/artist/{}/{}x{}-{}".format(track['album']['mainArtist']['pic'], settings['localArtworkSize'], settings['localArtworkSize'], 'none-100-0-0.png' if settings['PNGcovers'] else '000000-80-0-0.jpg')
 		result['artistPath'] = os.path.join(artistPath, f"{settingsRegexArtist(settings['artistImageTemplate'], track['album']['mainArtist'], settings)}.{'png' if settings['PNGcovers'] else 'jpg'}")
 
 	# Data for m3u file
