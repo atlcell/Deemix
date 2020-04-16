@@ -60,7 +60,7 @@ class SpotifyHelper:
 		deezer_obj = {
 			'checksum': spotify_obj['snapshot_id'],
 			'collaborative': spotify_obj['collaborative'],
-			'creation_date': "???-??-??",
+			'creation_date': "????-00-00",
 			'creator': {'id': spotify_obj['owner']['id'], 'name': spotify_obj['owner']['display_name'], 'tracklist': spotify_obj['owner']['href'], 'type': "user"},
 			'description': spotify_obj['description'],
 			'duration': 0,
@@ -117,7 +117,7 @@ class SpotifyHelper:
 					dz_album = 0
 		return dz_album
 
-	def convert_spotify_playlist(self, sp, dz, playlist_id, settings):
+	def convert_spotify_playlist(self, dz, playlist_id, settings):
 		if not self.spotifyEnabled:
 			raise spotifyFeaturesNotEnabled
 		spotify_playlist = self.sp.playlist(playlist_id)
@@ -137,6 +137,7 @@ class SpotifyHelper:
 		else:
 			result['cover'] = "https://e-cdns-images.dzcdn.net/images/cover/d41d8cd98f00b204e9800998ecf8427e/75x75-000000-80-0-0.jpg"
 		playlistAPI = self._convert_playlist_structure(spotify_playlist)
+		playlistAPI['various_artist'] = dz.get_artist(5080)
 		tracklist = spotify_playlist['tracks']['items']
 		result['collection'] = []
 		while spotify_playlist['tracks']['next']:

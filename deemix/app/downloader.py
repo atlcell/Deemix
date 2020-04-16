@@ -12,6 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from Cryptodome.Cipher import Blowfish
 from time import sleep
 import re
+import traceback
 
 TEMPDIR = os.path.join(gettempdir(), 'deemix-imgs')
 if not os.path.isdir(TEMPDIR):
@@ -288,9 +289,6 @@ def getTrackData(dz, trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI 
 			}
 		track['album']['genre'] = []
 
-	if 'date' in track['album']:
-		track['date'] = track['album']['date']
-
 	if not trackAPI:
 		trackAPI = dz.get_track(track['id'])
 	track['bpm'] = trackAPI['bpm']
@@ -467,9 +465,34 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 		return result
 	track['selectedFormat'] = format
 	track['selectedFilesize'] = filesize
-	track['album']['bitrate'] = format
-	track['album']['picUrl'] = "https://e-cdns-images.dzcdn.net/images/cover/{}/{}x{}-000000-80-0-0.{}".format(track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'], 'png' if settings['PNGcovers'] else 'jpg')
 	track['dateString'] = formatDate(track['date'], settings['dateFormat'])
+	if settings['tags']['savePlaylistAsCompilation'] and "_EXTRA_PLAYLIST" in trackAPI:
+		track['album']['picUrl'] = trackAPI["_EXTRA_PLAYLIST"]['picture_small'].replace("56x56", f"{settings['embeddedArtworkSize']}x{settings['embeddedArtworkSize']}").replace(".jpg", '.png' if settings['PNGcovers'] else '.jpg')
+		track['album']['title'] = trackAPI["_EXTRA_PLAYLIST"]['title']
+		track['album']['mainArtist'] = {
+			'id': trackAPI["_EXTRA_PLAYLIST"]['various_artist']['id'],
+			'name': trackAPI["_EXTRA_PLAYLIST"]['various_artist']['name'],
+			'pic': trackAPI["_EXTRA_PLAYLIST"]['various_artist']['picture_small'][trackAPI["_EXTRA_PLAYLIST"]['various_artist']['picture_small'].find('artist/')+7:-24]
+		}
+		track['album']['artist'] = {"Main": [trackAPI["_EXTRA_PLAYLIST"]['various_artist']['name'], ]}
+		track['album']['artists'] = [trackAPI["_EXTRA_PLAYLIST"]['various_artist']['name'], ]
+		track['trackNumber'] = trackAPI["POSITION"]
+		track['album']['trackTotal'] = trackAPI["_EXTRA_PLAYLIST"]['nb_tracks']
+		track['album']['recordType'] = "Compilation"
+		track['album']['barcode'] = ""
+		track['album']['label'] = ""
+		track['album']['date'] = {
+			'day': trackAPI["_EXTRA_PLAYLIST"]["creation_date"][8:10],
+			'month': trackAPI["_EXTRA_PLAYLIST"]["creation_date"][5:7],
+			'year': trackAPI["_EXTRA_PLAYLIST"]["creation_date"][0:4]
+		}
+		track['discNumber'] = "1"
+		track['album']['discTotal'] = "1"
+	else:
+		if 'date' in track['album']:
+			track['date'] = track['album']['date']
+		track['album']['picUrl'] = "https://e-cdns-images.dzcdn.net/images/cover/{}/{}x{}-000000-80-0-0.{}".format(track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'], 'png' if settings['PNGcovers'] else 'jpg')
+	track['album']['bitrate'] = format
 	track['album']['dateString'] = formatDate(track['album']['date'], settings['dateFormat'])
 
 	# Check if user wants the feat in the title
@@ -531,7 +554,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 	# Save local album art
 	if coverPath:
 		result['albumURL'] = track['album']['picUrl'].replace(f"{settings['embeddedArtworkSize']}x{settings['embeddedArtworkSize']}", f"{settings['localArtworkSize']}x{settings['localArtworkSize']}")
-		result['albumPath'] = os.path.join(coverPath, f"{settingsRegexAlbum(settings['coverImageTemplate'], track['album'], settings)}.{'png' if settings['PNGcovers'] else 'jpg'}")
+		result['albumPath'] = os.path.join(coverPath, f"{settingsRegexAlbum(settings['coverImageTemplate'], track['album'], settings, trackAPI)}.{'png' if settings['PNGcovers'] else 'jpg'}")
 
 	# Save artist art
 	if artistPath:
@@ -610,6 +633,7 @@ def downloadTrackObj_wrap(dz, track, settings, bitrate, queueItem, interface):
 	try:
 		result = downloadTrackObj(dz, track, settings, bitrate, queueItem, interface=interface)
 	except Exception as e:
+		traceback.print_exc()
 		result = {'error': {
 				'message': str(e),
 				'data': {
@@ -725,5 +749,5 @@ def after_download_single(track, settings, queueItem):
 	return track['extrasPath']
 
 class downloadCancelled(Exception):
-    """Base class for exceptions in this module."""
-    pass
+	"""Base class for exceptions in this module."""
+	pass

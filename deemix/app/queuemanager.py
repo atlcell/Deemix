@@ -91,6 +91,7 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
 	elif type == "playlist":
 		playlistAPI = dz.get_playlist(id)
 		playlistTracksAPI = dz.get_playlist_tracks_gw(id)
+		playlistAPI['various_artist'] = dz.get_artist(5080)
 
 		result['title'] = playlistAPI['title']
 		result['artist'] = playlistAPI['creator']['name']
@@ -158,7 +159,7 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
 			interface.send("toast", {'msg': f"Converting spotify tracks to deezer tracks", 'icon': 'loading', 'dismiss': False, 'id': 'spotifyplaylist_'+str(id)})
 		playlist = sp.convert_spotify_playlist(dz, id, settings)
 		playlist['bitrate'] = bitrate
-		playlist['uuid'] = f"{result['type']}_{id}_{bitrate}"
+		playlist['uuid'] = f"{playlist['type']}_{id}_{bitrate}"
 		result = playlist
 		if interface:
 			interface.send("toast", {'msg': f"Spotify playlist converted", 'icon': 'done', 'dismiss': True, 'id': 'spotifyplaylist_'+str(id)})

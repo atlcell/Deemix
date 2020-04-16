@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from mutagen.flac import FLAC, Picture
 from mutagen.id3 import ID3, ID3NoHeaderError, TXXX, TIT2, TPE1, TALB, TPE2, TRCK, TPOS, TCON, TYER, TDAT, TLEN, TBPM, \
-	TPUB, TSRC, USLT, APIC, IPLS, TCOM, TCOP
+	TPUB, TSRC, USLT, APIC, IPLS, TCOM, TCOP, TCMP
 
 
 def tagID3(stream, track, save):
@@ -42,7 +42,8 @@ def tagID3(stream, track, save):
 		tag.add(TSRC(text=track['ISRC']))
 	if save['barcode']:
 		tag.add(TXXX(desc="BARCODE", text=track['album']['barcode']))
-	tag.add(TXXX(desc="ITUNESADVISORY", text="1" if track['explicit'] else "0"))
+	if save['explicit']:
+		tag.add(TXXX(desc="ITUNESADVISORY", text="1" if track['explicit'] else "0"))
 	if save['replayGain']:
 		tag.add(TXXX(desc="REPLAYGAIN_TRACK_GAIN", text=track['replayGain']))
 	if 'unsync' in track['lyrics'] and save['lyrics']:
@@ -58,6 +59,8 @@ def tagID3(stream, track, save):
 		tag.add(IPLS(people=involved_people))
 	if save['copyright']:
 		tag.add(TCOP(text=track['copyright']))
+	if save['savePlaylistAsCompilation']:
+		tag.add(TCMP(text="1"))
 	if save['cover'] and track['album']['picPath']:
 		with open(track['album']['picPath'], 'rb') as f:
 			tag.add(APIC(3, 'image/jpeg' if track['album']['picPath'].endswith('jpg') else 'image/png', 3, data=f.read()))
@@ -118,6 +121,8 @@ def tagFLAC(stream, track, save):
 			tag["ORGANIZATION"] = track['contributors']['musicpublisher']
 	if save['copyright']:
 		tag["COPYRIGHT"] = track['copyright']
+	if save['savePlaylistAsCompilation']:
+		tag["COMPILATION"] = "1"
 
 	if save['cover'] and track['album']['picPath']:
 		image = Picture()

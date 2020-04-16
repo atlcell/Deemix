@@ -1,21 +1,40 @@
 # WARNING
-This app is not finished, some functions may not work.
+The webUI is not finished, some functions may not work.
 
-# How to use
+# deemix
+## What is deemix?
+deemix is a deezer downloader built from the ashes of Deezloader Remix. The base library (or core) can be used as a stand alone CLI app or implemented in an UI using the API.
+
+## How can I use this this?
+Currently there are no available builds as it's still in development.<br>
+But you can try to run it yourself!<br>
+
+## Running instructions
 NOTE: Python 3 is required for this app.<br>
 <br>
-Install the dependencies using `pip install -r requirements.txt`<br>
+After installing python install the dependencies using `pip install -r requirements.txt`<br>
 Run `python -m deemix --help` to see how to use the app<br>
-Run `python server.py` to start the server and then connect to 127.0.0.1:33333.Enjoy!<br>
+Run `python server.py` to start the server and then connect to 127.0.0.1:33333.<br>
+Enjoy!<br>
 
-# TODO
-Finish porting all features:
-- logging
-- finish the gui
+## What's left to do?
+Library:
+- Add a log system
+- Adding whatever is missing for the webUI
+- Write the API Documentation
+WebUI:
+- Home tab
+- Charts tab
+- Favorites / Playlists tab
+- Link Analyzer
+- About Section
+- Right click quality selection modal
+- Track preview (might not be possible with current search layout)
+- Artist, Album and Playlist pages for track selection
+- Stylize and separate the options in the Settings tab
+- Reset settings to default
+- Animations and style polishing
 - ?
-
-Settings not yet implemented:
-- savePlaylistAsCompilation
 
 # License
 This program is free software: you can redistribute it and/or modify

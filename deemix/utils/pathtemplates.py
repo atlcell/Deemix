@@ -58,15 +58,15 @@ def generateFilepath(track, trackAPI, settings):
 	coverPath = None
 	extrasPath = None
 
-	if settings['createPlaylistFolder'] and '_EXTRA_PLAYLIST' in trackAPI and not settings['savePlaylistAsCompilation']:
+	if settings['createPlaylistFolder'] and '_EXTRA_PLAYLIST' in trackAPI and not settings['tags']['savePlaylistAsCompilation']:
 		filepath += antiDot(settingsRegexPlaylist(settings['playlistNameTemplate'], trackAPI['_EXTRA_PLAYLIST'], settings)) + pathSep
 
-	if '_EXTRA_PLAYLIST' in trackAPI and not settings['savePlaylistAsCompilation']:
+	if '_EXTRA_PLAYLIST' in trackAPI and not settings['tags']['savePlaylistAsCompilation']:
 		extrasPath = filepath
 
 	if (
 		settings['createArtistFolder'] and not '_EXTRA_PLAYLIST' in trackAPI or
-		(settings['createArtistFolder'] and '_EXTRA_PLAYLIST' in trackAPI and settings['savePlaylistAsCompilation']) or
+		(settings['createArtistFolder'] and '_EXTRA_PLAYLIST' in trackAPI and settings['tags']['savePlaylistAsCompilation']) or
 		(settings['createArtistFolder'] and '_EXTRA_PLAYLIST' in trackAPI and settings['createStructurePlaylist'])
 	):
 		if (int(track['id'])<0 and not 'mainArtist' in track['album']):
@@ -76,19 +76,19 @@ def generateFilepath(track, trackAPI, settings):
 
 	if (settings['createAlbumFolder'] and
 		(not 'SINGLE_TRACK' in trackAPI or ('SINGLE_TRACK' in trackAPI and settings['createSingleFolder'])) and
-		(not '_EXTRA_PLAYLIST' in trackAPI or ('_EXTRA_PLAYLIST' in trackAPI and settings['savePlaylistAsCompilation']) or ('_EXTRA_PLAYLIST' in trackAPI and settings['createStructurePlaylist']))
+		(not '_EXTRA_PLAYLIST' in trackAPI or ('_EXTRA_PLAYLIST' in trackAPI and settings['tags']['savePlaylistAsCompilation']) or ('_EXTRA_PLAYLIST' in trackAPI and settings['createStructurePlaylist']))
 	):
-		filepath += antiDot(settingsRegexAlbum(settings['albumNameTemplate'], track['album'], settings)) + pathSep
+		filepath += antiDot(settingsRegexAlbum(settings['albumNameTemplate'], track['album'], settings, trackAPI)) + pathSep
 		coverPath = filepath
 
-	if not ('_EXTRA_PLAYLIST' in trackAPI and not settings['savePlaylistAsCompilation']):
+	if not ('_EXTRA_PLAYLIST' in trackAPI and not settings['tags']['savePlaylistAsCompilation']):
 		extrasPath = filepath
 
 	if (
 		int(track['album']['discTotal']) > 1 and (
 		(settings['createAlbumFolder'] and settings['createCDFolder']) and
 		(not 'SINGLE_TRACK' in trackAPI or ('SINGLE_TRACK' in trackAPI and settings['createSingleFolder'])) and
-		(not '_EXTRA_PLAYLIST' in trackAPI or ('_EXTRA_PLAYLIST' in trackAPI and settings['savePlaylistAsCompilation']) or ('_EXTRA_PLAYLIST' in trackAPI and settings['createStructurePlaylist']))
+		(not '_EXTRA_PLAYLIST' in trackAPI or ('_EXTRA_PLAYLIST' in trackAPI and settings['tags']['savePlaylistAsCompilation']) or ('_EXTRA_PLAYLIST' in trackAPI and settings['createStructurePlaylist']))
 	)):
 		filepath += 'CD' + str(track['discNumber']) + pathSep
 
@@ -127,8 +127,11 @@ def settingsRegex(filename, track, settings, playlist=None):
 	filename = filename.replace('\\', pathSep).replace('/', pathSep)
 	return antiDot(fixLongName(filename))
 
-def settingsRegexAlbum(foldername, album, settings):
-	foldername = foldername.replace("%album_id%", str(album['id']))
+def settingsRegexAlbum(foldername, album, settings, trackAPI):
+	if trackAPI and '_EXTRA_PLAYLIST' in trackAPI and settings['tags']['savePlaylistAsCompilation']:
+		foldername = foldername.replace("%album_id%", "pl_"+str(trackAPI['_EXTRA_PLAYLIST']['id']))
+	else:
+		foldername = foldername.replace("%album_id%", str(album['id']))
 	foldername = foldername.replace("%album%", fixName(album['title'], settings['illegalCharacterReplacer']))
 	foldername = foldername.replace("%artist%", fixName(album['mainArtist']['name'], settings['illegalCharacterReplacer']))
 	foldername = foldername.replace("%artist_id%", str(album['mainArtist']['id']))

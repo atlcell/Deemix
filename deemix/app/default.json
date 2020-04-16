@@ -31,7 +31,6 @@
 	"artistImageTemplate": "folder",
 	"PNGcovers": false,
 	"dateFormat": "Y-M-D",
-	"savePlaylistAsCompilation": false,
 	"removeAlbumVersion": false,
 	"featuredToTitle": "0",
 	"titleCasing": "nothing",
@@ -61,6 +60,7 @@
 		"copyright": false,
 		"composer": false,
 		"involvedPeople": false,
+		"savePlaylistAsCompilation": false,
 		"useNullSeparator": false,
 		"saveID3v1": true,
 		"multitagSeparator": "default"
