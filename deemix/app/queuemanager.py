@@ -1,5 +1,4 @@
 from deemix.utils.misc import getIDFromLink, getTypeFromLink, getBitrateInt
-from deemix.utils.spotifyHelper import get_trackid_spotify, get_albumid_spotify, convert_spotify_playlist
 from concurrent.futures import ProcessPoolExecutor
 from deemix.app.downloader import download
 
@@ -27,7 +26,7 @@ if its an album/playlist
 	collection
 """
 
-def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None, interface=None):
+def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interface=None):
 	forcedBitrate = getBitrateInt(bitrate)
 	bitrate = forcedBitrate if forcedBitrate else settings['maxBitrate']
 	type = getTypeFromLink(url)
@@ -65,7 +64,7 @@ def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None, interface=
 		albumAPI['nb_disk'] = albumAPI_gw['NUMBER_DISK']
 		albumAPI['copyright'] = albumAPI_gw['COPYRIGHT']
 		if albumAPI['nb_tracks'] == 1:
-			return generateQueueItem(dz, f"https://www.deezer.com/track/{albumAPI['tracks']['data'][0]['id']}", settings, bitrate, albumAPI)
+			return generateQueueItem(dz, sp, f"https://www.deezer.com/track/{albumAPI['tracks']['data'][0]['id']}", settings, bitrate, albumAPI)
 		tracksArray = dz.get_album_tracks_gw(id)
 
 		result['title'] = albumAPI['title']
@@ -121,37 +120,46 @@ def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None, interface=
 		artistAPITracks = dz.get_artist_albums(id)
 		albumList = []
 		for album in artistAPITracks['data']:
-			albumList.append(generateQueueItem(dz, album['link'], settings, bitrate))
+			albumList.append(generateQueueItem(dz, sp, album['link'], settings, bitrate))
 		if interface:
 			interface.send("toast", {'msg': f"Added {artistAPI['name']} albums to queue", 'icon': 'done', 'dismiss': True, 'id': 'artist_'+str(artistAPI['id'])})
 		return albumList
 	elif type == "spotifytrack":
-		track_id = get_trackid_spotify(dz, id, settings['fallbackSearch'])
 		result = {}
-		if track_id == "Not Enabled":
+		if not sp.spotifyEnabled:
 			print("Spotify Features is not setted up correctly.")
 			result['error'] = "Spotify Features is not setted up correctly."
-		elif track_id != 0:
-			return generateQueueItem(dz, f'https://www.deezer.com/track/{track_id}', settings, bitrate)
+			return result
+		track_id = sp.get_trackid_spotify(dz, id, settings['fallbackSearch'])
+		if track_id != 0:
+			return generateQueueItem(dz, sp, f'https://www.deezer.com/track/{track_id}', settings, bitrate)
 		else:
 			print("Track not found on deezer!")
 			result['error'] = "Track not found on deezer!"
 	elif type == "spotifyalbum":
-		album_id = get_albumid_spotify(dz, id)
-		if album_id == "Not Enabled":
+		result = {}
+		if not sp.spotifyEnabled:
 			print("Spotify Features is not setted up correctly.")
 			result['error'] = "Spotify Features is not setted up correctly."
-		elif album_id != 0:
-			return generateQueueItem(dz, f'https://www.deezer.com/album/{album_id}', settings, bitrate)
+			return result
+		album_id = sp.get_albumid_spotify(dz, id)
+		if album_id != 0:
+			return generateQueueItem(dz, sp, f'https://www.deezer.com/album/{album_id}', settings, bitrate)
 		else:
 			print("Album not found on deezer!")
 			result['error'] = "Album not found on deezer!"
 	elif type == "spotifyplaylist":
+		result = {}
+		if not sp.spotifyEnabled:
+			print("Spotify Features is not setted up correctly.")
+			result['error'] = "Spotify Features is not setted up correctly."
+			return result
 		if interface:
 			interface.send("toast", {'msg': f"Converting spotify tracks to deezer tracks", 'icon': 'loading', 'dismiss': False, 'id': 'spotifyplaylist_'+str(id)})
-		result = convert_spotify_playlist(dz, id, settings)
-		result['bitrate'] = bitrate
-		result['uuid'] = f"{result['type']}_{id}_{bitrate}"
+		playlist = sp.convert_spotify_playlist(dz, id, settings)
+		playlist['bitrate'] = bitrate
+		playlist['uuid'] = f"{result['type']}_{id}_{bitrate}"
+		result = playlist
 		if interface:
 			interface.send("toast", {'msg': f"Spotify playlist converted", 'icon': 'done', 'dismiss': True, 'id': 'spotifyplaylist_'+str(id)})
 	else:
@@ -159,11 +167,11 @@ def generateQueueItem(dz, url, settings, bitrate=None, albumAPI=None, interface=
 		result['error'] = "URL not supported yet"
 	return result
 
-def addToQueue(dz, url, settings, bitrate=None, interface=None):
+def addToQueue(dz, sp, url, settings, bitrate=None, interface=None):
 	global currentItem, queueList, queue
 	if not dz.logged_in:
 		return "Not logged in"
-	queueItem = generateQueueItem(dz, url, settings, bitrate, interface=interface)
+	queueItem = generateQueueItem(dz, sp, url, settings, bitrate, interface=interface)
 	if type(queueItem) is list:
 		for x in queueItem:
 			if 'error' in x:

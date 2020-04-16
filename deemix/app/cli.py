@@ -3,11 +3,13 @@ from deemix.api.deezer import Deezer
 import deemix.utils.localpaths as localpaths
 from deemix.utils.misc import getIDFromLink, getTypeFromLink, getBitrateInt
 from deemix.app.queuemanager import addToQueue
+from deemix.app.spotify import SpotifyHelper
 from os import system as execute
 import os.path as path
 from os import mkdir
 
 dz = Deezer()
+sp = SpotifyHelper()
 
 def requestValidArl():
 	while True:
@@ -31,4 +33,4 @@ def login():
 		f.write(arl)
 
 def downloadLink(url, settings, bitrate=None):
-	addToQueue(dz, url, settings, bitrate)
+	addToQueue(dz, sp, url, settings, bitrate)

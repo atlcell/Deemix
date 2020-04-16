@@ -3,7 +3,6 @@ from deemix.api.deezer import APIError, USER_AGENT_HEADER
 from deemix.utils.taggers import tagID3, tagFLAC
 from deemix.utils.pathtemplates import generateFilename, generateFilepath, settingsRegexAlbum, settingsRegexArtist
 from deemix.utils.misc import changeCase
-from deemix.utils.spotifyHelper import get_trackid_spotify, get_albumid_spotify
 import os.path
 from os import makedirs, remove
 from requests import get
