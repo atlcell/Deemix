@@ -289,6 +289,9 @@ def getTrackData(dz, trackAPI_gw, trackAPI = None, albumAPI_gw = None, albumAPI 
 			}
 		track['album']['genre'] = []
 
+	if 'date' in track['album'] and 'date' not in track:
+		track['date'] = track['album']['date']
+
 	if not trackAPI:
 		trackAPI = dz.get_track(track['id'])
 	track['bpm'] = trackAPI['bpm']
