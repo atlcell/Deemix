@@ -467,7 +467,10 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 	track['selectedFilesize'] = filesize
 	track['dateString'] = formatDate(track['date'], settings['dateFormat'])
 	if settings['tags']['savePlaylistAsCompilation'] and "_EXTRA_PLAYLIST" in trackAPI:
-		track['album']['picUrl'] = trackAPI["_EXTRA_PLAYLIST"]['picture_small'].replace("56x56", f"{settings['embeddedArtworkSize']}x{settings['embeddedArtworkSize']}")[:-24]+f"-{'none-100-0-0.png' if settings['PNGcovers'] else '000000-'+settings["jpegImageQuality"]+'-0-0.jpg'}"
+		if 'dzcdn.net'in trackAPI["_EXTRA_PLAYLIST"]['picture_small']:
+			track['album']['picUrl'] = trackAPI["_EXTRA_PLAYLIST"]['picture_small'][:-24]+"/{}x{}-{}".format(track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'], 'none-100-0-0.png' if settings['PNGcovers'] else f'000000-{settings["jpegImageQuality"]}-0-0.jpg')
+		else:
+			track['album']['picUrl'] = trackAPI["_EXTRA_PLAYLIST"]['picture_xl']
 		track['album']['title'] = trackAPI["_EXTRA_PLAYLIST"]['title']
 		track['album']['mainArtist'] = {
 			'id': trackAPI["_EXTRA_PLAYLIST"]['various_artist']['id'],
@@ -536,7 +539,10 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 		result['cancel'] = True
 		return result
 	# Download and cache coverart
-	track['album']['picPath'] = os.path.join(TEMPDIR, f"alb{track['album']['id']}_{settings['embeddedArtworkSize']}.{'png' if settings['PNGcovers'] else 'jpg'}")
+	if settings['tags']['savePlaylistAsCompilation'] and "_EXTRA_PLAYLIST" in trackAPI:
+		track['album']['picPath'] = os.path.join(TEMPDIR, f"pl{trackAPI['_EXTRA_PLAYLIST']['id']}_{settings['embeddedArtworkSize']}.{'png' if settings['PNGcovers'] else 'jpg'}")
+	else:
+		track['album']['picPath'] = os.path.join(TEMPDIR, f"alb{track['album']['id']}_{settings['embeddedArtworkSize']}.{'png' if settings['PNGcovers'] else 'jpg'}")
 	track['album']['picPath'] = downloadImage(track['album']['picUrl'], track['album']['picPath'])
 
 	if os.path.sep in filename:
