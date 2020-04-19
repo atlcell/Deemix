@@ -208,12 +208,39 @@ class Deezer:
 
     def search_main_gw(self, term):
         results = self.gw_api_call('deezer.pageSearch',
-                                   {"query": term, "start": 0, "nb": 40, "suggest": True, "artist_suggest": True,
+                                   {"query": term, "start": 0, "nb": 10, "suggest": True, "artist_suggest": True,
                                     "top_tracks": True})['results']
         order = []
         for x in results['ORDER']:
             if x in ['TOP_RESULT', 'TRACK', 'ALBUM', 'ARTIST', 'PLAYLIST']:
                 order.append(x)
+        if 'TOP_RESULT' in results and len(results['TOP_RESULT']):
+            orig_top_result = results['TOP_RESULT'][0]
+            top_result = {}
+            top_result['type'] = orig_top_result['__TYPE__']
+            if top_result['type'] == 'artist':
+                top_result['id'] = orig_top_result['ART_ID']
+                top_result['picture'] = 'https://e-cdns-images.dzcdn.net/images/artist/' + orig_top_result['ART_PICTURE']
+                top_result['title'] = orig_top_result['ART_NAME']
+                top_result['nb_fan'] = orig_top_result['NB_FAN']
+            elif top_result['type'] == 'album':
+                top_result['id'] = orig_top_result['ALB_ID']
+                top_result['picture'] = 'https://e-cdns-images.dzcdn.net/images/cover/' + orig_top_result['ALB_PICTURE']
+                top_result['title'] = orig_top_result['ALB_TITLE']
+                top_result['artist'] = orig_top_result['ART_NAME']
+                top_result['nb_song'] = orig_top_result['NUMBER_TRACK']
+            elif top_result['type'] == 'playlist':
+                top_result['id'] = orig_top_result['PLAYLIST_ID']
+                top_result['picture'] = 'https://e-cdns-images.dzcdn.net/images/'+ orig_top_result['PICTURE_TYPE'] +'/' + orig_top_result['PLAYLIST_PICTURE']
+                top_result['title'] = orig_top_result['TITLE']
+                top_result['artist'] = orig_top_result['PARENT_USERNAME']
+                top_result['nb_song'] = orig_top_result['NB_SONG']
+            else:
+                top_result['id'] = 0
+                top_result['picture'] = 'https://e-cdns-images.dzcdn.net/images/cover'
+            top_result['picture'] += '/156x156-000000-80-0-0.jpg'
+            top_result['link'] = 'https://deezer.com/'+top_result['type']+'/'+top_result['id']
+            results['TOP_RESULT'][0] = top_result
         results['ORDER'] = order
         return results
 
@@ -259,8 +286,8 @@ class Deezer:
     def get_artist_albums(self, artist_id):
         return self.api_call('artist/' + str(artist_id) + '/albums', {'limit': -1})
 
-    def search(self, term, search_type, limit=30):
-        return self.api_call('search/' + search_type, {'q': term, 'limit': limit})
+    def search(self, term, search_type, limit=30, index=0):
+        return self.api_call('search/' + search_type, {'q': term, 'limit': limit, 'index': index})
 
     def decrypt_track(self, track_id, input, output):
         response = open(input, 'rb')
