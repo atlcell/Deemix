@@ -24,14 +24,13 @@ Library:
 - Write the API Documentation
 
 WebUI:
+- Track preview (might not be possible with current search layout)
+- Link Analyzer
+- Stylize and separate the options in the Settings tab
 - Home tab
 - Charts tab
 - Favorites / Playlists tab
-- Link Analyzer
 - About Section
-- Track preview (might not be possible with current search layout)
-- Artist, Album and Playlist pages for track selection
-- Stylize and separate the options in the Settings tab
 - Reset settings to default
 - Animations and style polishing
 - ?
