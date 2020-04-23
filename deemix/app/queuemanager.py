@@ -71,7 +71,10 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
 
         result['title'] = albumAPI['title']
         result['artist'] = albumAPI['artist']['name']
-        result['cover'] = albumAPI['cover_small'][:-24] + '/75x75-000000-80-0-0.jpg'
+        if albumAPI['cover_small'] != None:
+            result['cover'] = albumAPI['cover_small'][:-24] + '/75x75-000000-80-0-0.jpg'
+        else:
+            result['cover'] = f"https://e-cdns-images.dzcdn.net/images/cover/{albumAPI_gw['ALB_PICTURE']}/75x75-000000-80-0-0.jpg"
         result['size'] = albumAPI['nb_tracks']
         result['downloaded'] = 0
         result['failed'] = 0
