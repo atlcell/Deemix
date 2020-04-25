@@ -29,11 +29,11 @@ def changeCase(string, type):
         string = string.split(" ")
         res = []
         for index, value in enumerate(string):
-            res.append(value[0].upper() + value[0:].lower())
+            res.append(value[0].upper() + value[1:].lower())
         res = " ".join(res)
         return res
     elif type == "sentence":
-        res = string[0].upper() + string[0:].lower()
+        res = string[0].upper() + string[1:].lower()
         return res
     else:
         return string
