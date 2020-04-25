@@ -24,7 +24,6 @@ Library:
 - Write the API Documentation
 
 WebUI:
-- Track preview (might not be possible with current search layout)
 - Link Analyzer
 - Stylize and separate the options in the Settings tab
 - Home tab
