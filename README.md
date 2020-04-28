@@ -5,7 +5,7 @@ The webUI is not finished, some functions may not work.
 ## What is deemix?
 deemix is a deezer downloader built from the ashes of Deezloader Remix. The base library (or core) can be used as a stand alone CLI app or implemented in an UI using the API.
 
-## How can I use this this?
+## How can I use this?
 Currently there are no available builds as it's still in development.<br>
 But you can try to run it yourself!<br>
 
