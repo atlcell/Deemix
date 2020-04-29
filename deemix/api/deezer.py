@@ -262,8 +262,11 @@ class Deezer:
     def get_track_by_ISRC(self, isrc):
         return self.api_call('track/isrc:' + isrc)
 
-    def get_charts_top_country(self):
+    def get_charts_countries(self):
         return self.get_user_playlist('637006841')
+
+    def get_charts(self):
+        return self.api_call('chart')
 
     def get_playlist(self, playlist_id):
         return self.api_call('playlist/' + str(playlist_id))
