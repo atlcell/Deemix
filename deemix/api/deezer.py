@@ -87,7 +87,7 @@ class Deezer:
             time.sleep(2)
             return self.api_call(method, args)
         if 'error' in result_json.keys():
-            raise APIError()
+            raise APIError(result_json)
         return result_json
 
     def login(self, email, password, re_captcha_token):
@@ -231,7 +231,7 @@ class Deezer:
                 top_result['nb_song'] = orig_top_result['NUMBER_TRACK']
             elif top_result['type'] == 'playlist':
                 top_result['id'] = orig_top_result['PLAYLIST_ID']
-                top_result['picture'] = 'https://e-cdns-images.dzcdn.net/images/'+ orig_top_result['PICTURE_TYPE'] +'/' + orig_top_result['PLAYLIST_PICTURE']
+                top_result['picture'] = 'https://e-cdns-images.dzcdn.net/images/' + orig_top_result['PICTURE_TYPE'] + '/' + orig_top_result['PLAYLIST_PICTURE']
                 top_result['title'] = orig_top_result['TITLE']
                 top_result['artist'] = orig_top_result['PARENT_USERNAME']
                 top_result['nb_song'] = orig_top_result['NB_SONG']
