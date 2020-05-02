@@ -88,20 +88,15 @@ def downloadImage(url, path):
 
 
 def formatDate(date, template):
-    if 'YYYY' in template:
-        template = template.replace('YYYY', str(date['year']))
-    if 'YY' in template:
-        template = template.replace('YY', str(date['year']))
-    if 'Y' in template:
-        template = template.replace('Y', str(date['year']))
-    if 'MM' in template:
-        template = template.replace('MM', str(date['month']))
-    if 'M' in template:
-        template = template.replace('M', str(date['month']))
-    if 'DD' in template:
-        template = template.replace('DD', str(date['day']))
-    if 'D' in template:
-        template = template.replace('D', str(date['day']))
+    elements = {
+        'year': ['YYYY', 'YY', 'Y'],
+        'month': ['MM', 'M'],
+        'day': ['DD', 'D']
+    }
+    for element, placeholders in elements.items():
+        for placeholder in placeholders:
+            if placeholder in template:
+                template = template.replace(placeholder, str(date[element]))
     return template
 
 
