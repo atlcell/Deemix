@@ -300,7 +300,7 @@ def getTrackData(dz, trackAPI_gw, trackAPI=None, albumAPI_gw=None, albumAPI=None
     if not trackAPI:
         trackAPI = dz.get_track(track['id'])
     track['bpm'] = trackAPI['bpm']
-    if not 'replayGain' in track:
+    if not 'replayGain' in track or not track['replayGain']:
         track['replayGain'] = "{0:.2f} dB".format((float(trackAPI['gain']) + 18.4) * -1) if 'gain' in trackAPI else ""
     if not 'explicit' in track:
         track['explicit'] = trackAPI['explicit_lyrics']
