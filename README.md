@@ -24,13 +24,10 @@ Library:
 - Write the API Documentation
 
 WebUI:
-- Link Analyzer
 - Stylize and separate the options in the Settings tab
 - Home tab
-- Charts tab
 - Favorites / Playlists tab
 - About Section
-- Reset settings to default
 - Animations and style polishing
 - ?
 

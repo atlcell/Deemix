@@ -18,6 +18,7 @@ def initSettings():
         mkdir(configFolder)
     with open(path.join(currentFolder, 'default.json'), 'r') as d:
         defaultSettings = json.load(d)
+        defaultSettings['downloadLocation'] = path.join(localpaths.getHomeFolder(), 'deemix Music')
     if not path.isfile(path.join(configFolder, 'config.json')):
         with open(path.join(configFolder, 'config.json'), 'w') as f:
             json.dump(defaultSettings, f, indent=2)
@@ -35,6 +36,11 @@ def initSettings():
 def getSettings():
     global settings
     return settings
+
+
+def getDefaultSettings():
+    global defaultSettings
+    return defaultSettings
 
 
 def saveSettings(newSettings):
