@@ -263,7 +263,11 @@ class Deezer:
         return self.api_call('track/isrc:' + isrc)
 
     def get_charts_countries(self):
-        return self.get_user_playlist('637006841')
+        temp = self.get_user_playlist('637006841')['data']
+        result = sorted(temp, key=lambda k: k['title'])
+        if not result[0]['title'].startswith('Top'):
+            result = result[1:]
+        return result
 
     def get_charts(self):
         return self.api_call('chart')
