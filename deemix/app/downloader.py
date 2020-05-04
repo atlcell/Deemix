@@ -100,10 +100,12 @@ def formatDate(date, template):
     return template
 
 
-def getPreferredBitrate(filesize, bitrate, fallback=True):
+def getPreferredBitrate(dz, track, bitrate, fallback=True):
     if not fallback:
         formats = {9: 'flac', 3: 'mp3_320', 1: 'mp3_128', 15: '360_hq', 14: '360_mq', 13: '360_lq'}
-        if filesize[formats[int(bitrate)]] > 0:
+        request = get(dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], bitrate))
+        filesize = request.headers["Content-Length"]
+        if filesize != "0":
             return (int(bitrate), filesize[formats[int(bitrate)]])
         else:
             return (-100, 0)
@@ -112,18 +114,26 @@ def getPreferredBitrate(filesize, bitrate, fallback=True):
         selectedFormat = -200
         selectedFilesize = 0
         for format, formatNum in formats.items():
-            if formatNum <= int(bitrate) and filesize[format] > 0:
+            if formatNum <= int(bitrate):
+                request = get(dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], formatNum))
+                filesize = request.headers["Content-Length"]
+                if filesize == "0":
+                    continue
                 selectedFormat = formatNum
-                selectedFilesize = filesize[format]
+                selectedFilesize = int(filesize)
                 break
     else:
         formats = {'flac': 9, 'mp3_320': 3, 'mp3_128': 1}
         selectedFormat = 8
-        selectedFilesize = filesize['default']
+        selectedFilesize = track['filesize']['default']
         for format, formatNum in formats.items():
-            if formatNum <= int(bitrate) and filesize[format] > 0:
+            if formatNum <= int(bitrate):
+                request = get(dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], formatNum))
+                filesize = request.headers["Content-Length"]
+                if filesize == "0":
+                    continue
                 selectedFormat = formatNum
-                selectedFilesize = filesize[format]
+                selectedFilesize = int(filesize)
                 break
     return (selectedFormat, selectedFilesize)
 
@@ -456,7 +466,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
             return result
 
     # Get the selected bitrate
-    (format, filesize) = getPreferredBitrate(track['filesize'], bitrate, settings['fallbackBitrate'])
+    (format, filesize) = getPreferredBitrate(dz, track, bitrate, settings['fallbackBitrate'])
     if format == -100:
         print("ERROR: Track not found at desired bitrate. Enable fallback to lower bitrates to fix this issue.")
         result['error'] = {
