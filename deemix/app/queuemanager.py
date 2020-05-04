@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from deemix.app.downloader import download
 from deemix.utils.misc import getIDFromLink, getTypeFromLink, getBitrateInt
 
