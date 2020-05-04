@@ -44,7 +44,7 @@ def stream_track(dz, track, stream, trackAPI, queueItem, interface=None):
         return stream_track(dz, track, stream, trackAPI, queueItem, interface)
     request.raise_for_status()
     blowfish_key = str.encode(dz._get_blowfish_key(str(track['id'])))
-    complete = track['selectedFilesize']
+    complete = int(request.headers["Content-Length"])
     chunkLength = 0
     percentage = 0
     i = 0
@@ -104,38 +104,31 @@ def getPreferredBitrate(dz, track, bitrate, fallback=True):
     if not fallback:
         formats = {9: 'flac', 3: 'mp3_320', 1: 'mp3_128', 15: '360_hq', 14: '360_mq', 13: '360_lq'}
         request = get(dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], bitrate))
-        filesize = request.headers["Content-Length"]
-        if filesize != "0":
-            return (int(bitrate), filesize[formats[int(bitrate)]])
+        if request.headers["Content-Length"] != "0":
+            return int(bitrate)
         else:
-            return (-100, 0)
+            return -100
     if int(bitrate) in [13, 14, 15]:
         formats = {'360_hq': 15, '360_mq': 14, '360_lq': 13}
         selectedFormat = -200
-        selectedFilesize = 0
         for format, formatNum in formats.items():
             if formatNum <= int(bitrate):
                 request = get(dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], formatNum))
-                filesize = request.headers["Content-Length"]
-                if filesize == "0":
+                if request.headers["Content-Length"] == "0":
                     continue
                 selectedFormat = formatNum
-                selectedFilesize = int(filesize)
                 break
     else:
         formats = {'flac': 9, 'mp3_320': 3, 'mp3_128': 1}
         selectedFormat = 8
-        selectedFilesize = track['filesize']['default']
         for format, formatNum in formats.items():
             if formatNum <= int(bitrate):
                 request = get(dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], formatNum))
-                filesize = request.headers["Content-Length"]
-                if filesize == "0":
+                if request.headers["Content-Length"] == "0":
                     continue
                 selectedFormat = formatNum
-                selectedFilesize = int(filesize)
                 break
-    return (selectedFormat, selectedFilesize)
+    return selectedFormat
 
 
 def parseEssentialTrackData(track, trackAPI):
@@ -147,14 +140,6 @@ def parseEssentialTrackData(track, trackAPI):
         track['fallbackId'] = trackAPI['FALLBACK']['SNG_ID']
     else:
         track['fallbackId'] = 0
-    track['filesize'] = {}
-    track['filesize']['default'] = int(trackAPI['FILESIZE']) if 'FILESIZE' in trackAPI else 0
-    track['filesize']['mp3_128'] = int(trackAPI['FILESIZE_MP3_128']) if 'FILESIZE_MP3_128' in trackAPI else 0
-    track['filesize']['mp3_320'] = int(trackAPI['FILESIZE_MP3_320']) if 'FILESIZE_MP3_320' in trackAPI else 0
-    track['filesize']['flac'] = int(trackAPI['FILESIZE_FLAC']) if 'FILESIZE_FLAC' in trackAPI else 0
-    track['filesize']['360_lq'] = int(trackAPI['FILESIZE_MP4_RA1']) if 'FILESIZE_MP4_RA1' in trackAPI else 0
-    track['filesize']['360_mq'] = int(trackAPI['FILESIZE_MP4_RA2']) if 'FILESIZE_MP4_RA2' in trackAPI else 0
-    track['filesize']['360_hq'] = int(trackAPI['FILESIZE_MP4_RA3']) if 'FILESIZE_MP4_RA3' in trackAPI else 0
 
     return track
 
@@ -164,14 +149,13 @@ def getTrackData(dz, trackAPI_gw, trackAPI=None, albumAPI_gw=None, albumAPI=None
         trackAPI_gw['MD5_ORIGIN'] = dz.get_track_md5(trackAPI_gw['SNG_ID'])
 
     track = {}
-    track['title'] = trackAPI_gw['SNG_TITLE']
-    if 'VERSION' in trackAPI_gw and trackAPI_gw['VERSION']:
-        track['title'] += " " + trackAPI_gw['VERSION']
+    track['title'] = trackAPI_gw['SNG_TITLE'].strip()
+    if 'VERSION' in trackAPI_gw and trackAPI_gw['VERSION'] and not trackAPI_gw['VERSION'] in trackAPI_gw['SNG_TITLE']:
+        track['title'] += " " + trackAPI_gw['VERSION'].strip()
 
     track = parseEssentialTrackData(track, trackAPI_gw)
 
     if int(track['id']) < 0:
-        track['filesize'] = trackAPI_gw['FILESIZE']
         track['album'] = {}
         track['album']['id'] = 0
         track['album']['title'] = trackAPI_gw['ALB_TITLE']
@@ -466,7 +450,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
             return result
 
     # Get the selected bitrate
-    (format, filesize) = getPreferredBitrate(dz, track, bitrate, settings['fallbackBitrate'])
+    format = getPreferredBitrate(dz, track, bitrate, settings['fallbackBitrate'])
     if format == -100:
         print("ERROR: Track not found at desired bitrate. Enable fallback to lower bitrates to fix this issue.")
         result['error'] = {
@@ -490,7 +474,6 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                                            'error': "Track is not available in Reality Audio 360."})
         return result
     track['selectedFormat'] = format
-    track['selectedFilesize'] = filesize
     track['dateString'] = formatDate(track['date'], settings['dateFormat'])
     if settings['tags']['savePlaylistAsCompilation'] and "_EXTRA_PLAYLIST" in trackAPI:
         if 'dzcdn.net' in trackAPI["_EXTRA_PLAYLIST"]['picture_small']:
@@ -622,11 +605,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         return result
     except HTTPError:
         remove(writepath)
-        if track['selectedFormat'] == 9 and settings['fallbackBitrate']:
-            print("Track not available in flac, trying mp3")
-            track['filesize']['flac'] = 0
-            return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, interface=interface)
-        elif track['fallbackId'] != 0:
+        if track['fallbackId'] != 0:
             print("Track not available, using fallback id")
             trackNew = dz.get_track_gw(track['fallbackId'])
             if not 'MD5_ORIGIN' in trackNew:
