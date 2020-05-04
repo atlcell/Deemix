@@ -104,17 +104,20 @@ def getPreferredBitrate(dz, track, bitrate, fallback=True):
     if not fallback:
         formats = {9: 'flac', 3: 'mp3_320', 1: 'mp3_128', 15: '360_hq', 14: '360_mq', 13: '360_lq'}
         request = get(dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], bitrate))
-        if request.headers["Content-Length"] != "0":
-            return int(bitrate)
-        else:
+        try:
+            request.raise_for_status()
+        except HTTPError:
             return -100
+        return int(bitrate)
     if int(bitrate) in [13, 14, 15]:
         formats = {'360_hq': 15, '360_mq': 14, '360_lq': 13}
         selectedFormat = -200
         for format, formatNum in formats.items():
             if formatNum <= int(bitrate):
                 request = get(dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], formatNum))
-                if request.headers["Content-Length"] == "0":
+                try:
+                    request.raise_for_status()
+                except HTTPError:
                     continue
                 selectedFormat = formatNum
                 break
@@ -124,7 +127,9 @@ def getPreferredBitrate(dz, track, bitrate, fallback=True):
         for format, formatNum in formats.items():
             if formatNum <= int(bitrate):
                 request = get(dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], formatNum))
-                if request.headers["Content-Length"] == "0":
+                try:
+                    request.raise_for_status()
+                except HTTPError:
                     continue
                 selectedFormat = formatNum
                 break
