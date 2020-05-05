@@ -14,6 +14,23 @@ class SpotifyHelper:
         self.credentials = {}
         self.spotifyEnabled = False
         self.sp = None
+        self.emptyPlaylist = {
+            'collaborative': False,
+            'description': "",
+            'external_urls': {'spotify': None},
+            'followers': {'total': 0, 'href': None},
+            'id': None,
+            'images': [],
+            'name': "Something went wrong",
+            'owner': {
+                'display_name': "Error",
+                'id': None
+            },
+            'public': True,
+            'tracks' : [],
+            'type': 'playlist',
+            'uri': None
+        }
         self.initCredentials()
 
     def initCredentials(self):
@@ -58,24 +75,28 @@ class SpotifyHelper:
         if len(spotify_obj['images']):
             url = spotify_obj['images'][0]['url']
         else:
-            url = "https://e-cdns-images.dzcdn.net/images/cover/d41d8cd98f00b204e9800998ecf8427e/75x75-000000-80-0-0.jpg"
+            url = False
         deezer_obj = {
             'checksum': spotify_obj['snapshot_id'],
             'collaborative': spotify_obj['collaborative'],
             'creation_date': "????-00-00",
-            'creator': {'id': spotify_obj['owner']['id'], 'name': spotify_obj['owner']['display_name'],
-                        'tracklist': spotify_obj['owner']['href'], 'type': "user"},
+            'creator': {
+                'id': spotify_obj['owner']['id'],
+                'name': spotify_obj['owner']['display_name'],
+                'tracklist': spotify_obj['owner']['href'],
+                'type': "user"
+            },
             'description': spotify_obj['description'],
             'duration': 0,
-            'fans': spotify_obj['followers']['total'],
+            'fans': spotify_obj['followers']['total'] if 'followers' in spotify_obj else 0,
             'id': spotify_obj['id'],
             'is_loved_track': False,
             'link': spotify_obj['external_urls']['spotify'],
             'nb_tracks': spotify_obj['tracks']['total'],
             'picture': url,
-            'picture_big': url,
-            'picture_medium': url,
             'picture_small': url,
+            'picture_medium': url,
+            'picture_big': url,
             'picture_xl': url,
             'public': spotify_obj['public'],
             'share': spotify_obj['external_urls']['spotify'],
@@ -83,6 +104,11 @@ class SpotifyHelper:
             'tracklist': spotify_obj['tracks']['href'],
             'type': "playlist"
         }
+        if not url:
+            deezer_obj['picture_small'] = "https://e-cdns-images.dzcdn.net/images/cover/d41d8cd98f00b204e9800998ecf8427e/56x56-000000-80-0-0.jpg"
+            deezer_obj['picture_medium'] = "https://e-cdns-images.dzcdn.net/images/cover/d41d8cd98f00b204e9800998ecf8427e/250x250-000000-80-0-0.jpg"
+            deezer_obj['picture_big'] = "https://e-cdns-images.dzcdn.net/images/cover/d41d8cd98f00b204e9800998ecf8427e/500x500-000000-80-0-0.jpg"
+            deezer_obj['picture_xl'] = "https://e-cdns-images.dzcdn.net/images/cover/d41d8cd98f00b204e9800998ecf8427e/1000x1000-000000-80-0-0.jpg"
         return deezer_obj
 
     def get_trackid_spotify(self, dz, track_id, fallbackSearch, spotifyTrack=None):
@@ -173,6 +199,31 @@ class SpotifyHelper:
             deezerTrack['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
             result['collection'].append(deezerTrack)
         return result
+
+    def get_user_playlists(self, user):
+        if not self.spotifyEnabled:
+            raise spotifyFeaturesNotEnabled
+        result = []
+        playlists = self.sp.user_playlists(user)
+        while playlists:
+            for playlist in playlists['items']:
+                result.append(self._convert_playlist_structure(playlist))
+            if playlists['next']:
+                playlists = self.sp.next(playlists)
+            else:
+                playlists = None
+        return result
+
+    def get_playlist_tracklist(self, id):
+        if not self.spotifyEnabled:
+            raise spotifyFeaturesNotEnabled
+        playlist = self.sp.playlist(id)
+        tracklist = playlist['tracks']['items']
+        while playlist['tracks']['next']:
+            playlist['tracks'] = self.sp.next(playlist['tracks'])
+            tracklist += playlist['tracks']['items']
+        playlist['tracks'] = tracklist
+        return playlist
 
 
 class spotifyFeaturesNotEnabled(Exception):
