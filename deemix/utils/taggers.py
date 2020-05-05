@@ -97,10 +97,10 @@ def tagFLAC(stream, track, save):
         tag["DISCTOTAL"] = str(track['album']['discTotal'])
     if save['genre']:
         tag["GENRE"] = track['album']['genre']
-    if save['year']:
-        tag["YEAR"] = str(track['date']['year'])
     if save['date']:
         tag["DATE"] = track['dateString']
+    elif save['year']:
+        tag["YEAR"] = str(track['date']['year'])
     if save['length']:
         tag["LENGTH"] = str(track['duration'])
     if save['bpm']:
