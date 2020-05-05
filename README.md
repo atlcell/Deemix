@@ -27,14 +27,28 @@ Wait for it to finish, then run the `start.bat`<br>
 ## What's left to do?
 Library:
 - Add a log system
-- Adding whatever is missing for the webUI
 - Write the API Documentation
 
-WebUI:
-- Stylize and separate the options in the Settings tab
+in the WebUI:
+- Lock the UI until it connects to the socket.io server
+- Make the UI look coherent
 - Home tab
-- About Section
-- Animations and style polishing
+	- Login warning if the user is not logged in
+	- Loading circle while the ui is still not connected to the server
+- Search tab
+	- Hide buttons and add a placeholder before search
+	- Better loading feadback fot the user (maybe with a loading circle)
+- Charts tab
+  - Fix Country selection display
+	- On country selection, move scrolled window to top
+- Link Analyzer
+	- Add placeholder before link analyzer
+	- Implement large header (like in the artist and tracklist tab)
+- Settings tab
+	- Stylize and separate the options
+	- Maybe tabbing the section for easy navigation
+- About tab
+	- Write stuff about the app
 - ?
 
 # License
