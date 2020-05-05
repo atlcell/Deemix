@@ -2,7 +2,7 @@
 import os.path as path
 from os import mkdir
 
-import deemix.utils.localpaths as localpaths
+from deemix.utils import localpaths
 from deemix.api.deezer import Deezer
 from deemix.app.queuemanager import addToQueue
 from deemix.app.spotify import SpotifyHelper
