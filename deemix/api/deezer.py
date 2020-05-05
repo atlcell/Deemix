@@ -253,17 +253,137 @@ class Deezer:
     def get_lyrics_gw(self, sng_id):
         return self.gw_api_call('song.getLyrics', {'sng_id': sng_id})["results"]
 
-    def get_user_playlist(self, user_id):
+    def get_user_playlists_gw(self, user_id):
+        data = self.gw_api_call('deezer.pageProfile', {'user_id': user_id, 'tab': 'playlists', 'nb': -1})['results']['TAB']['playlists']['data']
+        result = []
+        for playlist in data:
+            item = {
+                'id': playlist['PLAYLIST_ID'],
+                'title': playlist['TITLE'],
+                'nb_tracks': playlist['NB_SONG'],
+                'link': 'https://www.deezer.com/playlist/'+playlist['PLAYLIST_ID'],
+                'picture': 'https://api.deezer.com/playlist/'+playlist['PLAYLIST_ID']+'/image',
+                'picture_small': 'https://e-cdns-images.dzcdn.net/images/'+playlist['PICTURE_TYPE']+'/'+playlist['PLAYLIST_PICTURE']+'/56x56-000000-80-0-0.jpg',
+                'picture_medium': 'https://e-cdns-images.dzcdn.net/images/'+playlist['PICTURE_TYPE']+'/'+playlist['PLAYLIST_PICTURE']+'/250x250-000000-80-0-0.jpg',
+                'picture_big': 'https://e-cdns-images.dzcdn.net/images/'+playlist['PICTURE_TYPE']+'/'+playlist['PLAYLIST_PICTURE']+'/500x500-000000-80-0-0.jpg',
+                'picture_xl': 'https://e-cdns-images.dzcdn.net/images/'+playlist['PICTURE_TYPE']+'/'+playlist['PLAYLIST_PICTURE']+'/1000x1000-000000-80-0-0.jpg',
+                'tracklist': 'https://api.deezer.com/playlist/'+playlist['PLAYLIST_ID']+'/tracks',
+                'creator': {
+                    'id': playlist['PARENT_USER_ID'],
+                    'name': playlist['PARENT_USERNAME'] if 'PARENT_USERNAME' in playlist else self.user['name']
+                },
+                'type': 'playlist'
+            }
+            result.append(item)
+        return result
+
+    def get_user_albums_gw(self, user_id):
+        data = self.gw_api_call('deezer.pageProfile', {'user_id': user_id, 'tab': 'albums', 'nb': -1})['results']['TAB']['albums']['data']
+        result = []
+        for album in data:
+            item = {
+                'id': album['ALB_ID'],
+                'title': album['ALB_TITLE'],
+                'link': 'https://www.deezer.com/album/'+album['ALB_ID'],
+                'cover': 'https://api.deezer.com/album/'+album['ALB_ID']+'/image',
+                'cover_small': 'https://e-cdns-images.dzcdn.net/images/cover/'+album['ALB_PICTURE']+'/56x56-000000-80-0-0.jpg',
+                'cover_medium': 'https://e-cdns-images.dzcdn.net/images/cover/'+album['ALB_PICTURE']+'/250x250-000000-80-0-0.jpg',
+                'cover_big': 'https://e-cdns-images.dzcdn.net/images/cover/'+album['ALB_PICTURE']+'/500x500-000000-80-0-0.jpg',
+                'cover_xl': 'https://e-cdns-images.dzcdn.net/images/cover/'+album['ALB_PICTURE']+'/1000x1000-000000-80-0-0.jpg',
+                'tracklist': 'https://api.deezer.com/album/'+album['ALB_ID']+'/tracks',
+                'explicit_lyrics': album['EXPLICIT_ALBUM_CONTENT']['EXPLICIT_LYRICS_STATUS'] > 0,
+                'artist': {
+                    'id': album['ART_ID'],
+                    'name': album['ART_NAME'],
+                    'picture': 'https://api.deezer.com/artist/'+album['ART_ID']+'image',
+                    'tracklist': 'https://api.deezer.com/artist/'+album['ART_ID']+'/top?limit=50'
+                },
+                'type': 'album'
+            }
+            result.append(item)
+        return result
+
+    def get_user_artists_gw(self, user_id):
+        data = self.gw_api_call('deezer.pageProfile', {'user_id': user_id, 'tab': 'artists', 'nb': -1})['results']['TAB']['artists']['data']
+        result = []
+        for artist in data:
+            item = {
+                'id': artist['ART_ID'],
+                'name': artist['ART_NAME'],
+                'link': 'https://www.deezer.com/artist/'+artist['ART_ID'],
+                'picture': 'https://api.deezer.com/artist/'+artist['ART_ID']+'/image',
+                'picture_small': 'https://e-cdns-images.dzcdn.net/images/artist/'+artist['ART_ID']+'/56x56-000000-80-0-0.jpg',
+                'picture_medium': 'https://e-cdns-images.dzcdn.net/images/artist/'+artist['ART_ID']+'/250x250-000000-80-0-0.jpg',
+                'picture_big': 'https://e-cdns-images.dzcdn.net/images/artist/'+artist['ART_ID']+'/500x500-000000-80-0-0.jpg',
+                'picture_xl': 'https://e-cdns-images.dzcdn.net/images/artist/'+artist['ART_ID']+'/1000x1000-000000-80-0-0.jpg',
+                'nb_fan': artist['NB_FAN'],
+                'tracklist': 'https://api.deezer.com/artist/'+artist['ART_ID']+'/top?limit=50',
+                'type': 'artist'
+            }
+            result.append(item)
+        return result
+
+    def get_user_tracks_gw(self, user_id):
+        data = self.gw_api_call('deezer.pageProfile', {'user_id': user_id, 'tab': 'loved', 'nb': -1})['results']['TAB']['loved']['data']
+        result = []
+        for track in data:
+            item = {
+                'id': track['SNG_ID'],
+				'title': track['SNG_TITLE'],
+				'link': 'https://www.deezer.com/track/'+track['SNG_ID'],
+				'duration': track['DURATION'],
+				'rank': track['RANK_SNG'],
+				'explicit_lyrics': int(track['EXPLICIT_LYRICS']) > 0,
+				'explicit_content_lyrics': track['EXPLICIT_TRACK_CONTENT']['EXPLICIT_COVER_STATUS'],
+				'explicit_content_cover': track['EXPLICIT_TRACK_CONTENT']['EXPLICIT_LYRICS_STATUS'],
+				'time_add': track['DATE_ADD'],
+				'album': {
+						'id': track['ALB_ID'],
+						'title': track['ALB_TITLE'],
+						'cover': 'https://api.deezer.com/album/'+track['ALB_ID']+'/image',
+						'cover_small': 'https://e-cdns-images.dzcdn.net/images/cover/'+track['ALB_PICTURE']+'/56x56-000000-80-0-0.jpg',
+						'cover_medium': 'https://e-cdns-images.dzcdn.net/images/cover/'+track['ALB_PICTURE']+'/250x250-000000-80-0-0.jpg',
+						'cover_big': 'https://e-cdns-images.dzcdn.net/images/cover/'+track['ALB_PICTURE']+'/500x500-000000-80-0-0.jpg',
+						'cover_xl': 'https://e-cdns-images.dzcdn.net/images/cover/'+track['ALB_PICTURE']+'/1000x1000-000000-80-0-0.jpg',
+						'tracklist': 'https://api.deezer.com/album/'+track['ALB_ID']+'/tracks',
+						'type': 'album'
+				},
+				'artist': {
+						'id': track['ART_ID'],
+						'name': track['ART_NAME'],
+						'picture': 'https://api.deezer.com/artist/'+track['ART_ID']+'/image',
+						'picture_small': 'https://e-cdns-images.dzcdn.net/images/artist/'+track['ART_PICTURE']+'/56x56-000000-80-0-0.jpg',
+						'picture_medium': 'https://e-cdns-images.dzcdn.net/images/artist/'+track['ART_PICTURE']+'/250x250-000000-80-0-0.jpg',
+						'picture_big': 'https://e-cdns-images.dzcdn.net/images/artist/'+track['ART_PICTURE']+'/500x500-000000-80-0-0.jpg',
+						'picture_xl': 'https://e-cdns-images.dzcdn.net/images/artist/'+track['ART_PICTURE']+'/1000x1000-000000-80-0-0.jpg',
+						'tracklist': 'https://api.deezer.com/artist/'+track['ART_ID']+'/top?limit=50',
+						'type': 'artist'
+				},
+				'type': 'track'
+            }
+            result.append(item)
+        return result
+
+    def get_user_playlists(self, user_id):
         return self.api_call('user/' + str(user_id) + '/playlists', {'limit': -1})
 
-    def get_track(self, user_id):
-        return self.api_call('track/' + str(user_id))
+    def get_user_albums(self, user_id):
+        return self.api_call('user/' + str(user_id) + '/albums', {'limit': -1})
+
+    def get_user_artists(self, user_id):
+        return self.api_call('user/' + str(user_id) + '/artists', {'limit': -1})
+
+    def get_user_tracks(self, user_id):
+        return self.api_call('user/' + str(user_id) + '/tracks', {'limit': -1})
+
+    def get_track(self, sng_id):
+        return self.api_call('track/' + str(sng_id))
 
     def get_track_by_ISRC(self, isrc):
         return self.api_call('track/isrc:' + isrc)
 
     def get_charts_countries(self):
-        temp = self.get_user_playlist('637006841')['data']
+        temp = self.get_user_playlists('637006841')['data']
         result = sorted(temp, key=lambda k: k['title'])
         if not result[0]['title'].startswith('Top'):
             result = result[1:]
