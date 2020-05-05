@@ -95,7 +95,44 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
             result['collection'].append(trackAPI)
 
     elif type == "playlist":
-        playlistAPI = dz.get_playlist(id)
+        try:
+            playlistAPI = dz.get_playlist(id)
+        except:
+            playlistAPI = dz.get_playlist_gw(id)['results']['DATA']
+            newPlaylist = {
+                'id': playlistAPI['PLAYLIST_ID'],
+                'title': playlistAPI['TITLE'],
+                'description': playlistAPI['DESCRIPTION'],
+                'duration': playlistAPI['DURATION'],
+                'public': False,
+                'is_loved_track': False,
+                'collaborative': False,
+                'nb_tracks': playlistAPI['NB_SONG'],
+                'fans': playlistAPI['NB_FAN'],
+                'link': "https://www.deezer.com/playlist/"+playlistAPI['PLAYLIST_ID'],
+                'share': None,
+                'picture': "https://api.deezer.com/playlist/"+playlistAPI['PLAYLIST_ID']+"/image",
+                'picture_small': "https://cdns-images.dzcdn.net/images/"+playlistAPI['PICTURE_TYPE']+"/"+playlistAPI['PLAYLIST_PICTURE']+"/56x56-000000-80-0-0.jpg",
+                'picture_medium': "https://cdns-images.dzcdn.net/images/"+playlistAPI['PICTURE_TYPE']+"/"+playlistAPI['PLAYLIST_PICTURE']+"/250x250-000000-80-0-0.jpg",
+                'picture_big': "https://cdns-images.dzcdn.net/images/"+playlistAPI['PICTURE_TYPE']+"/"+playlistAPI['PLAYLIST_PICTURE']+"/500x500-000000-80-0-0.jpg",
+                'picture_xl': "https://cdns-images.dzcdn.net/images/"+playlistAPI['PICTURE_TYPE']+"/"+playlistAPI['PLAYLIST_PICTURE']+"/1000x1000-000000-80-0-0.jpg",
+                'checksum': playlistAPI['CHECKSUM'],
+                'tracklist': "https://api.deezer.com/playlist/"+playlistAPI['PLAYLIST_ID']+"/tracks",
+                'creation_date': playlistAPI['DATE_ADD'],
+                'creator': {
+                    'id': playlistAPI['PARENT_USER_ID'],
+                    'name': playlistAPI['PARENT_USERNAME'],
+                    'tracklist': "https://api.deezer.com/user/"+playlistAPI['PARENT_USER_ID']+"/flow",
+                    'type': "user"
+                },
+                'type': "playlist"
+            }
+            playlistAPI = newPlaylist
+        if not playlistAPI['public'] and playlistAPI['creator']['id'] != str(dz.user['id']):
+            print("You can't download others private playlists.")
+            result['error'] = "You can't download others private playlists."
+            return result
+
         playlistTracksAPI = dz.get_playlist_tracks_gw(id)
         playlistAPI['various_artist'] = dz.get_artist(5080)
 

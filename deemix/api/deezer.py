@@ -188,7 +188,7 @@ class Deezer:
         return self.gw_api_call('deezer.pageArtist', {'art_id': art_id})
 
     def get_playlist_gw(self, playlist_id):
-        return self.gw_api_call('deezer.pagePlaylist', {'playlist_id': playlist_id})
+        return self.gw_api_call('deezer.pagePlaylist', {'playlist_id': playlist_id, 'lang': 'en'})
 
     def get_playlist_tracks_gw(self, playlist_id):
         tracks_array = []
