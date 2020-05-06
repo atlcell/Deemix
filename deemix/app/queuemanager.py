@@ -26,6 +26,13 @@ if its an album/playlist
 	collection
 """
 
+def slimQueueItem(item):
+    light = item.copy()
+    if 'single' in light:
+        del light['single']
+    if 'collection' in light:
+        del light['collection']
+    return light
 
 def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interface=None):
     forcedBitrate = getBitrateInt(bitrate)
@@ -232,7 +239,7 @@ def addToQueue(dz, sp, url, settings, bitrate=None, interface=None):
                 print("Already in queue!")
                 continue
             if interface:
-                interface.send("addedToQueue", x)
+                interface.send("addedToQueue", slimQueueItem(x))
             queue.append(x['uuid'])
             queueList[x['uuid']] = x
     else:
@@ -247,7 +254,7 @@ def addToQueue(dz, sp, url, settings, bitrate=None, interface=None):
                                {'msg': f"{queueItem['title']} is already in queue!", 'icon': 'playlist_add_check'})
             return False
         if interface:
-            interface.send("addedToQueue", queueItem)
+            interface.send("addedToQueue", slimQueueItem(queueItem))
             interface.send("toast", {'msg': f"{queueItem['title']} added to queue", 'icon': 'playlist_add'})
         queue.append(queueItem['uuid'])
         queueList[queueItem['uuid']] = queueItem
