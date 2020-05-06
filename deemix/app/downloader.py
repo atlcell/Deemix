@@ -575,8 +575,9 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 
     # Save lyrics in lrc file
     if settings['syncedLyrics'] and 'sync' in track['lyrics']:
-        with open(os.path.join(filepath, filename + '.lrc'), 'w', "utf-8-sig") as f:
-            f.write(track['lyrics']['sync'])
+        print(filepath, filename)
+        with open(os.path.join(filepath, filename + '.lrc'), 'wb') as f:
+            f.write(track['lyrics']['sync'].encode('utf-8'))
 
     # Save local album art
     if coverPath:
@@ -761,15 +762,15 @@ def after_download(tracks, settings, queueItem):
     if not extrasPath:
         extrasPath = settings['downloadLocation']
     if settings['logErrors'] and errors != "":
-        with open(os.path.join(extrasPath, 'errors.txt'), 'w', "utf-8-sig") as f:
-            f.write(errors)
+        with open(os.path.join(extrasPath, 'errors.txt'), 'wb') as f:
+            f.write(errors.encode('utf-8'))
     if settings['logSearched'] and searched != "":
-        with open(os.path.join(extrasPath, 'searched.txt'), 'w', "utf-8-sig") as f:
-            f.write(searched)
+        with open(os.path.join(extrasPath, 'searched.txt'), 'wb') as f:
+            f.write(searched.encode('utf-8'))
     if settings['createM3U8File']:
-        with open(os.path.join(extrasPath, 'playlist.m3u8'), 'w', "utf-8-sig") as f:
+        with open(os.path.join(extrasPath, 'playlist.m3u8'), 'wb') as f:
             for line in playlist:
-                f.write(line + "\n")
+                f.write((line + "\n").encode('utf-8'))
     if settings['executeCommand'] != "":
         execute(settings['executeCommand'].replace("%folder%", extrasPath))
     return extrasPath
@@ -781,13 +782,13 @@ def after_download_single(track, settings, queueItem):
     if 'extrasPath' not in track:
         track['extrasPath'] = settings['downloadLocation']
     if settings['logSearched'] and 'searched' in track:
-        with open(os.path.join(track['extrasPath'], 'searched.txt'), 'w+', "utf-8-sig") as f:
-            orig = f.read()
+        with open(os.path.join(track['extrasPath'], 'searched.txt'), 'wb+') as f:
+            orig = f.read().decode('utf-8')
             if not track['searched'] in orig:
                 if orig != "":
                     orig += "\r\n"
                 orig += track['searched'] + "\r\n"
-            f.write(orig)
+            f.write(orig.encode('utf-8'))
     if settings['executeCommand'] != "":
         execute(settings['executeCommand'].replace("%folder%", track['extrasPath']))
     return track['extrasPath']
