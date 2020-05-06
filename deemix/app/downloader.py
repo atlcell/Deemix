@@ -575,7 +575,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 
     # Save lyrics in lrc file
     if settings['syncedLyrics'] and 'sync' in track['lyrics']:
-        with open(os.path.join(filepath, filename + '.lrc'), 'w') as f:
+        with open(os.path.join(filepath, filename + '.lrc'), 'w', "utf-8-sig") as f:
             f.write(track['lyrics']['sync'])
 
     # Save local album art
@@ -695,6 +695,7 @@ def download(dz, queueItem, interface=None):
         try:
             result = downloadTrackObj(dz, queueItem['single'], settings, bitrate, queueItem, interface=interface)
         except Exception as e:
+            traceback.print_exc()
             result = {'error': {
                 'message': str(e),
                 'data': {
@@ -760,13 +761,13 @@ def after_download(tracks, settings, queueItem):
     if not extrasPath:
         extrasPath = settings['downloadLocation']
     if settings['logErrors'] and errors != "":
-        with open(os.path.join(extrasPath, 'errors.txt'), 'w') as f:
+        with open(os.path.join(extrasPath, 'errors.txt'), 'w', "utf-8-sig") as f:
             f.write(errors)
     if settings['logSearched'] and searched != "":
-        with open(os.path.join(extrasPath, 'searched.txt'), 'w') as f:
+        with open(os.path.join(extrasPath, 'searched.txt'), 'w', "utf-8-sig") as f:
             f.write(searched)
     if settings['createM3U8File']:
-        with open(os.path.join(extrasPath, 'playlist.m3u8'), 'w') as f:
+        with open(os.path.join(extrasPath, 'playlist.m3u8'), 'w', "utf-8-sig") as f:
             for line in playlist:
                 f.write(line + "\n")
     if settings['executeCommand'] != "":
@@ -780,7 +781,7 @@ def after_download_single(track, settings, queueItem):
     if 'extrasPath' not in track:
         track['extrasPath'] = settings['downloadLocation']
     if settings['logSearched'] and 'searched' in track:
-        with open(os.path.join(track['extrasPath'], 'searched.txt'), 'w+') as f:
+        with open(os.path.join(track['extrasPath'], 'searched.txt'), 'w+', "utf-8-sig") as f:
             orig = f.read()
             if not track['searched'] in orig:
                 if orig != "":
