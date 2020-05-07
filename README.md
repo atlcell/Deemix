@@ -16,7 +16,7 @@ NOTE: If `python3` is "not a recognized command" try using `python` instead.<br>
 <br>
 After installing Python open a terminal/command prompt and install the dependencies using `python3 -m pip install -r requirements.txt --user`<br>
 Run `python3 -m deemix --help` to see how to use the app in CLI mode.<br>
-Run `python3 server.py` to start the server and then connect to `127.0.0.1:33333`.<br>
+Run `python3 server.py` to start the server and then connect to `127.0.0.1:33333`. The GUI should show up.<br>
 Enjoy!<br>
 
 ### Easy Windows way
