@@ -11,12 +11,12 @@ But you can try to run it yourself!<br>
 
 ## Running instructions
 ### Standard way
-NOTE: Python 3 is required for this app. Make sure you tick the option to add python to PATH when installing.<br>
-NOTE: If `pip3` and `python3` are "not recognized commands" try using `pip` and `python` instead<br>
+NOTE: Python 3 is required for this app. Make sure you tick the option to add Python to PATH when installing.<br>
+NOTE: If `python3` is "not a recognized command" try using `python` instead.<br>
 <br>
-After installing python install the dependencies using `pip3 install -r requirements.txt`<br>
-Run `python3 -m deemix --help` to see how to use the app<br>
-Run `python3 server.py` to start the server and then connect to 127.0.0.1:33333.<br>
+After installing Python open a terminal/command prompt and install the dependencies using `python3 -m pip install -r requirements.txt --user`<br>
+Run `python3 -m deemix --help` to see how to use the app in CLI mode.<br>
+Run `python3 server.py` to start the server and then connect to `127.0.0.1:33333`.<br>
 Enjoy!<br>
 
 ### Easy Windows way
