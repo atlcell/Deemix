@@ -30,7 +30,7 @@ Library:
 - Write the API Documentation
 
 in the WebUI:
-- Lock the UI until it connects to the socket.io server
+- Install sass dependency
 - Make the UI look coherent
 - Home tab
 	- Login warning if the user is not logged in
