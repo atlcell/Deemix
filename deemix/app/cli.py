@@ -25,7 +25,7 @@ def login():
         mkdir(configFolder)
     if path.isfile(path.join(configFolder, '.arl')):
         with open(path.join(configFolder, '.arl'), 'r') as f:
-            arl = f.read()
+            arl = f.readline()
         if not dz.login_via_arl(arl):
             arl = requestValidArl()
     else:
