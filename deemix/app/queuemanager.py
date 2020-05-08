@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 from deemix.app.downloader import download
 from deemix.utils.misc import getIDFromLink, getTypeFromLink, getBitrateInt
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('deemix')
 
 queue = []
 queueList = {}
@@ -41,7 +45,7 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
     id = getIDFromLink(url, type)
     result = {}
     if type == None or id == None:
-        print("URL not recognized")
+        logger.warn("URL not recognized")
         result['error'] = "URL not recognized"
     elif type == "track":
         trackAPI = dz.get_track_gw(id)
@@ -136,7 +140,7 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
             }
             playlistAPI = newPlaylist
         if not playlistAPI['public'] and playlistAPI['creator']['id'] != str(dz.user['id']):
-            print("You can't download others private playlists.")
+            logger.warn("You can't download others private playlists.")
             result['error'] = "You can't download others private playlists."
             return result
 
@@ -182,31 +186,31 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
     elif type == "spotifytrack":
         result = {}
         if not sp.spotifyEnabled:
-            print("Spotify Features is not setted up correctly.")
+            logger.warn("Spotify Features is not setted up correctly.")
             result['error'] = "Spotify Features is not setted up correctly."
             return result
         track_id = sp.get_trackid_spotify(dz, id, settings['fallbackSearch'])
         if track_id != 0:
             return generateQueueItem(dz, sp, f'https://www.deezer.com/track/{track_id}', settings, bitrate)
         else:
-            print("Track not found on deezer!")
+            logger.warn("Track not found on deezer!")
             result['error'] = "Track not found on deezer!"
     elif type == "spotifyalbum":
         result = {}
         if not sp.spotifyEnabled:
-            print("Spotify Features is not setted up correctly.")
+            logger.warn("Spotify Features is not setted up correctly.")
             result['error'] = "Spotify Features is not setted up correctly."
             return result
         album_id = sp.get_albumid_spotify(dz, id)
         if album_id != 0:
             return generateQueueItem(dz, sp, f'https://www.deezer.com/album/{album_id}', settings, bitrate)
         else:
-            print("Album not found on deezer!")
+            logger.warn("Album not found on deezer!")
             result['error'] = "Album not found on deezer!"
     elif type == "spotifyplaylist":
         result = {}
         if not sp.spotifyEnabled:
-            print("Spotify Features is not setted up correctly.")
+            logger.warn("Spotify Features is not setted up correctly.")
             result['error'] = "Spotify Features is not setted up correctly."
             return result
         if interface:
@@ -221,7 +225,7 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
             interface.send("toast", {'msg': f"Spotify playlist converted", 'icon': 'done', 'dismiss': True,
                                      'id': 'spotifyplaylist_' + str(id)})
     else:
-        print("URL not supported yet")
+        logger.warn("URL not supported yet")
         result['error'] = "URL not supported yet"
     return result
 
@@ -230,25 +234,29 @@ def addToQueue(dz, sp, url, settings, bitrate=None, interface=None):
     global currentItem, queueList, queue
     if not dz.logged_in:
         return "Not logged in"
+    logger.info("Generating queue item for: "+url)
     queueItem = generateQueueItem(dz, sp, url, settings, bitrate, interface=interface)
     if type(queueItem) is list:
         for x in queueItem:
             if 'error' in x:
+                logger.error(f"[{x['uuid']}] {x['error']}")
                 continue
             if x['uuid'] in list(queueList.keys()):
-                print("Already in queue!")
+                logger.warn(f"[{x['uuid']}] Already in queue, will not be added again.")
                 continue
             if interface:
                 interface.send("addedToQueue", slimQueueItem(x))
+            logger.info(f"[{x['uuid']}] Added to queue.")
             queue.append(x['uuid'])
             queueList[x['uuid']] = x
     else:
         if 'error' in queueItem:
+            logger.error(f"[{queueItem['uuid']}] {queueItem['error']}")
             if interface:
                 interface.send("toast", {'msg': queueItem['error'], 'icon': 'error'})
             return False
         if queueItem['uuid'] in list(queueList.keys()):
-            print("Already in queue!")
+            logger.warn(f"[{queueItem['uuid']}] Already in queue, will not be added again.")
             if interface:
                 interface.send("toast",
                                {'msg': f"{queueItem['title']} is already in queue!", 'icon': 'playlist_add_check'})
@@ -256,6 +264,7 @@ def addToQueue(dz, sp, url, settings, bitrate=None, interface=None):
         if interface:
             interface.send("addedToQueue", slimQueueItem(queueItem))
             interface.send("toast", {'msg': f"{queueItem['title']} added to queue", 'icon': 'playlist_add'})
+        logger.info(f"[{queueItem['uuid']}] Added to queue.")
         queue.append(queueItem['uuid'])
         queueList[queueItem['uuid']] = queueItem
     nextItem(dz, interface)
@@ -273,6 +282,7 @@ def nextItem(dz, interface=None):
             return None
         if interface:
             interface.send("startDownload", currentItem)
+        logger.info(f"[{currentItem}] Started downloading.")
         result = download(dz, queueList[currentItem], interface)
         callbackQueueDone(result)
 
@@ -283,6 +293,7 @@ def callbackQueueDone(result):
         del queueList[currentItem]
     else:
         queueComplete.append(currentItem)
+    logger.info(f"[{currentItem}] Finished downloading.")
     currentItem = ""
     nextItem(result['dz'], result['interface'])
 

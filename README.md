@@ -26,7 +26,6 @@ Wait for it to finish, then run the `start.bat`<br>
 
 ## What's left to do?
 Library:
-- Add a log system
 - Write the API Documentation
 
 in the WebUI:
