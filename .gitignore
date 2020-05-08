@@ -26,3 +26,7 @@ yarn-error.log*
 
 # Private configs
 /config.py
+
+# Builded javascript
+/public/js/bundle.js
+/public/js/bundle.js.map
