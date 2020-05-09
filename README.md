@@ -32,7 +32,7 @@ in the WebUI:
 - Install sass dependency
 - Make the UI look coherent
 - Home tab
-	- Login warning if the user is not logged in
+	- Fix style for home tab
 - Search tab
 	- Hide buttons and add a placeholder before search
 	- Better loading feadback fot the user (maybe with a loading circle)
