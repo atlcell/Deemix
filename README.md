@@ -34,7 +34,7 @@ in the WebUI:
 - Home tab
 	- Fix style for home tab
 - Search tab
-	- Hide buttons and add a placeholder before search
+	- Better style for placeholer before search
 	- Better loading feadback fot the user (maybe with a loading circle)
 - Charts tab
   - Fix Country selection display
