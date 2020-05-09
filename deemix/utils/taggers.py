@@ -66,7 +66,7 @@ def tagID3(stream, track, save):
     if save['cover'] and track['album']['picPath']:
         with open(track['album']['picPath'], 'rb') as f:
             tag.add(
-                APIC(3, 'image/jpeg' if track['album']['picPath'].endswith('jpg') else 'image/png', 3, data=f.read()))
+                APIC(3, 'image/jpeg' if track['album']['picPath'].endswith('jpg') else 'image/png', 3, desc='cover', data=f.read()))
 
     tag.save(stream, v1=2 if save['saveID3v1'] else 0, v2_version=3,
              v23_sep=None if save['useNullSeparator'] else ' / ')
