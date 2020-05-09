@@ -33,7 +33,6 @@ in the WebUI:
 - Make the UI look coherent
 - Home tab
 	- Login warning if the user is not logged in
-	- Loading circle while the ui is still not connected to the server
 - Search tab
 	- Hide buttons and add a placeholder before search
 	- Better loading feadback fot the user (maybe with a loading circle)
@@ -41,8 +40,7 @@ in the WebUI:
   - Fix Country selection display
 	- On country selection, move scrolled window to top
 - Link Analyzer
-	- Add placeholder before link analyzer
-	- Implement large header (like in the artist and tracklist tab)
+	- Better style for placeholer before analyzing
 - Settings tab
 	- Stylize and separate the options
 	- Maybe tabbing the section for easy navigation
