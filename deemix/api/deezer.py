@@ -389,8 +389,8 @@ class Deezer:
             result = result[1:]
         return result
 
-    def get_charts(self):
-        return self.api_call('chart')
+    def get_charts(self, limit=30):
+        return self.api_call('chart', {'limit': limit})
 
     def get_playlist(self, playlist_id):
         return self.api_call('playlist/' + str(playlist_id))
