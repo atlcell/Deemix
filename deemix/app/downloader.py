@@ -355,17 +355,21 @@ def getTrackData(dz, trackAPI_gw, trackAPI=None, albumAPI_gw=None, albumAPI=None
 
     # Create artists strings
     track['mainArtistsString'] = ""
+    track['commaArtistsString'] = ""
     if 'Main' in track['artist']:
         tot = len(track['artist']['Main'])
         for i, art in enumerate(track['artist']['Main']):
             track['mainArtistsString'] += art
+            track['commaArtistsString'] += art
             if tot != i + 1:
+                track['commaArtistsString'] += ", "
                 if tot - 1 == i + 1:
                     track['mainArtistsString'] += " & "
                 else:
                     track['mainArtistsString'] += ", "
     else:
         track['mainArtistsString'] = track['mainArtist']['name']
+        track['commaArtistsString'] = track['mainArtist']['name']
     if 'Featured' in track['artist']:
         tot = len(track['artist']['Featured'])
         track['featArtistsString'] = "feat. "
