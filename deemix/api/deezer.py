@@ -6,6 +6,7 @@ import requests
 from Cryptodome.Cipher import Blowfish, AES
 from Cryptodome.Hash import MD5
 from Cryptodome.Util.Padding import pad
+import re
 
 USER_AGENT_HEADER = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) " \
                     "Chrome/79.0.3945.130 Safari/537.36"
@@ -207,8 +208,9 @@ class Deezer:
         return tracks_array
 
     def search_main_gw(self, term):
+        term = term
         results = self.gw_api_call('deezer.pageSearch',
-                                   {"query": term, "start": 0, "nb": 10, "suggest": True, "artist_suggest": True,
+                                   {"query": clean_search_query(term), "start": 0, "nb": 10, "suggest": True, "artist_suggest": True,
                                     "top_tracks": True})['results']
         order = []
         for x in results['ORDER']:
@@ -247,7 +249,7 @@ class Deezer:
     def search_gw(self, term, type, start, nb=20):
         return \
             self.gw_api_call('search.music',
-                             {"query": term, "filter": "ALL", "output": type, "start": start, "nb": nb})[
+                             {"query": clean_search_query(term), "filter": "ALL", "output": type, "start": start, "nb": nb})[
                 'results']
 
     def get_lyrics_gw(self, sng_id):
@@ -414,7 +416,7 @@ class Deezer:
         return self.api_call('artist/' + str(artist_id) + '/albums', {'limit': -1})
 
     def search(self, term, search_type, limit=30, index=0):
-        return self.api_call('search/' + search_type, {'q': term, 'limit': limit, 'index': index})
+        return self.api_call('search/' + search_type, {'q': clean_search_query(term), 'limit': limit, 'index': index})
 
     def decrypt_track(self, track_id, input, output):
         response = open(input, 'rb')
@@ -492,6 +494,14 @@ class Deezer:
             return 0
         return 0
 
+    def clean_search_query(term):
+        term = str(term)
+        term = re.sub(r' feat[\.]? ', " ", term)
+        term = re.sub(r' ft[\.]? ', " ", term)
+        term = re.sub(r'\(feat[\.]? ', " ", term)
+        term = re.sub(r'\(ft[\.]? ', " ", term)
+        term = term.replace('&', " ").replace('–', "-").replace('—', "-")
+        return term
 
 class APIError(Exception):
     pass
