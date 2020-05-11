@@ -105,39 +105,31 @@ def formatDate(date, template):
 
 
 def getPreferredBitrate(dz, track, bitrate, fallback=True):
+    formatsnon360 = [9, 3, 1] # flac, mp3_320, mp3_128
+    formats360 = [15, 14, 13] # 360_hq, 360_mq, 360_lq
     if not fallback:
-        formats = {9: 'flac', 3: 'mp3_320', 1: 'mp3_128', 15: '360_hq', 14: '360_mq', 13: '360_lq'}
-        request = get(dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], bitrate))
-        try:
-            request.raise_for_status()
-        except HTTPError:
-            return -100
-        return int(bitrate)
-    if int(bitrate) in [13, 14, 15]:
-        formats = {'360_hq': 15, '360_mq': 14, '360_lq': 13}
-        selectedFormat = -200
-        for format, formatNum in formats.items():
-            if formatNum <= int(bitrate):
-                request = get(dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], formatNum))
-                try:
-                    request.raise_for_status()
-                except HTTPError:
-                    continue
-                selectedFormat = formatNum
-                break
+        errorNum = -100
+        formats = formats360
+        formats.extend(formatsnon360)
+    elif int(bitrate) in formats360:
+        errorNum = -200
+        formats = formats360
     else:
-        formats = {'flac': 9, 'mp3_320': 3, 'mp3_128': 1}
-        selectedFormat = 8
-        for format, formatNum in formats.items():
-            if formatNum <= int(bitrate):
-                request = get(dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], formatNum))
-                try:
-                    request.raise_for_status()
-                except HTTPError:
+        errorNum = 8
+        formats = formatsnon360
+
+    for formatNum in formats:
+        if formatNum <= int(bitrate):
+            request = get(dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], formatNum))
+            try:
+                request.raise_for_status()
+            except HTTPError: # if the format is not available, Deezer returns a 403 error
+                if fallback:
                     continue
-                selectedFormat = formatNum
-                break
-    return selectedFormat
+                else:
+                    return errorNum
+            return formatNum
+    return errorNum # fallback is enabled and loop went through all formats
 
 
 def parseEssentialTrackData(track, trackAPI):
@@ -493,7 +485,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
             interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track,
                                            'error': "Track is not available in Reality Audio 360."})
         return result
-    track['selectedFormat'] = format
+    track['errorNum'] = format
     track['dateString'] = formatDate(track['date'], settings['dateFormat'])
     if settings['tags']['savePlaylistAsCompilation'] and "_EXTRA_PLAYLIST" in trackAPI:
         if 'dzcdn.net' in trackAPI["_EXTRA_PLAYLIST"]['picture_small']:
@@ -587,7 +579,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         filepath = os.path.join(filepath, tempPath)
         filename = filename[filename.rfind(os.path.sep) + len(os.path.sep):]
     makedirs(filepath, exist_ok=True)
-    writepath = os.path.join(filepath, filename + extensions[track['selectedFormat']])
+    writepath = os.path.join(filepath, filename + extensions[track['errorNum']])
 
     # Save lyrics in lrc file
     if settings['syncedLyrics'] and 'sync' in track['lyrics']:
@@ -616,7 +608,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         result['playlistPosition'] = writepath[len(extrasPath):]
 
     track['downloadUrl'] = dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'],
-                                                   track['selectedFormat'])
+                                                   track['errorNum'])
     logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Downloading the track")
     try:
         with open(writepath, 'wb') as stream:
@@ -669,9 +661,9 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                                                'error': "Track not available on deezer's servers!"})
             return result
     logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Applying tags to the track")
-    if track['selectedFormat'] in [3, 1, 8]:
+    if track['errorNum'] in [3, 1, 8]:
         tagID3(writepath, track, settings['tags'])
-    elif track['selectedFormat'] == 9:
+    elif track['errorNum'] == 9:
         tagFLAC(writepath, track, settings['tags'])
     if 'searched' in track:
         result['searched'] = f'{track["mainArtist"]["name"]} - {track["title"]}'
