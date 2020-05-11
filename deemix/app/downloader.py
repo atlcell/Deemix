@@ -485,7 +485,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
             interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track,
                                            'error': "Track is not available in Reality Audio 360."})
         return result
-    track['errorNum'] = format
+    track['selectedFormat'] = format
     track['dateString'] = formatDate(track['date'], settings['dateFormat'])
     if settings['tags']['savePlaylistAsCompilation'] and "_EXTRA_PLAYLIST" in trackAPI:
         if 'dzcdn.net' in trackAPI["_EXTRA_PLAYLIST"]['picture_small']:
@@ -579,7 +579,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         filepath = os.path.join(filepath, tempPath)
         filename = filename[filename.rfind(os.path.sep) + len(os.path.sep):]
     makedirs(filepath, exist_ok=True)
-    writepath = os.path.join(filepath, filename + extensions[track['errorNum']])
+    writepath = os.path.join(filepath, filename + extensions[track['selectedFormat']])
 
     # Save lyrics in lrc file
     if settings['syncedLyrics'] and 'sync' in track['lyrics']:
@@ -608,7 +608,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         result['playlistPosition'] = writepath[len(extrasPath):]
 
     track['downloadUrl'] = dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'],
-                                                   track['errorNum'])
+                                                   track['selectedFormat'])
     logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Downloading the track")
     try:
         with open(writepath, 'wb') as stream:
@@ -661,9 +661,9 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                                                'error': "Track not available on deezer's servers!"})
             return result
     logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Applying tags to the track")
-    if track['errorNum'] in [3, 1, 8]:
+    if track['selectedFormat'] in [3, 1, 8]:
         tagID3(writepath, track, settings['tags'])
-    elif track['errorNum'] == 9:
+    elif track['selectedFormat'] == 9:
         tagFLAC(writepath, track, settings['tags'])
     if 'searched' in track:
         result['searched'] = f'{track["mainArtist"]["name"]} - {track["title"]}'
