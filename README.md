@@ -24,6 +24,12 @@ Download `install.bat` file to your PC and place it in the folder where you want
 Start the `install.bat` as administrator<br>
 Wait for it to finish, then run the `start.bat`<br>
 
+### Easy Mac way
+Download 'install_mac.sh' file to your Mac and place it in the folder where you want Deemix to live<br>
+Open a terminal and type "sh" and a space, then drag 'install_mac.sh' into your terminal window and press enter<br>
+The web-gui will launch when the installer is finished, and launching it in the future can be done with the generated file 'startdeemix.command'<br>
+To update to the latest build, run the generated file 'updatedeemix.command'<br>
+
 ## What's left to do?
 Library:
 - Write the API Documentation
