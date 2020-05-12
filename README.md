@@ -31,13 +31,11 @@ Library:
 in the WebUI:
 - Install sass dependency
 - Make the UI look coherent
-- Home tab
-	- Fix style for home tab
 - Search tab
 	- Better style for placeholer before search
 	- Better loading feadback fot the user (maybe with a loading circle)
 - Charts tab
-  - Fix Country selection display
+  - Move world chart on top
 	- On country selection, move scrolled window to top
 - Link Analyzer
 	- Better style for placeholer before analyzing
