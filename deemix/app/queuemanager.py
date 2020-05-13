@@ -51,7 +51,10 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
         trackAPI = dz.get_track_gw(id)
         if albumAPI:
             trackAPI['_EXTRA_ALBUM'] = albumAPI
-        trackAPI['FILENAME_TEMPLATE'] = settings['tracknameTemplate']
+        if settings['createSingleFolder']:
+            trackAPI['FILENAME_TEMPLATE'] = settings['albumTracknameTemplate']
+        else:
+            trackAPI['FILENAME_TEMPLATE'] = settings['tracknameTemplate']
         trackAPI['SINGLE_TRACK'] = True
 
         result['title'] = trackAPI['SNG_TITLE']

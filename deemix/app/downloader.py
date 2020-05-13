@@ -789,6 +789,10 @@ def after_download_single(track, settings, queueItem):
         return None
     if 'extrasPath' not in track:
         track['extrasPath'] = settings['downloadLocation']
+    if settings['saveArtwork'] and 'albumPath' in track:
+        downloadImage(track['albumURL'], track['albumPath'])
+    if settings['saveArtworkArtist'] and 'artistPath' in track:
+        downloadImage(track['artistURL'], track['artistPath'])
     if settings['logSearched'] and 'searched' in track:
         with open(os.path.join(track['extrasPath'], 'searched.txt'), 'wb+') as f:
             orig = f.read().decode('utf-8')
