@@ -166,6 +166,7 @@ def settingsRegexAlbum(foldername, album, settings, trackAPI):
     foldername = foldername.replace("%type%", fixName(album['recordType'][0].upper() + album['recordType'][1:].lower(),
                                                       settings['illegalCharacterReplacer']))
     foldername = foldername.replace("%upc%", album['barcode'])
+    foldername = foldername.replace("%explicit%", "(Explicit)" if album['explicit'] else "")
     foldername = foldername.replace("%label%", fixName(album['label'], settings['illegalCharacterReplacer']))
     if len(album['genre']) > 0:
         foldername = foldername.replace("%genre%", fixName(album['genre'][0], settings['illegalCharacterReplacer']))

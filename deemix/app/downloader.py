@@ -251,6 +251,7 @@ def getTrackData(dz, trackAPI_gw, trackAPI=None, albumAPI_gw=None, albumAPI=None
         track['album']['recordType'] = albumAPI['record_type']
         track['album']['barcode'] = albumAPI['upc'] if 'upc' in albumAPI else "Unknown"
         track['album']['label'] = albumAPI['label'] if 'label' in albumAPI else "Unknown"
+        track['album']['explicit'] = albumAPI['explicit_lyrics'] if 'explicit_lyrics' in albumAPI else False
         if not 'pic' in track['album']:
             track['album']['pic'] = albumAPI['cover_small'][albumAPI['cover_small'].find('cover/') + 6:-24]
         if 'release_date' in albumAPI:
@@ -283,6 +284,7 @@ def getTrackData(dz, trackAPI_gw, trackAPI=None, albumAPI_gw=None, albumAPI=None
         track['album']['recordType'] = "Album"
         track['album']['barcode'] = "Unknown"
         track['album']['label'] = albumAPI_gw['LABEL_NAME'] if 'LABEL_NAME' in albumAPI_gw else "Unknown"
+        track['album']['explicit'] = albumAPI_gw['EXPLICIT_ALBUM_CONTENT']['EXPLICIT_LYRICS_STATUS'] == 1 if 'EXPLICIT_ALBUM_CONTENT' in albumAPI_gw and 'EXPLICIT_LYRICS_STATUS' in albumAPI_gw['EXPLICIT_ALBUM_CONTENT'] else False
         if not 'pic' in track['album']:
             track['album']['pic'] = albumAPI_gw['ALB_PICTURE']
         if 'PHYSICAL_RELEASE_DATE' in albumAPI_gw:
