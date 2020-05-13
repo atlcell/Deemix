@@ -8,7 +8,7 @@ from tempfile import gettempdir
 from time import sleep
 
 from Cryptodome.Cipher import Blowfish
-from requests import get, head
+from requests import get
 from requests.exceptions import HTTPError, ConnectionError
 
 from deemix.api.deezer import APIError, USER_AGENT_HEADER
