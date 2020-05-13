@@ -8,7 +8,7 @@ from tempfile import gettempdir
 from time import sleep
 
 from Cryptodome.Cipher import Blowfish
-from requests import get
+from requests import get, head
 from requests.exceptions import HTTPError, ConnectionError
 
 from deemix.api.deezer import APIError, USER_AGENT_HEADER
@@ -120,7 +120,7 @@ def getPreferredBitrate(dz, track, bitrate, fallback=True):
 
     for formatNum in formats:
         if formatNum <= int(bitrate):
-            request = get(dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], formatNum))
+            request = head(dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], formatNum))
             try:
                 request.raise_for_status()
             except HTTPError: # if the format is not available, Deezer returns a 403 error
