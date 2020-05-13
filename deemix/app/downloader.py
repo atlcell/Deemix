@@ -120,7 +120,7 @@ def getPreferredBitrate(dz, track, bitrate, fallback=True):
 
     for formatNum in formats:
         if formatNum <= int(bitrate):
-            request = head(dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], formatNum))
+            request = get(dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], formatNum), stream=True)
             try:
                 request.raise_for_status()
             except HTTPError: # if the format is not available, Deezer returns a 403 error
