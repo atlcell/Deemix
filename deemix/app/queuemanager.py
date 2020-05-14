@@ -242,7 +242,7 @@ def addToQueue(dz, sp, url, settings, bitrate=None, interface=None):
     if type(queueItem) is list:
         for x in queueItem:
             if 'error' in x:
-                logger.error(f"[{x['uuid']}] {x['error']}")
+                logger.error(f"[{url}] {x['error']}")
                 continue
             if x['uuid'] in list(queueList.keys()):
                 logger.warn(f"[{x['uuid']}] Already in queue, will not be added again.")
@@ -254,7 +254,7 @@ def addToQueue(dz, sp, url, settings, bitrate=None, interface=None):
             queueList[x['uuid']] = x
     else:
         if 'error' in queueItem:
-            logger.error(f"[{queueItem['uuid']}] {queueItem['error']}")
+            logger.error(f"[{url}] {queueItem['error']}")
             if interface:
                 interface.send("toast", {'msg': queueItem['error'], 'icon': 'error'})
             return False
