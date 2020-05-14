@@ -40,8 +40,6 @@ in the WebUI:
 - Search tab
 	- Better style for placeholer before search
 	- Better loading feadback fot the user (maybe with a loading circle)
-- Charts tab
-	- On country selection, move scrolled window to top
 - Link Analyzer
 	- Better style for placeholer before analyzing
 - Settings tab
