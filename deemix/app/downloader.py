@@ -84,7 +84,15 @@ def downloadImage(url, path):
             sleep(1)
             return downloadImage(url, path)
         except HTTPError:
-            logger.warn("Couldn't download Image")
+            if 'cdns-images.dzcdn.net' in url:
+                urlBase = url[:url.rfind("/")+1]
+                pictureUrl = url[len(urlBase):]
+                pictureSize = int(pictureUrl[:pictureUrl.find("x")])
+                if pictureSize > 1400:
+                    logger.warn("Couldn't download "+str(pictureSize)+"x"+str(pictureSize)+" image, falling back to 1400x1400")
+                    sleep(1)
+                    return  downloadImage(urlBase+pictureUrl.replace(str(pictureSize)+"x"+str(pictureSize), '1400x1400'), path)
+            logger.error("Couldn't download Image: "+url)
         remove(path)
         return None
     else:
