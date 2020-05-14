@@ -14,21 +14,21 @@ But you can try to run it yourself!<br>
 NOTE: Python 3 is required for this app. Make sure you tick the option to add Python to PATH when installing.<br>
 NOTE: If `python3` is "not a recognized command" try using `python` instead.<br>
 <br>
-After installing Python open a terminal/command prompt and install the dependencies using `python3 -m pip install -r requirements.txt --user`<br>
-Run `python3 -m deemix --help` to see how to use the app in CLI mode.<br>
-Run `python3 server.py` to start the server and then connect to `127.0.0.1:9666`. The GUI should show up.<br>
-Enjoy!<br>
+1. After installing Python open a terminal/command prompt and install the dependencies using `python3 -m pip install -r requirements.txt --user`<br>
+2. Run `python3 -m deemix --help` to see how to use the app in CLI mode.<br>
+3. Run `python3 server.py` to start the server and then connect to `127.0.0.1:9666`. The GUI should show up.<br>
+4. Enjoy!<br>
 
 ### Easy Windows way
-Download `install.bat` file to your PC and place it in the folder where you want Deemix to live<br>
-Start the `install.bat` as administrator<br>
-Wait for it to finish, then run the `start.bat`<br>
+1. Download `install.bat` file to your PC and place it in the folder where you want Deemix to live<br>
+2. Start the `install.bat` as administrator<br>
+3. Wait for it to finish, then run the `start.bat`<br>
 
 ### Easy Mac way
-Download `install_mac.sh` file to your Mac and place it in the folder where you want Deemix to live<br>
-Open a terminal and type `sh` and a space, then drag `install_mac.sh` into your terminal window and press `enter`<br>
-The web-gui will launch when the installer is finished, and launching it in the future can be done with the generated file `startdeemix.command`<br>
-To update to the latest build, run the generated file `updatedeemix.command`<br>
+1. Download `install_mac.sh` file to your Mac and place it in the folder where you want Deemix to live<br>
+2. Open a terminal and type `sh` and a space, then drag `install_mac.sh` into your terminal window and press `enter`<br>
+3. The web-gui will launch when the installer is finished, and launching it in the future can be done with the generated file `startdeemix.command`<br>
+4. To update to the latest build, run the generated file `updatedeemix.command`<br>
 
 ## What's left to do?
 Library:
