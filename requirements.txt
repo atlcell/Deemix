@@ -5,3 +5,4 @@ requests
 spotipy
 flask
 flask-socketio
+gevent-websocket
