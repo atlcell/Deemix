@@ -7,11 +7,12 @@ from deemix.app.settings import initSettings
 
 @click.command()
 @click.option('-b', '--bitrate', default=None, help='Overwrites the default bitrate selected')
-@click.argument('url')
+@click.argument('url', nargs=-1, required=True)
 def download(bitrate, url):
     settings = initSettings()
     app.login()
-    app.downloadLink(url, settings, bitrate)
+    for u in url:
+        app.downloadLink(u, settings, bitrate)
     click.echo("All done!")
 
 
