@@ -41,7 +41,6 @@ in the WebUI:
 	- Better style for placeholer before search
 	- Better loading feadback fot the user (maybe with a loading circle)
 - Charts tab
-  - Move world chart on top
 	- On country selection, move scrolled window to top
 - Link Analyzer
 	- Better style for placeholer before analyzing
