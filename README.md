@@ -35,21 +35,24 @@ Library:
 - Write the API Documentation
 
 in the WebUI:
-- Install sass dependency
 - Make the UI look coherent
+  - Style text inputs
+  - Style checkboxes
+  - Style buttons
 - Search tab
-	- Better style for placeholer before search
+	- Better placeholer before search
 	- Better loading feadback fot the user (maybe with a loading circle)
 - Link Analyzer
-	- Better style for placeholer before analyzing
+	- Better placeholer before analyzing
 - Settings tab
-	- Stylize and separate the options
 	- Maybe tabbing the section for easy navigation
 - About tab
 	- Write stuff about the app
+- Install sass dependency
 - ?
 
 Application:
+- Feedback when the link analysis did not work (e.g. with playlist)
 - Add an auto updater
 - Add installer for windows
 - AppImage builds
