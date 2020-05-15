@@ -3,6 +3,7 @@ import click
 
 import deemix.app.cli as app
 from deemix.app.settings import initSettings
+from os.path import isfile
 
 
 @click.command()
@@ -11,6 +12,10 @@ from deemix.app.settings import initSettings
 def download(bitrate, url):
     settings = initSettings()
     app.login()
+    if isfile(url[0]):
+        filename = url[0]
+        with open(filename) as f:
+            url = f.readlines()
     for u in url:
         app.downloadLink(u, settings, bitrate)
     click.echo("All done!")
