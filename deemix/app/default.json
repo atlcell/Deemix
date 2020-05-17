@@ -21,6 +21,8 @@
   "fallbackSearch": false,
   "logErrors": true,
   "logSearched": false,
+  "saveDownloadQueue": false,
+  "overwriteFile": "n",
   "createM3U8File": false,
   "syncedLyrics": false,
   "embeddedArtworkSize": 800,

@@ -30,6 +30,22 @@ if its an album/playlist
 	collection
 """
 
+def resetQueueItems(items, q):
+    result = {}
+    for item in items.keys():
+        result[item] = items[item].copy()
+        if item in q:
+            result[item]['downloaded'] = 0
+            result[item]['failed'] = 0
+            result[item]['progress'] = 0
+    return result
+
+def slimQueueItems(items):
+    result = {}
+    for item in items.keys():
+        result[item] = slimQueueItem(items[item])
+    return result
+
 def slimQueueItem(item):
     light = item.copy()
     if 'single' in light:
@@ -304,6 +320,14 @@ def callbackQueueDone(result):
 def getQueue():
     global currentItem, queueList, queue, queueComplete
     return (queue, queueComplete, queueList, currentItem)
+
+
+def restoreQueue(pqueue, pqueueComplete, pqueueList, dz, interface):
+    global currentItem, queueList, queue, queueComplete
+    queueComplete = pqueueComplete
+    queueList = pqueueList
+    queue = pqueue
+    nextItem(dz, interface)
 
 
 def removeFromQueue(uuid, interface=None):

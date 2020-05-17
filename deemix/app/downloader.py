@@ -65,7 +65,7 @@ def stream_track(dz, track, stream, trackAPI, queueItem, interface=None):
         else:
             chunkProgres = (len(chunk) / complete) / trackAPI['SIZE'] * 100
             downloadPercentage += chunkProgres
-        if round(downloadPercentage) != lastPercentage and round(percentage) % 5 == 0:
+        if round(downloadPercentage) != lastPercentage and round(downloadPercentage) % 2 == 0:
             lastPercentage = round(downloadPercentage)
             if interface:
                 queueItem['progress'] = lastPercentage
@@ -73,8 +73,21 @@ def stream_track(dz, track, stream, trackAPI, queueItem, interface=None):
         i += 1
 
 
-def downloadImage(url, path):
-    if not os.path.isfile(path):
+def trackCompletePercentage(trackAPI, queueItem, interface):
+    global downloadPercentage, lastPercentage
+    if 'SINGLE_TRACK' in trackAPI:
+        downloadPercentage = 100
+    else:
+        downloadPercentage += 1 / trackAPI['SIZE'] * 100
+    if round(downloadPercentage) != lastPercentage and round(downloadPercentage) % 2 == 0:
+        lastPercentage = round(downloadPercentage)
+        if interface:
+            queueItem['progress'] = lastPercentage
+            interface.send("updateQueue", {'uuid': queueItem['uuid'], 'progress': lastPercentage})
+
+
+def downloadImage(url, path, overwrite="n"):
+    if not os.path.isfile(path) or overwrite in ['y', 't']:
         try:
             image = get(url, headers={'User-Agent': USER_AGENT_HEADER}, timeout=30)
             with open(path, 'wb') as f:
@@ -82,7 +95,7 @@ def downloadImage(url, path):
                 return path
         except ConnectionError:
             sleep(1)
-            return downloadImage(url, path)
+            return downloadImage(url, path, overwrite)
         except HTTPError:
             if 'cdns-images.dzcdn.net' in url:
                 urlBase = url[:url.rfind("/")+1]
@@ -91,7 +104,7 @@ def downloadImage(url, path):
                 if pictureSize > 1400:
                     logger.warn("Couldn't download "+str(pictureSize)+"x"+str(pictureSize)+" image, falling back to 1400x1400")
                     sleep(1)
-                    return  downloadImage(urlBase+pictureUrl.replace(str(pictureSize)+"x"+str(pictureSize), '1400x1400'), path)
+                    return  downloadImage(urlBase+pictureUrl.replace(str(pictureSize)+"x"+str(pictureSize), '1400x1400'), path, overwrite)
             logger.error("Couldn't download Image: "+url)
         remove(path)
         return None
@@ -450,6 +463,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                                         interface=interface)
             else:
                 logger.error(f"[{track['mainArtist']['name']} - {track['title']}] Track not yet encoded and no alternative found!")
+                trackCompletePercentage(trackAPI, queueItem, interface)
                 result['error'] = {
                     'message': "Track not yet encoded and no alternative found!",
                     'data': track
@@ -461,6 +475,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                 return result
         else:
             logger.error(f"[{track['mainArtist']['name']} - {track['title']}] Track not yet encoded!")
+            trackCompletePercentage(trackAPI, queueItem, interface)
             result['error'] = {
                 'message': "Track not yet encoded!",
                 'data': track
@@ -475,6 +490,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
     format = getPreferredBitrate(dz, track, bitrate, settings['fallbackBitrate'])
     if format == -100:
         logger.error(f"[{track['mainArtist']['name']} - {track['title']}] Track not found at desired bitrate. Enable fallback to lower bitrates to fix this issue.")
+        trackCompletePercentage(trackAPI, queueItem, interface)
         result['error'] = {
             'message': "Track not found at desired bitrate.",
             'data': track
@@ -486,6 +502,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         return result
     elif format == -200:
         logger.error(f"[{track['mainArtist']['name']} - {track['title']}] This track is not available in 360 Reality Audio format. Please select another format.")
+        trackCompletePercentage(trackAPI, queueItem, interface)
         result['error'] = {
             'message': "Track is not available in Reality Audio 360.",
             'data': track
@@ -593,8 +610,9 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 
     # Save lyrics in lrc file
     if settings['syncedLyrics'] and 'sync' in track['lyrics']:
-        with open(os.path.join(filepath, filename + '.lrc'), 'wb') as f:
-            f.write(track['lyrics']['sync'].encode('utf-8'))
+        if not os.path.isfile(os.path.join(filepath, filename + '.lrc')) or settings['overwriteFile'] in ['y', 't']:
+            with open(os.path.join(filepath, filename + '.lrc'), 'wb') as f:
+                f.write(track['lyrics']['sync'].encode('utf-8'))
 
     # Save local album art
     if coverPath:
@@ -619,64 +637,72 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 
     track['downloadUrl'] = dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'],
                                                    track['selectedFormat'])
-    logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Downloading the track")
-    try:
-        with open(writepath, 'wb') as stream:
-            stream_track(dz, track, stream, trackAPI, queueItem, interface)
-    except downloadCancelled:
-        remove(writepath)
-        result['cancel'] = True
-        return result
-    except HTTPError:
-        remove(writepath)
-        if track['fallbackId'] != 0:
-            logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Track not available, using fallback id")
-            trackNew = dz.get_track_gw(track['fallbackId'])
-            if not 'MD5_ORIGIN' in trackNew:
-                trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
-            track = parseEssentialTrackData(track, trackNew)
-            return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, interface=interface)
-        elif not 'searched' in track and settings['fallbackSearch']:
-            logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Track not available, searching for alternative")
-            searchedId = dz.get_track_from_metadata(track['mainArtist']['name'], track['title'],
-                                                    track['album']['title'])
-            if searchedId != 0:
-                trackNew = dz.get_track_gw(searchedId)
+    trackAlreadyDownloaded = os.path.isfile(writepath)
+    if not trackAlreadyDownloaded or settings['overwriteFile'] == 'y':
+        logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Downloading the track")
+        try:
+            with open(writepath, 'wb') as stream:
+                stream_track(dz, track, stream, trackAPI, queueItem, interface)
+        except downloadCancelled:
+            remove(writepath)
+            result['cancel'] = True
+            return result
+        except HTTPError:
+            remove(writepath)
+            if track['fallbackId'] != 0:
+                logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Track not available, using fallback id")
+                trackNew = dz.get_track_gw(track['fallbackId'])
                 if not 'MD5_ORIGIN' in trackNew:
                     trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
                 track = parseEssentialTrackData(track, trackNew)
-                track['searched'] = True
-                return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track,
-                                        interface=interface)
+                return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, interface=interface)
+            elif not 'searched' in track and settings['fallbackSearch']:
+                logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Track not available, searching for alternative")
+                searchedId = dz.get_track_from_metadata(track['mainArtist']['name'], track['title'],
+                                                        track['album']['title'])
+                if searchedId != 0:
+                    trackNew = dz.get_track_gw(searchedId)
+                    if not 'MD5_ORIGIN' in trackNew:
+                        trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
+                    track = parseEssentialTrackData(track, trackNew)
+                    track['searched'] = True
+                    return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track,
+                                            interface=interface)
+                else:
+                    logger.error(f"[{track['mainArtist']['name']} - {track['title']}] Track not available on deezer's servers and no alternative found!")
+                    trackCompletePercentage(trackAPI, queueItem, interface)
+                    result['error'] = {
+                        'message': "Track not available on deezer's servers and no alternative found!",
+                        'data': track
+                    }
+                    if interface:
+                        queueItem['failed'] += 1
+                        interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track,
+                                                       'error': "Track not available on deezer's servers and no alternative found!"})
+                    return result
             else:
-                logger.error(f"[{track['mainArtist']['name']} - {track['title']}] Track not available on deezer's servers and no alternative found!")
+                logger.error(f"[{track['mainArtist']['name']} - {track['title']}] Track not available on deezer's servers!")
+                trackCompletePercentage(trackAPI, queueItem, interface)
                 result['error'] = {
-                    'message': "Track not available on deezer's servers and no alternative found!",
+                    'message': "Track not available on deezer's servers!",
                     'data': track
                 }
                 if interface:
                     queueItem['failed'] += 1
                     interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track,
-                                                   'error': "Track not available on deezer's servers and no alternative found!"})
+                                                   'error': "Track not available on deezer's servers!"})
                 return result
-        else:
-            logger.error(f"[{track['mainArtist']['name']} - {track['title']}] Track not available on deezer's servers!")
-            result['error'] = {
-                'message': "Track not available on deezer's servers!",
-                'data': track
-            }
-            if interface:
-                queueItem['failed'] += 1
-                interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track,
-                                               'error': "Track not available on deezer's servers!"})
-            return result
-    logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Applying tags to the track")
-    if track['selectedFormat'] in [3, 1, 8]:
-        tagID3(writepath, track, settings['tags'])
-    elif track['selectedFormat'] == 9:
-        tagFLAC(writepath, track, settings['tags'])
-    if 'searched' in track:
-        result['searched'] = f'{track["mainArtist"]["name"]} - {track["title"]}'
+    else:
+        logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Skipping track as it's already downloaded")
+        trackCompletePercentage(trackAPI, queueItem, interface)
+    if not trackAlreadyDownloaded or settings['overwriteFile'] in ['t', 'y']:
+        logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Applying tags to the track")
+        if track['selectedFormat'] in [3, 1, 8]:
+            tagID3(writepath, track, settings['tags'])
+        elif track['selectedFormat'] == 9:
+            tagFLAC(writepath, track, settings['tags'])
+        if 'searched' in track:
+            result['searched'] = f'{track["mainArtist"]["name"]} - {track["title"]}'
     logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Track download completed")
     if interface:
         queueItem['downloaded'] += 1
@@ -770,9 +796,9 @@ def after_download(tracks, settings, queueItem):
         if not extrasPath and 'extrasPath' in result:
             extrasPath = result['extrasPath']
         if settings['saveArtwork'] and 'albumPath' in result:
-            downloadImage(result['albumURL'], result['albumPath'])
+            downloadImage(result['albumURL'], result['albumPath'], settings['overwriteFile'])
         if settings['saveArtworkArtist'] and 'artistPath' in result:
-            downloadImage(result['artistURL'], result['artistPath'])
+            downloadImage(result['artistURL'], result['artistPath'], settings['overwriteFile'])
         if 'playlistPosition' in result:
             playlist[index] = result['playlistPosition']
         else:
@@ -800,9 +826,9 @@ def after_download_single(track, settings, queueItem):
     if 'extrasPath' not in track:
         track['extrasPath'] = settings['downloadLocation']
     if settings['saveArtwork'] and 'albumPath' in track:
-        downloadImage(track['albumURL'], track['albumPath'])
+        downloadImage(track['albumURL'], track['albumPath'], settings['overwriteFile'])
     if settings['saveArtworkArtist'] and 'artistPath' in track:
-        downloadImage(track['artistURL'], track['artistPath'])
+        downloadImage(track['artistURL'], track['artistPath'], settings['overwriteFile'])
     if settings['logSearched'] and 'searched' in track:
         with open(os.path.join(track['extrasPath'], 'searched.txt'), 'wb+') as f:
             orig = f.read().decode('utf-8')
