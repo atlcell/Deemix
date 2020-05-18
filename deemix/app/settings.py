@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os.path as path
-from os import mkdir, makedirs
+from os import makedirs
 
 import deemix.utils.localpaths as localpaths
 
@@ -14,8 +14,7 @@ def initSettings():
     global defaultSettings
     currentFolder = path.abspath(path.dirname(__file__))
     configFolder = localpaths.getConfigFolder()
-    if not path.isdir(configFolder):
-        mkdir(configFolder)
+    makedirs(configFolder, exist_ok=True)
     with open(path.join(currentFolder, 'default.json'), 'r') as d:
         defaultSettings = json.load(d)
         defaultSettings['downloadLocation'] = path.join(localpaths.getHomeFolder(), 'deemix Music')
@@ -27,7 +26,7 @@ def initSettings():
     settingsCheck()
     if settings['downloadLocation'] == "":
         settings['downloadLocation'] = path.join(localpaths.getHomeFolder(), 'deemix Music')
-        saveSettings(settings) 
+        saveSettings(settings)
     makedirs(settings['downloadLocation'], exist_ok=True)
     return settings
 
