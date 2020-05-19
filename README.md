@@ -1,7 +1,4 @@
-# WARNING
-The webUI is not finished, some functions may not work.
-
-# deemix
+# ![](./icon.svg) deemix
 ## What is deemix?
 deemix is a deezer downloader built from the ashes of Deezloader Remix. The base library (or core) can be used as a stand alone CLI app or implemented in an UI using the API.
 
