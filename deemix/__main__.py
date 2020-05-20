@@ -10,8 +10,8 @@ from os.path import isfile
 @click.option('-b', '--bitrate', default=None, help='Overwrites the default bitrate selected')
 @click.option('-l', '--local', is_flag=True, help='Downloads in a local folder insted of using the default')
 @click.argument('url', nargs=-1, required=True)
-def download(bitrate, localFolder, url):
-    settings = initSettings(localFolder)
+def download(bitrate, local, url):
+    settings = initSettings(local)
     app.login()
     if isfile(url[0]):
         filename = url[0]
@@ -20,7 +20,7 @@ def download(bitrate, localFolder, url):
     for u in url:
         app.downloadLink(u, settings, bitrate)
     click.echo("All done!")
-    if localFolder:
+    if local:
         click.echo(settings['downloadLocation']) #folder name output
 
 
