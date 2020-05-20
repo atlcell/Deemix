@@ -8,10 +8,10 @@ from os.path import isfile
 
 @click.command()
 @click.option('-b', '--bitrate', default=None, help='Overwrites the default bitrate selected')
-@click.option('-bot', '--botmode', is_flag=True, help='Enables bot mode')
+@click.option('-l', '--local', is_flag=True, help='Downloads in a local folder insted of using the default')
 @click.argument('url', nargs=-1, required=True)
-def download(bitrate, botmode, url):
-    settings = initSettings(botmode)
+def download(bitrate, localFolder, url):
+    settings = initSettings(localFolder)
     app.login()
     if isfile(url[0]):
         filename = url[0]
@@ -20,7 +20,7 @@ def download(bitrate, botmode, url):
     for u in url:
         app.downloadLink(u, settings, bitrate)
     click.echo("All done!")
-    if botmode:
+    if localFolder:
         click.echo(settings['downloadLocation']) #folder name output
 
 

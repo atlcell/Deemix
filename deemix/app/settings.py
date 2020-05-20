@@ -4,6 +4,10 @@ import os.path as path
 from os import makedirs
 import random
 import string
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('deemix')
 
 import deemix.utils.localpaths as localpaths
 
@@ -11,7 +15,7 @@ settings = {}
 defaultSettings = {}
 
 
-def initSettings(bot_mode = False):
+def initSettings(localFolder = False):
     global settings
     global defaultSettings
     currentFolder = path.abspath(path.dirname(__file__))
@@ -27,12 +31,11 @@ def initSettings(bot_mode = False):
         settings = json.load(configFile)
     settingsCheck()
 
-    if bot_mode:
-        print("Im using bot mode")
+    if localFolder:
         settings['downloadLocation'] = randomString(12)
+        logger.info("Using a local download folder: "+settings['downloadLocation'])
     elif settings['downloadLocation'] == "":
-        print("I'm using normal mode")
-        settings['downloadLocation'] = path.join(localpaths.getHomeFolder(), 'deemix Music')      
+        settings['downloadLocation'] = path.join(localpaths.getHomeFolder(), 'deemix Music')
         saveSettings(settings)
     makedirs(settings['downloadLocation'], exist_ok=True)
     return settings
