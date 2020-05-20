@@ -2,6 +2,8 @@
 import json
 import os.path as path
 from os import makedirs
+import random
+import string
 
 import deemix.utils.localpaths as localpaths
 
@@ -9,7 +11,7 @@ settings = {}
 defaultSettings = {}
 
 
-def initSettings():
+def initSettings(bot_mode = False):
     global settings
     global defaultSettings
     currentFolder = path.abspath(path.dirname(__file__))
@@ -24,8 +26,13 @@ def initSettings():
     with open(path.join(configFolder, 'config.json'), 'r') as configFile:
         settings = json.load(configFile)
     settingsCheck()
-    if settings['downloadLocation'] == "":
-        settings['downloadLocation'] = path.join(localpaths.getHomeFolder(), 'deemix Music')
+
+    if bot_mode:
+        print("Im using bot mode")
+        settings['downloadLocation'] = randomString(12)
+    elif settings['downloadLocation'] == "":
+        print("I'm using normal mode")
+        settings['downloadLocation'] = path.join(localpaths.getHomeFolder(), 'deemix Music')      
         saveSettings(settings)
     makedirs(settings['downloadLocation'], exist_ok=True)
     return settings
@@ -63,3 +70,8 @@ def settingsCheck():
             changes += 1
     if changes > 0:
         saveSettings(settings)
+
+
+def randomString(stringLength=8):
+    letters = string.ascii_lowercase
+    return ''.join(random.choice(letters) for i in range(stringLength))
