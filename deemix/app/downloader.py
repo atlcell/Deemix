@@ -517,7 +517,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
     if settings['tags']['savePlaylistAsCompilation'] and "_EXTRA_PLAYLIST" in trackAPI:
         if 'dzcdn.net' in trackAPI["_EXTRA_PLAYLIST"]['picture_small']:
             track['album']['picUrl'] = trackAPI["_EXTRA_PLAYLIST"]['picture_small'][:-24] + "/{}x{}-{}".format(
-                track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'],
+                settings['embeddedArtworkSize'], settings['embeddedArtworkSize'],
                 'none-100-0-0.png' if settings['PNGcovers'] else f'000000-{settings["jpegImageQuality"]}-0-0.jpg')
         else:
             track['album']['picUrl'] = trackAPI["_EXTRA_PLAYLIST"]['picture_xl']
