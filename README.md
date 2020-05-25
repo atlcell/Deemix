@@ -2,57 +2,21 @@
 ## What is deemix?
 deemix is a deezer downloader built from the ashes of Deezloader Remix. The base library (or core) can be used as a stand alone CLI app or implemented in an UI using the API.
 
-## How can I use this?
-Currently there are no available builds as it's still in development.<br>
-But you can try to run it yourself!<br>
-
-## Running instructions
-### Standard way
-NOTE: Python 3 is required for this app. Make sure you tick the option to add Python to PATH when installing.<br>
+## Installation
 NOTE: If `python3` is "not a recognized command" try using `python` instead.<br>
 <br>
-1. After installing Python open a terminal/command prompt and install the dependencies using `python3 -m pip install -r requirements.txt --user`<br>
-2. Run `python3 -m deemix --help` to see how to use the app in CLI mode.<br>
-3. Run `python3 server.py` to start the server and then connect to `127.0.0.1:9666`. The GUI should show up.<br>
-4. Enjoy!<br>
+### From PyPi
+You can install the library by using `pip`:<br>
+`python3 -m pip install deemix`<br>
+If you install it this way you can use the deemix CLI by using `deemix` directly in your terminal instead of `python3 -m deemix`
 
-### Easy Windows way
-1. Download `install.bat` file to your PC and place it in the folder where you want Deemix to live<br>
-2. Start the `install.bat` as administrator<br>
-3. Wait for it to finish, then run the `start.bat`<br>
-
-### Easy Mac way
-1. Download `install_mac.sh` file to your Mac and place it in the folder where you want Deemix to live<br>
-2. Open a terminal and type `sh` and a space, then drag `install_mac.sh` into your terminal window and press `enter`<br>
-3. The web-gui will launch when the installer is finished, and launching it in the future can be done with the generated file `startdeemix.command`<br>
-4. To update to the latest build, run the generated file `updatedeemix.command`<br>
+### Building from source
+After installing Python open a terminal/command prompt and install the dependencies using `python3 -m pip install -r requirements.txt --user`<br>
+Run `python3 -m deemix --help` to see how to use the app in CLI mode.<br>
 
 ## What's left to do?
-Library:
 - Write the API Documentation
-
-in the WebUI:
-- Make the UI look coherent
-  - Style text inputs
-  - Style checkboxes
-  - Style buttons
-- Search tab
-	- Better placeholer before search
-	- Better loading feadback fot the user (maybe with a loading circle)
-- Link Analyzer
-	- Better placeholer before analyzing
-- Settings tab
-	- Maybe tabbing the section for easy navigation
-- About tab
-	- Write stuff about the app
-- Install sass dependency
-- ?
-
-Application:
-- Feedback when the link analysis did not work (e.g. with playlist)
-- Add an auto updater
-- Add installer for windows
-- AppImage builds
+- Fix whatever is broken
 
 # License
 This program is free software: you can redistribute it and/or modify
