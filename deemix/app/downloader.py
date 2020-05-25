@@ -67,8 +67,8 @@ def stream_track(dz, track, stream, trackAPI, queueItem, interface=None):
             downloadPercentage += chunkProgres
         if round(downloadPercentage) != lastPercentage and round(downloadPercentage) % 2 == 0:
             lastPercentage = round(downloadPercentage)
+            queueItem['progress'] = lastPercentage
             if interface:
-                queueItem['progress'] = lastPercentage
                 interface.send("updateQueue", {'uuid': queueItem['uuid'], 'progress': lastPercentage})
         i += 1
 
@@ -81,8 +81,8 @@ def trackCompletePercentage(trackAPI, queueItem, interface):
         downloadPercentage += 1 / trackAPI['SIZE'] * 100
     if round(downloadPercentage) != lastPercentage and round(downloadPercentage) % 2 == 0:
         lastPercentage = round(downloadPercentage)
+        queueItem['progress'] = lastPercentage
         if interface:
-            queueItem['progress'] = lastPercentage
             interface.send("updateQueue", {'uuid': queueItem['uuid'], 'progress': lastPercentage})
 
 
@@ -420,11 +420,12 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         if 'SNG_TITLE' in trackAPI:
             result['error']['data'] = {
                 'id': trackAPI['SNG_ID'],
-                'title': trackAPI['SNG_TITLE'],
-                'mainArtist': {'name': trackAPI['ART_NAME']}
+                'title': trackAPI['SNG_TITLE'] + (trackAPI['VERSION'] if 'VERSION' in trackAPI and trackAPI['VERSION'] and not trackAPI['VERSION'] in trackAPI['SNG_TITLE'] else ""),
+                'artist': trackAPI['ART_NAME']
             }
+        queueItem['failed'] += 1
+        queueItem['errors'].append(result['error'])
         if interface:
-            queueItem['failed'] += 1
             interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
                                            'error': "Track not available on Deezer!"})
         return result
@@ -466,11 +467,16 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                 trackCompletePercentage(trackAPI, queueItem, interface)
                 result['error'] = {
                     'message': "Track not yet encoded and no alternative found!",
-                    'data': track
+                    'data': {
+                        'id': track['id'],
+                        'title': track['title'],
+                        'artist': track['mainArtist']['name']
+                    }
                 }
+                queueItem['failed'] += 1
+                queueItem['errors'].append(result['error'])
                 if interface:
-                    queueItem['failed'] += 1
-                    interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track,
+                    interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
                                                    'error': "Track not yet encoded and no alternative found!"})
                 return result
         else:
@@ -478,11 +484,16 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
             trackCompletePercentage(trackAPI, queueItem, interface)
             result['error'] = {
                 'message': "Track not yet encoded!",
-                'data': track
+                'data': {
+                    'id': track['id'],
+                    'title': track['title'],
+                    'artist': track['mainArtist']['name']
+                }
             }
+            queueItem['failed'] += 1
+            queueItem['errors'].append(result['error'])
             if interface:
-                queueItem['failed'] += 1
-                interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track,
+                interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
                                                'error': "Track not yet encoded!"})
             return result
 
@@ -493,11 +504,16 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         trackCompletePercentage(trackAPI, queueItem, interface)
         result['error'] = {
             'message': "Track not found at desired bitrate.",
-            'data': track
+            'data': {
+                'id': track['id'],
+                'title': track['title'],
+                'artist': track['mainArtist']['name']
+            }
         }
+        queueItem['failed'] += 1
+        queueItem['errors'].append(result['error'])
         if interface:
-            queueItem['failed'] += 1
-            interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track,
+            interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
                                            'error': "Track not found at desired bitrate."})
         return result
     elif format == -200:
@@ -505,11 +521,16 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         trackCompletePercentage(trackAPI, queueItem, interface)
         result['error'] = {
             'message': "Track is not available in Reality Audio 360.",
-            'data': track
+            'data': {
+                'id': track['id'],
+                'title': track['title'],
+                'artist': track['mainArtist']['name']
+            }
         }
+        queueItem['failed'] += 1
+        queueItem['errors'].append(result['error'])
         if interface:
-            queueItem['failed'] += 1
-            interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track,
+            interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
                                            'error': "Track is not available in Reality Audio 360."})
         return result
     track['selectedFormat'] = format
@@ -673,11 +694,16 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                     trackCompletePercentage(trackAPI, queueItem, interface)
                     result['error'] = {
                         'message': "Track not available on deezer's servers and no alternative found!",
-                        'data': track
+                        'data': {
+                            'id': track['id'],
+                            'title': track['title'],
+                            'artist': track['mainArtist']['name']
+                        }
                     }
+                    queueItem['failed'] += 1
+                    queueItem['errors'].append(result['error'])
                     if interface:
-                        queueItem['failed'] += 1
-                        interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track,
+                        interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
                                                        'error': "Track not available on deezer's servers and no alternative found!"})
                     return result
             else:
@@ -685,11 +711,16 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                 trackCompletePercentage(trackAPI, queueItem, interface)
                 result['error'] = {
                     'message': "Track not available on deezer's servers!",
-                    'data': track
+                    'data': {
+                        'id': track['id'],
+                        'title': track['title'],
+                        'artist': track['mainArtist']['name']
+                    }
                 }
+                queueItem['failed'] += 1
+                queueItem['errors'].append(result['error'])
                 if interface:
-                    queueItem['failed'] += 1
-                    interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': track,
+                    interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
                                                    'error': "Track not available on deezer's servers!"})
                 return result
     else:
@@ -704,8 +735,8 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         if 'searched' in track:
             result['searched'] = f'{track["mainArtist"]["name"]} - {track["title"]}'
     logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Track download completed")
+    queueItem['downloaded'] += 1
     if interface:
-        queueItem['downloaded'] += 1
         interface.send("updateQueue", {'uuid': queueItem['uuid'], 'downloaded': True})
     return result
 
@@ -719,15 +750,16 @@ def downloadTrackObj_wrap(dz, track, settings, bitrate, queueItem, interface):
             'message': str(e),
             'data': {
                 'id': track['SNG_ID'],
-                'title': track['SNG_TITLE'] + (
-                    " " + track['VERSION'] if 'VERSION' in track and track['VERSION'] else ""),
-                'mainArtist': {'name': track['ART_NAME']}
+                'title': track['SNG_TITLE'] + (trackAPI['VERSION'] if 'VERSION' in trackAPI and trackAPI['VERSION'] and not trackAPI['VERSION'] in trackAPI['SNG_TITLE'] else ""),
+                'artist': track['ART_NAME']
+            }
             }
         }
-        }
+        queueItem['failed'] += 1
+        queueItem['errors'].append(result['error'])
         if interface:
-            queueItem['failed'] += 1
-            interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True})
+            interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
+                                           'error': result['error']['message']})
     return result
 
 
@@ -746,16 +778,16 @@ def download(dz, queueItem, interface=None):
                 'message': str(e),
                 'data': {
                     'id': queueItem['single']['SNG_ID'],
-                    'title': queueItem['single']['SNG_TITLE'] + (
-                        " " + queueItem['single']['VERSION'] if 'VERSION' in queueItem['single'] and
-                                                                queueItem['single']['VERSION'] else ""),
+                    'title': queueItem['single']['SNG_TITLE'] + (queueItem['single']['VERSION'] if 'VERSION' in queueItem['single'] and queueItem['single']['VERSION'] and not queueItem['single']['VERSION'] in queueItem['single']['SNG_TITLE'] else ""),
                     'mainArtist': {'name': queueItem['single']['ART_NAME']}
                 }
             }
             }
+            queueItem['failed'] += 1
+            queueItem['errors'].append(result['error'])
             if interface:
-                queueItem['failed'] += 1
-                interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True})
+                interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
+                                               'error': result['error']['message']})
         download_path = after_download_single(result, settings, queueItem)
     elif 'collection' in queueItem:
         playlist = [None] * len(queueItem['collection'])
@@ -789,8 +821,8 @@ def after_download(tracks, settings, queueItem):
             return None
         if 'error' in result:
             if not 'data' in result['error']:
-                result['error']['data'] = {'id': 0, 'title': 'Unknown', 'mainArtist': {'name': 'Unknown'}}
-            errors += f"{result['error']['data']['id']} | {result['error']['data']['mainArtist']['name']} - {result['error']['data']['title']} | {result['error']['message']}\r\n"
+                result['error']['data'] = {'id': 0, 'title': 'Unknown', 'artist': 'Unknown'}
+            errors += f"{result['error']['data']['id']} | {result['error']['data']['artist']} - {result['error']['data']['title']} | {result['error']['message']}\r\n"
         if 'searched' in result:
             searched += result['searched'] + "\r\n"
         if not extrasPath and 'extrasPath' in result:

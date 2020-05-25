@@ -19,6 +19,7 @@ queueItem base structure
 	size
 	downloaded
 	failed
+    errors
 	progress
 	type
 	id
@@ -38,6 +39,7 @@ def resetQueueItems(items, q):
             result[item]['downloaded'] = 0
             result[item]['failed'] = 0
             result[item]['progress'] = 0
+            result[item]['errors'] = []
     return result
 
 def slimQueueItems(items):
@@ -82,6 +84,7 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
         result['size'] = 1
         result['downloaded'] = 0
         result['failed'] = 0
+        result['errors'] = []
         result['progress'] = 0
         result['type'] = 'track'
         result['id'] = id
@@ -109,6 +112,7 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
         result['size'] = albumAPI['nb_tracks']
         result['downloaded'] = 0
         result['failed'] = 0
+        result['errors'] = []
         result['progress'] = 0
         result['type'] = 'album'
         result['id'] = id
@@ -172,6 +176,7 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
         result['size'] = playlistAPI['nb_tracks']
         result['downloaded'] = 0
         result['failed'] = 0
+        result['errors'] = []
         result['progress'] = 0
         result['type'] = 'playlist'
         result['id'] = id
