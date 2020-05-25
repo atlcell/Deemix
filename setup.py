@@ -23,7 +23,7 @@ setup(
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.7',
-    packages=["deemix"],
+    packages=setuptools.find_packages(),
     include_package_data=True,
     install_requires=["click", "pycryptodomex", "mutagen", "requests", "spotipy"],
     entry_points={

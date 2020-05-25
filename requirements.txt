@@ -1,7 +1,5 @@
+click
 pycryptodomex
 mutagen
-click
 requests
 spotipy
-flask
-flask-socketio
