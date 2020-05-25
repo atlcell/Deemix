@@ -1,13 +1,13 @@
 #!/usr/env/bin python3
 import pathlib
-from setuptools import setup
+from setuptools import find_packages, setup
 
 HERE = pathlib.Path(__file__).parent
 README = (HERE / "README.md").read_text()
 
 setup(
     name="deemix",
-    version="1.0.0",
+    version="1.0.2",
     description="A barebone deezer downloader library",
     long_description=README,
     long_description_content_type="text/markdown",
@@ -23,12 +23,12 @@ setup(
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.7',
-    packages=setuptools.find_packages(),
+    packages=find_packages(exclude=("tests",)),
     include_package_data=True,
     install_requires=["click", "pycryptodomex", "mutagen", "requests", "spotipy"],
     entry_points={
         "console_scripts": [
-            "deemix=reader.__main__:main",
+            "deemix=deemix.__main__:main",
         ]
     },
 )

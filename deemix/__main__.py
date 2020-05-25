@@ -23,6 +23,8 @@ def download(bitrate, local, url):
     if local:
         click.echo(settings['downloadLocation']) #folder name output
 
+def main():
+    download()
 
 if __name__ == '__main__':
-    download()
+    main()
