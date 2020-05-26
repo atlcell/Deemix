@@ -5,15 +5,18 @@ from os import mkdir
 
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
-
-import deemix.utils.localpaths as localpaths
+from deemix.utils.localpaths import getConfigFolder
 
 
 class SpotifyHelper:
-    def __init__(self):
+    def __init__(self, configFolder=None):
         self.credentials = {}
         self.spotifyEnabled = False
         self.sp = None
+        if not configFolder:
+            self.configFolder = getConfigFolder()
+        else:
+            self.configFolder = configFolder
         self.emptyPlaylist = {
             'collaborative': False,
             'description': "",
@@ -34,13 +37,12 @@ class SpotifyHelper:
         self.initCredentials()
 
     def initCredentials(self):
-        configFolder = localpaths.getConfigFolder()
-        if not path.isdir(configFolder):
-            mkdir(configFolder)
-        if not path.isfile(path.join(configFolder, 'authCredentials.json')):
-            with open(path.join(configFolder, 'authCredentials.json'), 'w') as f:
+        if not path.isdir(self.configFolder):
+            mkdir(self.configFolder)
+        if not path.isfile(path.join(self.configFolder, 'authCredentials.json')):
+            with open(path.join(self.configFolder, 'authCredentials.json'), 'w') as f:
                 json.dump({'clientId': "", 'clientSecret': ""}, f, indent=2)
-        with open(path.join(configFolder, 'authCredentials.json'), 'r') as credentialsFile:
+        with open(path.join(self.configFolder, 'authCredentials.json'), 'r') as credentialsFile:
             self.credentials = json.load(credentialsFile)
         self.checkCredentials()
 
@@ -60,8 +62,7 @@ class SpotifyHelper:
         return self.credentials
 
     def setCredentials(self, spotifyCredentials):
-        configFolder = localpaths.getConfigFolder()
-        with open(path.join(configFolder, 'authCredentials.json'), 'w') as f:
+        with open(path.join(self.configFolder, 'authCredentials.json'), 'w') as f:
             json.dump(spotifyCredentials, f, indent=2)
         self.credentials = spotifyCredentials
         self.checkCredentials()

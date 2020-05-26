@@ -13,13 +13,16 @@ import deemix.utils.localpaths as localpaths
 
 settings = {}
 defaultSettings = {}
+configDir = ""
 
-
-def initSettings(localFolder = False):
+def initSettings(localFolder = False, configFolder = None):
     global settings
     global defaultSettings
+    global configDir
     currentFolder = path.abspath(path.dirname(__file__))
-    configFolder = localpaths.getConfigFolder()
+    if not configFolder:
+        configFolder = localpaths.getConfigFolder()
+    configDir = configFolder
     makedirs(configFolder, exist_ok=True)
     with open(path.join(currentFolder, 'default.json'), 'r') as d:
         defaultSettings = json.load(d)
@@ -54,7 +57,7 @@ def getDefaultSettings():
 def saveSettings(newSettings):
     global settings
     settings = newSettings
-    with open(path.join(localpaths.getConfigFolder(), 'config.json'), 'w') as configFile:
+    with open(path.join(configDir, 'config.json'), 'w') as configFile:
         json.dump(settings, configFile, indent=2)
     return True
 
