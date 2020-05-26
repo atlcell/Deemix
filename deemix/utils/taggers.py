@@ -7,6 +7,7 @@ from mutagen.id3 import ID3, ID3NoHeaderError, TXXX, TIT2, TPE1, TALB, TPE2, TRC
 def tagID3(stream, track, save):
     try:
         tag = ID3(stream)
+        tag.delete()
     except ID3NoHeaderError:
         tag = ID3()
 
@@ -74,7 +75,8 @@ def tagID3(stream, track, save):
 
 def tagFLAC(stream, track, save):
     tag = FLAC(stream)
-
+    tag.delete()
+    tag.clear_pictures()
     if save['title']:
         tag["TITLE"] = track['title']
     if save['artist']:
