@@ -750,7 +750,7 @@ def downloadTrackObj_wrap(dz, track, settings, bitrate, queueItem, interface):
             'message': str(e),
             'data': {
                 'id': track['SNG_ID'],
-                'title': track['SNG_TITLE'] + (trackAPI['VERSION'] if 'VERSION' in trackAPI and trackAPI['VERSION'] and not trackAPI['VERSION'] in trackAPI['SNG_TITLE'] else ""),
+                'title': track['SNG_TITLE'] + (track['VERSION'] if 'VERSION' in track and track['VERSION'] and not track['VERSION'] in track['SNG_TITLE'] else ""),
                 'artist': track['ART_NAME']
             }
             }
