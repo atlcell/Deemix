@@ -1,4 +1,4 @@
-#!/usr/env/bin python3
+#!/usr/bin/env python3
 import pathlib
 from setuptools import find_packages, setup
 
