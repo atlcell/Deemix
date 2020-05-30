@@ -90,6 +90,7 @@ def downloadImage(url, path, overwrite="n"):
     if not os.path.isfile(path) or overwrite in ['y', 't']:
         try:
             image = get(url, headers={'User-Agent': USER_AGENT_HEADER}, timeout=30)
+            image.raise_for_status()
             with open(path, 'wb') as f:
                 f.write(image.content)
                 return path
