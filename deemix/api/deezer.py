@@ -21,7 +21,10 @@ class Deezer:
         }
         self.album_pictures_host = "https://e-cdns-images.dzcdn.net/images/cover/"
         self.artist_pictures_host = "https://e-cdns-images.dzcdn.net/images/artist/"
+        self.email = ""
         self.user = {}
+        self.family = False
+        self.childs = []
         self.session = requests.Session()
         self.logged_in = False
         self.session.post("http://www.deezer.com/", headers=self.http_headers)
@@ -91,7 +94,7 @@ class Deezer:
             raise APIError(result_json)
         return result_json
 
-    def login(self, email, password, re_captcha_token):
+    def login(self, email, password, re_captcha_token, child=0):
         check_form_login = self.gw_api_call("deezer.getUserData")
         login = self.session.post(
             "https://www.deezer.com/ajax/action.php",
@@ -108,17 +111,26 @@ class Deezer:
             self.logged_in = False
             return False
         user_data = self.gw_api_call("deezer.getUserData")
-        self.user = {
-            'email': email,
-            'id': user_data["results"]["USER"]["USER_ID"],
-            'name': user_data["results"]["USER"]["BLOG_NAME"],
-            'picture': user_data["results"]["USER"]["USER_PICTURE"] if "USER_PICTURE" in user_data["results"][
-                "USER"] else ""
-        }
+        self.family = user_data["results"]["USER"]["MULTI_ACCOUNT"]["ENABLED"]
+        if self.family:
+            self.childs = self.get_child_accounts_gw()
+            self.user = {
+                'id': self.childs[child]["USER_ID"],
+                'name': self.childs[child]["BLOG_NAME"],
+                'picture': self.childs[child]["USER_PICTURE"] if "USER_PICTURE" in self.childs[child] else ""
+            }
+        else:
+            self.user = {
+                'id': user_data["results"]["USER"]["USER_ID"],
+                'name': user_data["results"]["USER"]["BLOG_NAME"],
+                'picture': user_data["results"]["USER"]["USER_PICTURE"] if "USER_PICTURE" in user_data["results"][
+                    "USER"] else ""
+            }
+        self.email = email
         self.logged_in = True
         return True
 
-    def login_via_arl(self, arl):
+    def login_via_arl(self, arl, child=0):
         cookie_obj = requests.cookies.create_cookie(
             domain='deezer.com',
             name='arl',
@@ -131,14 +143,35 @@ class Deezer:
         if user_data["results"]["USER"]["USER_ID"] == 0:
             self.logged_in = False
             return 0
-        self.user = {
-            'id': user_data["results"]["USER"]["USER_ID"],
-            'name': user_data["results"]["USER"]["BLOG_NAME"],
-            'picture': user_data["results"]["USER"]["USER_PICTURE"] if "USER_PICTURE" in user_data["results"][
-                "USER"] else ""
-        }
+        self.family = user_data["results"]["USER"]["MULTI_ACCOUNT"]["ENABLED"]
+        if self.family:
+            self.childs = self.get_child_accounts_gw()
+            self.user = {
+                'id': self.childs[child]["USER_ID"],
+                'name': self.childs[child]["BLOG_NAME"],
+                'picture': self.childs[child]["USER_PICTURE"] if "USER_PICTURE" in self.childs[child] else ""
+            }
+        else:
+            self.user = {
+                'id': user_data["results"]["USER"]["USER_ID"],
+                'name': user_data["results"]["USER"]["BLOG_NAME"],
+                'picture': user_data["results"]["USER"]["USER_PICTURE"] if "USER_PICTURE" in user_data["results"][
+                    "USER"] else ""
+            }
         self.logged_in = True
         return 1
+
+    def change_account(self, child):
+        if len(self.childs)-1 >= child:
+            self.user = {
+                'id': self.childs[child]["USER_ID"],
+                'name': self.childs[child]["BLOG_NAME"],
+                'picture': self.childs[child]["USER_PICTURE"] if "USER_PICTURE" in self.childs[child] else ""
+            }
+        return self.user
+
+    def get_child_accounts_gw(self):
+        return self.gw_api_call('deezer.getChildAccounts')['results']
 
     def get_track_gw(self, sng_id):
         if int(sng_id) < 0:
