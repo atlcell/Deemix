@@ -500,22 +500,59 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
     # Get the selected bitrate
     format = getPreferredBitrate(dz, track, bitrate, settings['fallbackBitrate'])
     if format == -100:
-        logger.error(f"[{track['mainArtist']['name']} - {track['title']}] Track not found at desired bitrate. Enable fallback to lower bitrates to fix this issue.")
-        trackCompletePercentage(trackAPI, queueItem, interface)
-        result['error'] = {
-            'message': "Track not found at desired bitrate.",
-            'data': {
-                'id': track['id'],
-                'title': track['title'],
-                'artist': track['mainArtist']['name']
+        if track['fallbackId'] != 0:
+            logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Track not found at desired bitrate, using fallback id")
+            trackNew = dz.get_track_gw(track['fallbackId'])
+            if not 'MD5_ORIGIN' in trackNew:
+                trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
+            track = parseEssentialTrackData(track, trackNew)
+            return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, interface=interface)
+        elif not 'searched' in track and settings['fallbackSearch']:
+            logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Track not found at desired bitrate, searching for alternative")
+            searchedId = dz.get_track_from_metadata(track['mainArtist']['name'], track['title'],
+                                                    track['album']['title'])
+            if searchedId != 0:
+                trackNew = dz.get_track_gw(searchedId)
+                if not 'MD5_ORIGIN' in trackNew:
+                    trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
+                track = parseEssentialTrackData(track, trackNew)
+                track['searched'] = True
+                return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track,
+                                        interface=interface)
+            else:
+                logger.error(f"[{track['mainArtist']['name']} - {track['title']}] Track not found at desired bitrate and no alternative found!")
+                trackCompletePercentage(trackAPI, queueItem, interface)
+                result['error'] = {
+                    'message': "Track not found at desired bitrate and no alternative found!",
+                    'data': {
+                        'id': track['id'],
+                        'title': track['title'],
+                        'artist': track['mainArtist']['name']
+                    }
+                }
+                queueItem['failed'] += 1
+                queueItem['errors'].append(result['error'])
+                if interface:
+                    interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
+                                                   'error': "Track not found at desired bitrate and no alternative found!"})
+                return result
+        else:
+            logger.error(f"[{track['mainArtist']['name']} - {track['title']}] Track not found at desired bitrate. Enable fallback to lower bitrates to fix this issue.")
+            trackCompletePercentage(trackAPI, queueItem, interface)
+            result['error'] = {
+                'message': "Track not found at desired bitrate.",
+                'data': {
+                    'id': track['id'],
+                    'title': track['title'],
+                    'artist': track['mainArtist']['name']
+                }
             }
-        }
-        queueItem['failed'] += 1
-        queueItem['errors'].append(result['error'])
-        if interface:
-            interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
-                                           'error': "Track not found at desired bitrate."})
-        return result
+            queueItem['failed'] += 1
+            queueItem['errors'].append(result['error'])
+            if interface:
+                interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
+                                               'error': "Track not found at desired bitrate."})
+            return result
     elif format == -200:
         logger.error(f"[{track['mainArtist']['name']} - {track['title']}] This track is not available in 360 Reality Audio format. Please select another format.")
         trackCompletePercentage(trackAPI, queueItem, interface)
