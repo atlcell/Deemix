@@ -25,6 +25,7 @@ class Deezer:
         self.user = {}
         self.family = False
         self.childs = []
+        self.selectedAccount = 0
         self.session = requests.Session()
         self.logged_in = False
         self.session.post("http://www.deezer.com/", headers=self.http_headers)
@@ -114,11 +115,21 @@ class Deezer:
         self.family = user_data["results"]["USER"]["MULTI_ACCOUNT"]["ENABLED"]
         if self.family:
             self.childs = self.get_child_accounts_gw()
-            self.user = {
-                'id': self.childs[child]["USER_ID"],
-                'name': self.childs[child]["BLOG_NAME"],
-                'picture': self.childs[child]["USER_PICTURE"] if "USER_PICTURE" in self.childs[child] else ""
-            }
+            if len(self.childs)-1 >= child:
+                self.user = {
+                    'id': self.childs[child]["USER_ID"],
+                    'name': self.childs[child]["BLOG_NAME"],
+                    'picture': self.childs[child]["USER_PICTURE"] if "USER_PICTURE" in self.childs[child] else ""
+                }
+                self.selectedAccount = child
+            else:
+                self.user = {
+                    'id': user_data["results"]["USER"]["USER_ID"],
+                    'name': user_data["results"]["USER"]["BLOG_NAME"],
+                    'picture': user_data["results"]["USER"]["USER_PICTURE"] if "USER_PICTURE" in user_data["results"][
+                        "USER"] else ""
+                }
+                self.selectedAccount = 0
         else:
             self.user = {
                 'id': user_data["results"]["USER"]["USER_ID"],
@@ -146,11 +157,21 @@ class Deezer:
         self.family = user_data["results"]["USER"]["MULTI_ACCOUNT"]["ENABLED"]
         if self.family:
             self.childs = self.get_child_accounts_gw()
-            self.user = {
-                'id': self.childs[child]["USER_ID"],
-                'name': self.childs[child]["BLOG_NAME"],
-                'picture': self.childs[child]["USER_PICTURE"] if "USER_PICTURE" in self.childs[child] else ""
-            }
+            if len(self.childs)-1 >= child:
+                self.user = {
+                    'id': self.childs[child]["USER_ID"],
+                    'name': self.childs[child]["BLOG_NAME"],
+                    'picture': self.childs[child]["USER_PICTURE"] if "USER_PICTURE" in self.childs[child] else ""
+                }
+                self.selectedAccount = child
+            else:
+                self.user = {
+                    'id': user_data["results"]["USER"]["USER_ID"],
+                    'name': user_data["results"]["USER"]["BLOG_NAME"],
+                    'picture': user_data["results"]["USER"]["USER_PICTURE"] if "USER_PICTURE" in user_data["results"][
+                        "USER"] else ""
+                }
+                self.selectedAccount = 0
         else:
             self.user = {
                 'id': user_data["results"]["USER"]["USER_ID"],
@@ -168,7 +189,8 @@ class Deezer:
                 'name': self.childs[child]["BLOG_NAME"],
                 'picture': self.childs[child]["USER_PICTURE"] if "USER_PICTURE" in self.childs[child] else ""
             }
-        return self.user
+            self.selectedAccount = child
+        return (self.user, self.selectedAccount)
 
     def get_child_accounts_gw(self):
         return self.gw_api_call('deezer.getChildAccounts')['results']
