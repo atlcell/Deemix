@@ -534,7 +534,6 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                                            'error': "Track is not available in Reality Audio 360."})
         return result
     track['selectedFormat'] = format
-    track['dateString'] = formatDate(track['date'], settings['dateFormat'])
     if settings['tags']['savePlaylistAsCompilation'] and "_EXTRA_PLAYLIST" in trackAPI:
         if 'dzcdn.net' in trackAPI["_EXTRA_PLAYLIST"]['picture_small']:
             track['album']['picUrl'] = trackAPI["_EXTRA_PLAYLIST"]['picture_small'][:-24] + "/{}x{}-{}".format(
@@ -570,6 +569,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
             track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'],
             'none-100-0-0.png' if settings['PNGcovers'] else f'000000-{settings["jpegImageQuality"]}-0-0.jpg')
     track['album']['bitrate'] = format
+    track['dateString'] = formatDate(track['date'], settings['dateFormat'])
     track['album']['dateString'] = formatDate(track['album']['date'], settings['dateFormat'])
 
     # Check if user wants the feat in the title
