@@ -293,10 +293,10 @@ class Deezer:
                 top_result['artist'] = orig_top_result['PARENT_USERNAME']
                 top_result['nb_song'] = orig_top_result['NB_SONG']
             else:
-                top_result['id'] = 0
+                top_result['id'] = "0"
                 top_result['picture'] = 'https://e-cdns-images.dzcdn.net/images/cover'
             top_result['picture'] += '/156x156-000000-80-0-0.jpg'
-            top_result['link'] = 'https://deezer.com/'+top_result['type']+'/'+top_result['id']
+            top_result['link'] = 'https://deezer.com/'+top_result['type']+'/'+str(top_result['id'])
             results['TOP_RESULT'][0] = top_result
         results['ORDER'] = order
         return results
@@ -318,13 +318,13 @@ class Deezer:
                 'id': playlist['PLAYLIST_ID'],
                 'title': playlist['TITLE'],
                 'nb_tracks': playlist['NB_SONG'],
-                'link': 'https://www.deezer.com/playlist/'+playlist['PLAYLIST_ID'],
-                'picture': 'https://api.deezer.com/playlist/'+playlist['PLAYLIST_ID']+'/image',
+                'link': 'https://www.deezer.com/playlist/'+str(playlist['PLAYLIST_ID']),
+                'picture': 'https://api.deezer.com/playlist/'+str(playlist['PLAYLIST_ID'])+'/image',
                 'picture_small': 'https://e-cdns-images.dzcdn.net/images/'+playlist['PICTURE_TYPE']+'/'+playlist['PLAYLIST_PICTURE']+'/56x56-000000-80-0-0.jpg',
                 'picture_medium': 'https://e-cdns-images.dzcdn.net/images/'+playlist['PICTURE_TYPE']+'/'+playlist['PLAYLIST_PICTURE']+'/250x250-000000-80-0-0.jpg',
                 'picture_big': 'https://e-cdns-images.dzcdn.net/images/'+playlist['PICTURE_TYPE']+'/'+playlist['PLAYLIST_PICTURE']+'/500x500-000000-80-0-0.jpg',
                 'picture_xl': 'https://e-cdns-images.dzcdn.net/images/'+playlist['PICTURE_TYPE']+'/'+playlist['PLAYLIST_PICTURE']+'/1000x1000-000000-80-0-0.jpg',
-                'tracklist': 'https://api.deezer.com/playlist/'+playlist['PLAYLIST_ID']+'/tracks',
+                'tracklist': 'https://api.deezer.com/playlist/'+str(playlist['PLAYLIST_ID'])+'/tracks',
                 'creator': {
                     'id': playlist['PARENT_USER_ID'],
                     'name': playlist['PARENT_USERNAME'] if 'PARENT_USERNAME' in playlist else self.user['name']
@@ -341,19 +341,19 @@ class Deezer:
             item = {
                 'id': album['ALB_ID'],
                 'title': album['ALB_TITLE'],
-                'link': 'https://www.deezer.com/album/'+album['ALB_ID'],
-                'cover': 'https://api.deezer.com/album/'+album['ALB_ID']+'/image',
+                'link': 'https://www.deezer.com/album/'+str(album['ALB_ID']),
+                'cover': 'https://api.deezer.com/album/'+str(album['ALB_ID'])+'/image',
                 'cover_small': 'https://e-cdns-images.dzcdn.net/images/cover/'+album['ALB_PICTURE']+'/56x56-000000-80-0-0.jpg',
                 'cover_medium': 'https://e-cdns-images.dzcdn.net/images/cover/'+album['ALB_PICTURE']+'/250x250-000000-80-0-0.jpg',
                 'cover_big': 'https://e-cdns-images.dzcdn.net/images/cover/'+album['ALB_PICTURE']+'/500x500-000000-80-0-0.jpg',
                 'cover_xl': 'https://e-cdns-images.dzcdn.net/images/cover/'+album['ALB_PICTURE']+'/1000x1000-000000-80-0-0.jpg',
-                'tracklist': 'https://api.deezer.com/album/'+album['ALB_ID']+'/tracks',
+                'tracklist': 'https://api.deezer.com/album/'+str(album['ALB_ID'])+'/tracks',
                 'explicit_lyrics': album['EXPLICIT_ALBUM_CONTENT']['EXPLICIT_LYRICS_STATUS'] > 0,
                 'artist': {
                     'id': album['ART_ID'],
                     'name': album['ART_NAME'],
-                    'picture': 'https://api.deezer.com/artist/'+album['ART_ID']+'image',
-                    'tracklist': 'https://api.deezer.com/artist/'+album['ART_ID']+'/top?limit=50'
+                    'picture': 'https://api.deezer.com/artist/'+str(album['ART_ID'])+'image',
+                    'tracklist': 'https://api.deezer.com/artist/'+str(album['ART_ID'])+'/top?limit=50'
                 },
                 'type': 'album'
             }
@@ -367,14 +367,14 @@ class Deezer:
             item = {
                 'id': artist['ART_ID'],
                 'name': artist['ART_NAME'],
-                'link': 'https://www.deezer.com/artist/'+artist['ART_ID'],
-                'picture': 'https://api.deezer.com/artist/'+artist['ART_ID']+'/image',
-                'picture_small': 'https://e-cdns-images.dzcdn.net/images/artist/'+artist['ART_ID']+'/56x56-000000-80-0-0.jpg',
-                'picture_medium': 'https://e-cdns-images.dzcdn.net/images/artist/'+artist['ART_ID']+'/250x250-000000-80-0-0.jpg',
-                'picture_big': 'https://e-cdns-images.dzcdn.net/images/artist/'+artist['ART_ID']+'/500x500-000000-80-0-0.jpg',
-                'picture_xl': 'https://e-cdns-images.dzcdn.net/images/artist/'+artist['ART_ID']+'/1000x1000-000000-80-0-0.jpg',
+                'link': 'https://www.deezer.com/artist/'+str(artist['ART_ID']),
+                'picture': 'https://api.deezer.com/artist/'+str(artist['ART_ID'])+'/image',
+                'picture_small': 'https://e-cdns-images.dzcdn.net/images/artist/'+str(artist['ART_ID'])+'/56x56-000000-80-0-0.jpg',
+                'picture_medium': 'https://e-cdns-images.dzcdn.net/images/artist/'+str(artist['ART_ID'])+'/250x250-000000-80-0-0.jpg',
+                'picture_big': 'https://e-cdns-images.dzcdn.net/images/artist/'+str(artist['ART_ID'])+'/500x500-000000-80-0-0.jpg',
+                'picture_xl': 'https://e-cdns-images.dzcdn.net/images/artist/'+str(artist['ART_ID'])+'/1000x1000-000000-80-0-0.jpg',
                 'nb_fan': artist['NB_FAN'],
-                'tracklist': 'https://api.deezer.com/artist/'+artist['ART_ID']+'/top?limit=50',
+                'tracklist': 'https://api.deezer.com/artist/'+str(artist['ART_ID'])+'/top?limit=50',
                 'type': 'artist'
             }
             result.append(item)
@@ -387,7 +387,7 @@ class Deezer:
             item = {
                 'id': track['SNG_ID'],
 				'title': track['SNG_TITLE'],
-				'link': 'https://www.deezer.com/track/'+track['SNG_ID'],
+				'link': 'https://www.deezer.com/track/'+str(track['SNG_ID']),
 				'duration': track['DURATION'],
 				'rank': track['RANK_SNG'],
 				'explicit_lyrics': int(track['EXPLICIT_LYRICS']) > 0,
@@ -397,23 +397,23 @@ class Deezer:
 				'album': {
 						'id': track['ALB_ID'],
 						'title': track['ALB_TITLE'],
-						'cover': 'https://api.deezer.com/album/'+track['ALB_ID']+'/image',
-						'cover_small': 'https://e-cdns-images.dzcdn.net/images/cover/'+track['ALB_PICTURE']+'/56x56-000000-80-0-0.jpg',
-						'cover_medium': 'https://e-cdns-images.dzcdn.net/images/cover/'+track['ALB_PICTURE']+'/250x250-000000-80-0-0.jpg',
-						'cover_big': 'https://e-cdns-images.dzcdn.net/images/cover/'+track['ALB_PICTURE']+'/500x500-000000-80-0-0.jpg',
-						'cover_xl': 'https://e-cdns-images.dzcdn.net/images/cover/'+track['ALB_PICTURE']+'/1000x1000-000000-80-0-0.jpg',
-						'tracklist': 'https://api.deezer.com/album/'+track['ALB_ID']+'/tracks',
+						'cover': 'https://api.deezer.com/album/'+str(track['ALB_ID'])+'/image',
+						'cover_small': 'https://e-cdns-images.dzcdn.net/images/cover/'+str(track['ALB_PICTURE'])+'/56x56-000000-80-0-0.jpg',
+						'cover_medium': 'https://e-cdns-images.dzcdn.net/images/cover/'+str(track['ALB_PICTURE'])+'/250x250-000000-80-0-0.jpg',
+						'cover_big': 'https://e-cdns-images.dzcdn.net/images/cover/'+str(track['ALB_PICTURE'])+'/500x500-000000-80-0-0.jpg',
+						'cover_xl': 'https://e-cdns-images.dzcdn.net/images/cover/'+str(track['ALB_PICTURE'])+'/1000x1000-000000-80-0-0.jpg',
+						'tracklist': 'https://api.deezer.com/album/'+str(track['ALB_ID'])+'/tracks',
 						'type': 'album'
 				},
 				'artist': {
 						'id': track['ART_ID'],
 						'name': track['ART_NAME'],
-						'picture': 'https://api.deezer.com/artist/'+track['ART_ID']+'/image',
-						'picture_small': 'https://e-cdns-images.dzcdn.net/images/artist/'+track['ART_PICTURE']+'/56x56-000000-80-0-0.jpg',
-						'picture_medium': 'https://e-cdns-images.dzcdn.net/images/artist/'+track['ART_PICTURE']+'/250x250-000000-80-0-0.jpg',
-						'picture_big': 'https://e-cdns-images.dzcdn.net/images/artist/'+track['ART_PICTURE']+'/500x500-000000-80-0-0.jpg',
-						'picture_xl': 'https://e-cdns-images.dzcdn.net/images/artist/'+track['ART_PICTURE']+'/1000x1000-000000-80-0-0.jpg',
-						'tracklist': 'https://api.deezer.com/artist/'+track['ART_ID']+'/top?limit=50',
+						'picture': 'https://api.deezer.com/artist/'+str(track['ART_ID'])+'/image',
+						'picture_small': 'https://e-cdns-images.dzcdn.net/images/artist/'+str(track['ART_PICTURE'])+'/56x56-000000-80-0-0.jpg',
+						'picture_medium': 'https://e-cdns-images.dzcdn.net/images/artist/'+str(track['ART_PICTURE'])+'/250x250-000000-80-0-0.jpg',
+						'picture_big': 'https://e-cdns-images.dzcdn.net/images/artist/'+str(track['ART_PICTURE'])+'/500x500-000000-80-0-0.jpg',
+						'picture_xl': 'https://e-cdns-images.dzcdn.net/images/artist/'+str(track['ART_PICTURE'])+'/1000x1000-000000-80-0-0.jpg',
+						'tracklist': 'https://api.deezer.com/artist/'+str(track['ART_ID'])+'/top?limit=50',
 						'type': 'artist'
 				},
 				'type': 'track'
