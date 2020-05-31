@@ -256,6 +256,7 @@ def getTrackData(dz, trackAPI_gw, trackAPI=None, albumAPI_gw=None, albumAPI=None
         if not albumAPI:
             logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Getting album infos")
             albumAPI = dz.get_album(track['album']['id'])
+        track['album']['title'] = albumAPI['title']
         track['album']['mainArtist'] = {
             'id': albumAPI['artist']['id'],
             'name': albumAPI['artist']['name'],
@@ -292,6 +293,7 @@ def getTrackData(dz, trackAPI_gw, trackAPI=None, albumAPI_gw=None, albumAPI=None
         if not albumAPI_gw:
             logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Getting more album infos")
             albumAPI_gw = dz.get_album_gw(track['album']['id'])
+        track['album']['title'] = get_album_gw['ALB_TITLE']
         track['album']['mainArtist'] = {
             'id': albumAPI_gw['ART_ID'],
             'name': albumAPI_gw['ART_NAME']
