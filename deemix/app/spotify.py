@@ -123,7 +123,7 @@ class SpotifyHelper:
         if 'external_ids' in spotify_track and 'isrc' in spotify_track['external_ids']:
             try:
                 dz_track = dz.get_track_by_ISRC(spotify_track['external_ids']['isrc'])
-                dz_track = dz_track['id'] if 'id' in dz_track else 0
+                dz_track = dz_track['id'] if 'id' in dz_track and 'title' in dz_track else 0
             except:
                 dz_track = dz.get_track_from_metadata(spotify_track['artists'][0]['name'], spotify_track['name'],
                                                       spotify_track['album']['name']) if fallbackSearch else 0
