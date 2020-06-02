@@ -42,6 +42,8 @@ def antiDot(string):
 
 def pad(num, max, dopad=True):
     paddingsize = len(str(max))
+    if paddingsize == 1:
+        paddingsize = 2
     if dopad:
         return str(num).zfill(paddingsize)
     else:
