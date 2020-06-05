@@ -195,17 +195,13 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
     elif type == "artist":
         artistAPI = dz.get_artist(id)
         if interface:
-            interface.send("toast",
-                           {'msg': f"Adding {artistAPI['name']} albums to queue", 'icon': 'loading', 'dismiss': False,
-                            'id': 'artist_' + str(artistAPI['id'])})
+            interface.send("startAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
         artistAPITracks = dz.get_artist_albums(id)
         albumList = []
         for album in artistAPITracks['data']:
             albumList.append(generateQueueItem(dz, sp, album['link'], settings, bitrate))
         if interface:
-            interface.send("toast",
-                           {'msg': f"Added {artistAPI['name']} albums to queue", 'icon': 'done', 'dismiss': True,
-                            'id': 'artist_' + str(artistAPI['id'])})
+            interface.send("finishAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
         return albumList
     elif type == "spotifytrack":
         result = {}
@@ -238,16 +234,13 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
             result['error'] = "Spotify Features is not setted up correctly."
             return result
         if interface:
-            interface.send("toast",
-                           {'msg': f"Converting spotify tracks to deezer tracks", 'icon': 'loading', 'dismiss': False,
-                            'id': 'spotifyplaylist_' + str(id)})
+            interface.send("startConvertingSpotifyPlaylist", str(id))
         playlist = sp.convert_spotify_playlist(dz, id, settings)
         playlist['bitrate'] = bitrate
         playlist['uuid'] = f"{playlist['type']}_{id}_{bitrate}"
         result = playlist
         if interface:
-            interface.send("toast", {'msg': f"Spotify playlist converted", 'icon': 'done', 'dismiss': True,
-                                     'id': 'spotifyplaylist_' + str(id)})
+            interface.send("finishConvertingSpotifyPlaylist", str(id))
     else:
         logger.warn("URL not supported yet")
         result['error'] = "URL not supported yet"
@@ -277,17 +270,15 @@ def addToQueue(dz, sp, url, settings, bitrate=None, interface=None):
         if 'error' in queueItem:
             logger.error(f"[{url}] {queueItem['error']}")
             if interface:
-                interface.send("toast", {'msg': queueItem['error'], 'icon': 'error'})
+                interface.send("errorMessage", queueItem['error'])
             return False
         if queueItem['uuid'] in list(queueList.keys()):
             logger.warn(f"[{queueItem['uuid']}] Already in queue, will not be added again.")
             if interface:
-                interface.send("toast",
-                               {'msg': f"{queueItem['title']} is already in queue!", 'icon': 'playlist_add_check'})
+                interface.send("alreadyInQueue", {'uuid': queueItem['uuid'], 'title': queueItem['title']})
             return False
         if interface:
             interface.send("addedToQueue", slimQueueItem(queueItem))
-            interface.send("toast", {'msg': f"{queueItem['title']} added to queue", 'icon': 'playlist_add'})
         logger.info(f"[{queueItem['uuid']}] Added to queue.")
         queue.append(queueItem['uuid'])
         queueList[queueItem['uuid']] = queueItem
@@ -339,8 +330,7 @@ def removeFromQueue(uuid, interface=None):
     global currentItem, queueList, queue, queueComplete
     if uuid == currentItem:
         if interface:
-            interface.send('toast', {'msg': "Cancelling current item.", 'icon': 'loading', 'dismiss': False,
-                                     'id': 'cancelling_' + uuid})
+            interface.send("cancellingCurrentItem", currentItem)
         queueList[uuid]['cancel'] = True
     elif uuid in queue:
         queue.remove(uuid)
@@ -360,8 +350,7 @@ def cancelAllDownloads(interface=None):
     queueComplete = []
     if currentItem != "":
         if interface:
-            interface.send('toast', {'msg': "Cancelling current item.", 'icon': 'loading', 'dismiss': False,
-                                     'id': 'cancelling_' + currentItem})
+            interface.send("cancellingCurrentItem", currentItem)
         queueList[currentItem]['cancel'] = True
     for uuid in list(queueList.keys()):
         if uuid != currentItem:

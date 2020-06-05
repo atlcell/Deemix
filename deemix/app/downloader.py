@@ -844,8 +844,7 @@ def download(dz, queueItem, interface=None):
         download_path = after_download(playlist, settings, queueItem)
     if interface:
         if 'cancel' in queueItem:
-            interface.send('toast', {'msg': "Current item cancelled.", 'icon': 'done', 'dismiss': True,
-                                     'id': 'cancelling_' + queueItem['uuid']})
+            interface.send('currentItemCancelled', queueItem['uuid'])
             interface.send("removedFromQueue", queueItem['uuid'])
         else:
             interface.send("finishDownload", queueItem['uuid'])
