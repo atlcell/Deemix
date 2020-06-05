@@ -160,6 +160,7 @@ class SpotifyHelper:
             'downloaded': 0,
             'failed': 0,
             'progress': 0,
+            'errors': [],
             'type': 'spotify_playlist',
             'settings': settings or {},
             'id': playlist_id
