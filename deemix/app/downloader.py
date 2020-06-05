@@ -3,7 +3,7 @@ import os.path
 import re
 import traceback
 from concurrent.futures import ThreadPoolExecutor
-from os import makedirs, remove, system as execute
+from os import makedirs, remove, system as execute, chmod
 from tempfile import gettempdir
 from time import sleep
 
@@ -93,7 +93,8 @@ def downloadImage(url, path, overwrite="n"):
             image.raise_for_status()
             with open(path, 'wb') as f:
                 f.write(image.content)
-                return path
+            chmod(path, 0o770)
+            return path
         except ConnectionError:
             sleep(1)
             return downloadImage(url, path, overwrite)
@@ -674,6 +675,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         if not os.path.isfile(os.path.join(filepath, filename + '.lrc')) or settings['overwriteFile'] in ['y', 't']:
             with open(os.path.join(filepath, filename + '.lrc'), 'wb') as f:
                 f.write(track['lyrics']['sync'].encode('utf-8'))
+            chmod(os.path.join(filepath, filename + '.lrc'), 0o770)
 
     # Save local album art
     if coverPath:
@@ -710,6 +712,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         try:
             with open(writepath, 'wb') as stream:
                 stream_track(dz, track, stream, trackAPI, queueItem, interface)
+            chmod(writepath, 0o770)
         except downloadCancelled:
             remove(writepath)
             result['cancel'] = True
@@ -885,13 +888,16 @@ def after_download(tracks, settings, queueItem):
     if settings['logErrors'] and errors != "":
         with open(os.path.join(extrasPath, 'errors.txt'), 'wb') as f:
             f.write(errors.encode('utf-8'))
+        chmod(os.path.join(extrasPath, 'errors.txt'), 0o770)
     if settings['logSearched'] and searched != "":
         with open(os.path.join(extrasPath, 'searched.txt'), 'wb') as f:
             f.write(searched.encode('utf-8'))
+        chmod(os.path.join(extrasPath, 'searched.txt'), 0o770)
     if settings['createM3U8File']:
         with open(os.path.join(extrasPath, 'playlist.m3u8'), 'wb') as f:
             for line in playlist:
                 f.write((line + "\n").encode('utf-8'))
+        chmod(os.path.join(extrasPath, 'playlist.m3u8'), 0o770)
     if settings['executeCommand'] != "":
         execute(settings['executeCommand'].replace("%folder%", extrasPath))
     return extrasPath
@@ -914,6 +920,7 @@ def after_download_single(track, settings, queueItem):
                     orig += "\r\n"
                 orig += track['searched'] + "\r\n"
             f.write(orig.encode('utf-8'))
+        chmod(os.path.join(track['extrasPath'], 'searched.txt'), 0o770)
     if settings['executeCommand'] != "":
         execute(settings['executeCommand'].replace("%folder%", track['extrasPath']))
     return track['extrasPath']
