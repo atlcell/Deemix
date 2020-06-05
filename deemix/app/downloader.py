@@ -335,7 +335,7 @@ def getTrackData(dz, trackAPI_gw, trackAPI=None, albumAPI_gw=None, albumAPI=None
     track['artist'] = {}
     track['artists'] = []
     for artist in trackAPI['contributors']:
-        if artist['id'] != 5080:
+        if artist['id'] != 5080 or artist['id'] == 5080 and len(trackAPI['contributors']) == 1:
             track['artists'].append(artist['name'])
             if not artist['role'] in track['artist']:
                 track['artist'][artist['role']] = []
