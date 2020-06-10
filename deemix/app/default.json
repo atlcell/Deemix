@@ -35,6 +35,7 @@
   "PNGcovers": false,
   "jpegImageQuality": 80,
   "dateFormat": "Y-M-D",
+  "albumVariousArtists": true,
   "removeAlbumVersion": false,
   "removeDuplicateArtists": false,
   "featuredToTitle": "0",

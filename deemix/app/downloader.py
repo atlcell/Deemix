@@ -168,7 +168,7 @@ def parseEssentialTrackData(track, trackAPI):
     return track
 
 
-def getTrackData(dz, trackAPI_gw, trackAPI=None, albumAPI_gw=None, albumAPI=None, removeDuplicates=False):
+def getTrackData(dz, trackAPI_gw, settings, trackAPI=None, albumAPI_gw=None, albumAPI=None):
     if not 'MD5_ORIGIN' in trackAPI_gw:
         trackAPI_gw['MD5_ORIGIN'] = dz.get_track_md5(trackAPI_gw['SNG_ID'])
 
@@ -266,12 +266,12 @@ def getTrackData(dz, trackAPI_gw, trackAPI=None, albumAPI_gw=None, albumAPI=None
         track['album']['artist'] = {}
         track['album']['artists'] = []
         for artist in albumAPI['contributors']:
-            if artist['id'] != 5080:
+            if artist['id'] != 5080 or artist['id'] == 5080 and settings['albumVariousArtists']:
                 track['album']['artists'].append(artist['name'])
                 if not artist['role'] in track['album']['artist']:
                     track['album']['artist'][artist['role']] = []
                 track['album']['artist'][artist['role']].append(artist['name'])
-        if removeDuplicates:
+        if settings['removeDuplicateArtists']:
             track['album']['artists'] = uniqueArray(track['album']['artists'])
             for role in track['album']['artist'].keys():
                 track['album']['artist'][role] = uniqueArray(track['album']['artist'][role])
@@ -345,8 +345,7 @@ def getTrackData(dz, trackAPI_gw, trackAPI=None, albumAPI_gw=None, albumAPI=None
             if not artist['role'] in track['artist']:
                 track['artist'][artist['role']] = []
             track['artist'][artist['role']].append(artist['name'])
-
-    if removeDuplicates:
+    if settings['removeDuplicateArtists']:
         track['artists'] = uniqueArray(track['artists'])
         for role in track['artist'].keys():
             track['artist'][role] = uniqueArray(track['artist'][role])
@@ -449,9 +448,9 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
     else:
         track = getTrackData(dz,
                              trackAPI_gw=trackAPI,
+                             settings=settings,
                              trackAPI=trackAPI['_EXTRA_TRACK'] if '_EXTRA_TRACK' in trackAPI else None,
-                             albumAPI=trackAPI['_EXTRA_ALBUM'] if '_EXTRA_ALBUM' in trackAPI else None,
-                             removeDuplicates=settings['removeDuplicateArtists']
+                             albumAPI=trackAPI['_EXTRA_ALBUM'] if '_EXTRA_ALBUM' in trackAPI else None
                              )
     if 'cancel' in queueItem:
         result['cancel'] = True
@@ -599,8 +598,12 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
             'pic': trackAPI["_EXTRA_PLAYLIST"]['various_artist']['picture_small'][
                    trackAPI["_EXTRA_PLAYLIST"]['various_artist']['picture_small'].find('artist/') + 7:-24]
         }
-        track['album']['artist'] = {"Main": [trackAPI["_EXTRA_PLAYLIST"]['various_artist']['name'], ]}
-        track['album']['artists'] = [trackAPI["_EXTRA_PLAYLIST"]['various_artist']['name'], ]
+        if settings['albumVariousArtists']:
+            track['album']['artist'] = {"Main": [trackAPI["_EXTRA_PLAYLIST"]['various_artist']['name'], ]}
+            track['album']['artists'] = [trackAPI["_EXTRA_PLAYLIST"]['various_artist']['name'], ]
+        else:
+            track['album']['artist'] = {"Main": []}
+            track['album']['artists'] = []
         track['trackNumber'] = trackAPI["POSITION"]
         track['album']['trackTotal'] = trackAPI["_EXTRA_PLAYLIST"]['nb_tracks']
         track['album']['recordType'] = "Compilation"
