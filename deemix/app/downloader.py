@@ -13,7 +13,7 @@ from requests.exceptions import HTTPError, ConnectionError
 
 from deemix.api.deezer import APIError, USER_AGENT_HEADER
 from deemix.utils.misc import changeCase
-from deemix.utils.pathtemplates import generateFilename, generateFilepath, settingsRegexAlbum, settingsRegexArtist
+from deemix.utils.pathtemplates import generateFilename, generateFilepath, settingsRegexAlbum, settingsRegexArtist, settingsRegexPlaylistFile
 from deemix.utils.taggers import tagID3, tagFLAC
 import logging
 
@@ -894,10 +894,11 @@ def after_download(tracks, settings, queueItem):
             f.write(searched.encode('utf-8'))
         chmod(os.path.join(extrasPath, 'searched.txt'), 0o770)
     if settings['createM3U8File']:
-        with open(os.path.join(extrasPath, 'playlist.m3u8'), 'wb') as f:
+        filename = settingsRegexPlaylistFile(settings['playlistFilenameTemplate'], queueItem, settings) or "playlist"
+        with open(os.path.join(extrasPath, filename+'.m3u8'), 'wb') as f:
             for line in playlist:
                 f.write((line + "\n").encode('utf-8'))
-        chmod(os.path.join(extrasPath, 'playlist.m3u8'), 0o770)
+        chmod(os.path.join(extrasPath, filename+'.m3u8'), 0o770)
     if settings['executeCommand'] != "":
         execute(settings['executeCommand'].replace("%folder%", extrasPath))
     return extrasPath

@@ -94,7 +94,8 @@ def generateFilepath(track, trackAPI, settings):
                      '_EXTRA_PLAYLIST' in trackAPI and settings['createStructurePlaylist']))
     ):
         filepath += antiDot(
-            settingsRegexAlbum(settings['albumNameTemplate'], track['album'], settings, trackAPI)) + pathSep
+            settingsRegexAlbum(settings['albumNameTemplate'], track['album'], settings,
+                trackAPI['_EXTRA_PLAYLIST'] if'_EXTRA_PLAYLIST' in trackAPI else None)) + pathSep
         coverPath = filepath
 
     if not ('_EXTRA_PLAYLIST' in trackAPI and not settings['tags']['savePlaylistAsCompilation']):
@@ -154,9 +155,9 @@ def settingsRegex(filename, track, settings, playlist=None):
     return antiDot(fixLongName(filename))
 
 
-def settingsRegexAlbum(foldername, album, settings, trackAPI):
-    if trackAPI and '_EXTRA_PLAYLIST' in trackAPI and settings['tags']['savePlaylistAsCompilation']:
-        foldername = foldername.replace("%album_id%", "pl_" + str(trackAPI['_EXTRA_PLAYLIST']['id']))
+def settingsRegexAlbum(foldername, album, settings, playlist=None):
+    if playlist and settings['tags']['savePlaylistAsCompilation']:
+        foldername = foldername.replace("%album_id%", "pl_" + str(playlist['id']))
     else:
         foldername = foldername.replace("%album_id%", str(album['id']))
     foldername = foldername.replace("%album%", fixName(album['title'], settings['illegalCharacterReplacer']))
@@ -198,4 +199,14 @@ def settingsRegexPlaylist(foldername, playlist, settings):
     foldername = foldername.replace("%year%", str(playlist['creation_date'][:4]))
     foldername = foldername.replace("%date%", str(playlist['creation_date'][:10]))
     foldername = foldername.replace('\\', pathSep).replace('/', pathSep)
+    return antiDot(fixLongName(foldername))
+
+def settingsRegexPlaylistFile(foldername, queueItem, settings):
+    foldername = foldername.replace("%title%", fixName(queueItem['title'], settings['illegalCharacterReplacer']))
+    foldername = foldername.replace("%artist%", fixName(queueItem['artist'], settings['illegalCharacterReplacer']))
+    foldername = foldername.replace("%size%", str(queueItem['size']))
+    foldername = foldername.replace("%type%", fixName(queueItem['type'], settings['illegalCharacterReplacer']))
+    foldername = foldername.replace("%id%", fixName(queueItem['id'], settings['illegalCharacterReplacer']))
+    foldername = foldername.replace("%bitrate%", bitrateLabels[int(queueItem['bitrate'])])
+    foldername = foldername.replace('\\', pathSep).replace('/', pathSep).replace(pathSep, settings['illegalCharacterReplacer'])
     return antiDot(fixLongName(foldername))
