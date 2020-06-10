@@ -12,7 +12,7 @@ from requests import get
 from requests.exceptions import HTTPError, ConnectionError
 
 from deemix.api.deezer import APIError, USER_AGENT_HEADER
-from deemix.utils.misc import changeCase
+from deemix.utils.misc import changeCase, uniqueArray
 from deemix.utils.pathtemplates import generateFilename, generateFilepath, settingsRegexAlbum, settingsRegexArtist, settingsRegexPlaylistFile
 from deemix.utils.taggers import tagID3, tagFLAC
 import logging
@@ -168,7 +168,7 @@ def parseEssentialTrackData(track, trackAPI):
     return track
 
 
-def getTrackData(dz, trackAPI_gw, trackAPI=None, albumAPI_gw=None, albumAPI=None):
+def getTrackData(dz, trackAPI_gw, trackAPI=None, albumAPI_gw=None, albumAPI=None, removeDuplicates=False):
     if not 'MD5_ORIGIN' in trackAPI_gw:
         trackAPI_gw['MD5_ORIGIN'] = dz.get_track_md5(trackAPI_gw['SNG_ID'])
 
@@ -271,6 +271,10 @@ def getTrackData(dz, trackAPI_gw, trackAPI=None, albumAPI_gw=None, albumAPI=None
                 if not artist['role'] in track['album']['artist']:
                     track['album']['artist'][artist['role']] = []
                 track['album']['artist'][artist['role']].append(artist['name'])
+        if removeDuplicates:
+            track['album']['artists'] = uniqueArray(track['album']['artists'])
+            for role in track['album']['artist'].keys():
+                track['album']['artist'][role] = uniqueArray(track['album']['artist'][role])
         track['album']['trackTotal'] = albumAPI['nb_tracks']
         track['album']['recordType'] = albumAPI['record_type']
         track['album']['barcode'] = albumAPI['upc'] if 'upc' in albumAPI else "Unknown"
@@ -341,6 +345,11 @@ def getTrackData(dz, trackAPI_gw, trackAPI=None, albumAPI_gw=None, albumAPI=None
             if not artist['role'] in track['artist']:
                 track['artist'][artist['role']] = []
             track['artist'][artist['role']].append(artist['name'])
+
+    if removeDuplicates:
+        track['artists'] = uniqueArray(track['artists'])
+        for role in track['artist'].keys():
+            track['artist'][role] = uniqueArray(track['artist'][role])
 
     if not 'discTotal' in track['album'] or not track['album']['discTotal']:
         if not albumAPI_gw:
@@ -441,7 +450,8 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         track = getTrackData(dz,
                              trackAPI_gw=trackAPI,
                              trackAPI=trackAPI['_EXTRA_TRACK'] if '_EXTRA_TRACK' in trackAPI else None,
-                             albumAPI=trackAPI['_EXTRA_ALBUM'] if '_EXTRA_ALBUM' in trackAPI else None
+                             albumAPI=trackAPI['_EXTRA_ALBUM'] if '_EXTRA_ALBUM' in trackAPI else None,
+                             removeDuplicates=settings['removeDuplicateArtists']
                              )
     if 'cancel' in queueItem:
         result['cancel'] = True

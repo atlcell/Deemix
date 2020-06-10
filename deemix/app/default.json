@@ -36,6 +36,7 @@
   "jpegImageQuality": 80,
   "dateFormat": "Y-M-D",
   "removeAlbumVersion": false,
+  "removeDuplicateArtists": false,
   "featuredToTitle": "0",
   "titleCasing": "nothing",
   "artistCasing": "nothing",
