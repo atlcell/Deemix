@@ -380,6 +380,15 @@ def getTrackData(dz, trackAPI_gw, settings, trackAPI=None, albumAPI_gw=None, alb
             tempTrack += track['title_clean'][track['title_clean'].find(")", pos + 1) + 1:]
         track['title_clean'] = tempTrack.strip()
 
+    # Remove featuring from the album name
+    track['album']['title_clean'] = track['album']['title']
+    if "(feat." in track['album']['title_clean'].lower():
+        pos = track['album']['title_clean'].lower().find("(feat.")
+        tempTrack = track['album']['title_clean'][:pos]
+        if ")" in track['album']['title_clean']:
+            tempTrack += track['album']['title_clean'][track['album']['title_clean'].find(")", pos + 1) + 1:]
+        track['album']['title_clean'] = tempTrack.strip()
+
     # Create artists strings
     track['mainArtistsString'] = ""
     track['commaArtistsString'] = ""
@@ -630,10 +639,14 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
     # 0 => do not change
     # 1 => remove from title
     # 2 => add to title
+    # 3 => remove from title and album title
     if settings['featuredToTitle'] == "1":
         track['title'] = track['title_clean']
     elif settings['featuredToTitle'] == "2":
         track['title'] = track['title_feat']
+    elif settings['featuredToTitle'] == "3":
+        track['title'] = track['title_clean']
+        track['album']['title'] = track['album']['title_clean']
 
     # Remove (Album Version) from tracks that have that
     if settings['removeAlbumVersion']:
