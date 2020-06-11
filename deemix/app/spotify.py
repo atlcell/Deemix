@@ -117,7 +117,16 @@ class SpotifyHelper:
     def get_trackid_spotify(self, dz, track_id, fallbackSearch, spotifyTrack=None):
         if not self.spotifyEnabled:
             raise spotifyFeaturesNotEnabled
+        singleTrack = False
         if not spotifyTrack:
+            if path.isfile(path.join(self.configFolder, 'spotifyCache.json')):
+                with open(path.join(self.configFolder, 'spotifyCache.json'), 'r') as spotifyCache:
+                    cache = json.load(spotifyCache)
+            else:
+                cache = {'tracks': {}, 'albums': {}}
+            if str(track_id) in cache['tracks']:
+                return cache['tracks'][str(track_id)]
+            singleTrack = True
             spotify_track = self.sp.track(track_id)
         else:
             spotify_track = spotifyTrack
@@ -132,11 +141,22 @@ class SpotifyHelper:
         elif fallbackSearch:
             dz_track = dz.get_track_from_metadata(spotify_track['artists'][0]['name'], spotify_track['name'],
                                                   spotify_track['album']['name'])
+        if singleTrack:
+            cache['tracks'][str(track_id)] = dz_track
+            with open(path.join(self.configFolder, 'spotifyCache.json'), 'w') as spotifyCache:
+                json.dump(cache, spotifyCache)
         return dz_track
 
     def get_albumid_spotify(self, dz, album_id):
         if not self.spotifyEnabled:
             raise spotifyFeaturesNotEnabled
+        if path.isfile(path.join(self.configFolder, 'spotifyCache.json')):
+            with open(path.join(self.configFolder, 'spotifyCache.json'), 'r') as spotifyCache:
+                cache = json.load(spotifyCache)
+        else:
+            cache = {'tracks': {}, 'albums': {}}
+        if str(album_id) in cache['albums']:
+            return cache['albums'][str(album_id)]
         spotify_album = self.sp.album(album_id)
         dz_album = 0
         if 'external_ids' in spotify_album and 'upc' in spotify_album['external_ids']:
@@ -149,6 +169,9 @@ class SpotifyHelper:
                     dz_album = dz_album['id'] if 'id' in dz_album else 0
                 except:
                     dz_album = 0
+        cache['albums'][str(album_id)] = dz_album
+        with open(path.join(self.configFolder, 'spotifyCache.json'), 'w') as spotifyCache:
+            json.dump(cache, spotifyCache)
         return dz_album
 
     def convert_spotify_playlist(self, dz, playlist_id, settings):
@@ -180,8 +203,17 @@ class SpotifyHelper:
             spotify_playlist['tracks'] = self.sp.next(spotify_playlist['tracks'])
             tracklist += spotify_playlist['tracks']['items']
         totalSize = len(tracklist)
+        if path.isfile(path.join(self.configFolder, 'spotifyCache.json')):
+            with open(path.join(self.configFolder, 'spotifyCache.json'), 'r') as spotifyCache:
+                cache = json.load(spotifyCache)
+        else:
+            cache = {'tracks': {}, 'albums': {}}
         for pos, track in enumerate(tracklist, start=1):
-            trackID = self.get_trackid_spotify(dz, 0, settings['fallbackSearch'], track['track'])
+            if str(track['track']['id']) in cache['tracks']:
+                trackID = cache['tracks'][str(track['track']['id'])]
+            else:
+                trackID = self.get_trackid_spotify(dz, 0, settings['fallbackSearch'], track['track'])
+                cache['tracks'][str(track['track']['id'])] = trackID
             if trackID == 0:
                 deezerTrack = {
                     'SNG_ID': 0,
@@ -202,6 +234,8 @@ class SpotifyHelper:
             deezerTrack['SIZE'] = totalSize
             deezerTrack['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
             result['collection'].append(deezerTrack)
+        with open(path.join(self.configFolder, 'spotifyCache.json'), 'w') as spotifyCache:
+            json.dump(cache, spotifyCache)
         return result
 
     def get_user_playlists(self, user):
