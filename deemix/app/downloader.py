@@ -936,7 +936,7 @@ def after_download_single(track, settings, queueItem):
             f.write(orig.encode('utf-8'))
         chmod(os.path.join(track['extrasPath'], 'searched.txt'), 0o770)
     if settings['executeCommand'] != "":
-        execute(settings['executeCommand'].replace("%folder%", track['extrasPath']))
+        execute(settings['executeCommand'].replace("%folder%", track['extrasPath']).replace("%filename%", track['playlistPosition']))
     return track['extrasPath']
 
 
