@@ -735,40 +735,57 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
     trackAlreadyDownloaded = os.path.isfile(writepath)
     if not trackAlreadyDownloaded or settings['overwriteFile'] == 'y':
         logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Downloading the track")
-        try:
-            with open(writepath, 'wb') as stream:
-                stream_track(dz, track, stream, trackAPI, queueItem, interface)
-            chmod(writepath, 0o770)
-        except downloadCancelled:
-            remove(writepath)
-            result['cancel'] = True
-            return result
-        except HTTPError:
-            remove(writepath)
-            if track['fallbackId'] != 0:
-                logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Track not available, using fallback id")
-                trackNew = dz.get_track_gw(track['fallbackId'])
-                if not 'MD5_ORIGIN' in trackNew:
-                    trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
-                track = parseEssentialTrackData(track, trackNew)
-                return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, interface=interface)
-            elif not 'searched' in track and settings['fallbackSearch']:
-                logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Track not available, searching for alternative")
-                searchedId = dz.get_track_from_metadata(track['mainArtist']['name'], track['title'],
-                                                        track['album']['title'])
-                if searchedId != 0:
-                    trackNew = dz.get_track_gw(searchedId)
+        def downloadMusic(dz, track, trackAPI, queueItem, interface, writepath, result, settings):
+            try:
+                with open(writepath, 'wb') as stream:
+                    stream_track(dz, track, stream, trackAPI, queueItem, interface)
+                chmod(writepath, 0o770)
+            except downloadCancelled:
+                remove(writepath)
+                result['cancel'] = True
+                return 1
+            except HTTPError:
+                remove(writepath)
+                if track['fallbackId'] != 0:
+                    logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Track not available, using fallback id")
+                    trackNew = dz.get_track_gw(track['fallbackId'])
                     if not 'MD5_ORIGIN' in trackNew:
                         trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
                     track = parseEssentialTrackData(track, trackNew)
-                    track['searched'] = True
-                    return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track,
-                                            interface=interface)
+                    return 2
+                elif not 'searched' in track and settings['fallbackSearch']:
+                    logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Track not available, searching for alternative")
+                    searchedId = dz.get_track_from_metadata(track['mainArtist']['name'], track['title'],
+                                                            track['album']['title'])
+                    if searchedId != 0:
+                        trackNew = dz.get_track_gw(searchedId)
+                        if not 'MD5_ORIGIN' in trackNew:
+                            trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
+                        track = parseEssentialTrackData(track, trackNew)
+                        track['searched'] = True
+                        return 2
+                    else:
+                        logger.error(f"[{track['mainArtist']['name']} - {track['title']}] Track not available on deezer's servers and no alternative found!")
+                        trackCompletePercentage(trackAPI, queueItem, interface)
+                        result['error'] = {
+                            'message': "Track not available on deezer's servers and no alternative found!",
+                            'data': {
+                                'id': track['id'],
+                                'title': track['title'],
+                                'artist': track['mainArtist']['name']
+                            }
+                        }
+                        queueItem['failed'] += 1
+                        queueItem['errors'].append(result['error'])
+                        if interface:
+                            interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
+                                                           'error': "Track not available on deezer's servers and no alternative found!"})
+                        return 1
                 else:
-                    logger.error(f"[{track['mainArtist']['name']} - {track['title']}] Track not available on deezer's servers and no alternative found!")
+                    logger.error(f"[{track['mainArtist']['name']} - {track['title']}] Track not available on deezer's servers!")
                     trackCompletePercentage(trackAPI, queueItem, interface)
                     result['error'] = {
-                        'message': "Track not available on deezer's servers and no alternative found!",
+                        'message': "Track not available on deezer's servers!",
                         'data': {
                             'id': track['id'],
                             'title': track['title'],
@@ -779,25 +796,18 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                     queueItem['errors'].append(result['error'])
                     if interface:
                         interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
-                                                       'error': "Track not available on deezer's servers and no alternative found!"})
-                    return result
-            else:
-                logger.error(f"[{track['mainArtist']['name']} - {track['title']}] Track not available on deezer's servers!")
-                trackCompletePercentage(trackAPI, queueItem, interface)
-                result['error'] = {
-                    'message': "Track not available on deezer's servers!",
-                    'data': {
-                        'id': track['id'],
-                        'title': track['title'],
-                        'artist': track['mainArtist']['name']
-                    }
-                }
-                queueItem['failed'] += 1
-                queueItem['errors'].append(result['error'])
-                if interface:
-                    interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
-                                                   'error': "Track not available on deezer's servers!"})
-                return result
+                                                       'error': "Track not available on deezer's servers!"})
+                    return 1
+            except:
+                logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Error while downloading the track, trying again in 5s...")
+                sleep(5)
+                return downloadMusic(dz, track, trackAPI, queueItem, interface, writepath, result, settings)
+            return 0
+        outcome = downloadMusic(dz, track, trackAPI, queueItem, interface, writepath, result, settings)
+        if outcome == 1:
+            return result
+        elif outcome == 2:
+            return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, interface=interface)
     else:
         logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Skipping track as it's already downloaded")
         trackCompletePercentage(trackAPI, queueItem, interface)
