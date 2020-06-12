@@ -95,9 +95,6 @@ def downloadImage(url, path, overwrite="n"):
                 f.write(image.content)
             chmod(path, 0o770)
             return path
-        except ConnectionError:
-            sleep(1)
-            return downloadImage(url, path, overwrite)
         except HTTPError:
             if 'cdns-images.dzcdn.net' in url:
                 urlBase = url[:url.rfind("/")+1]
@@ -108,6 +105,9 @@ def downloadImage(url, path, overwrite="n"):
                     sleep(1)
                     return  downloadImage(urlBase+pictureUrl.replace(str(pictureSize)+"x"+str(pictureSize), '1400x1400'), path, overwrite)
             logger.error("Couldn't download Image: "+url)
+        except:
+            sleep(1)
+            return downloadImage(url, path, overwrite)
         remove(path)
         return None
     else:
