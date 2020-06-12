@@ -710,7 +710,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
             f"{settings['embeddedArtworkSize']}x{settings['embeddedArtworkSize']}",
             f"{settings['localArtworkSize']}x{settings['localArtworkSize']}")
         result['albumPath'] = os.path.join(coverPath,
-                                           f"{settingsRegexAlbum(settings['coverImageTemplate'], track['album'], settings, trackAPI)}.{'png' if settings['PNGcovers'] else 'jpg'}")
+                                           f"{settingsRegexAlbum(settings['coverImageTemplate'], track['album'], settings, trackAPI['_EXTRA_PLAYLIST'] if'_EXTRA_PLAYLIST' in trackAPI else None)}.{'png' if settings['PNGcovers'] else 'jpg'}")
 
     # Save artist art
     if artistPath:
