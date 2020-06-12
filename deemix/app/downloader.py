@@ -436,7 +436,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 
     if trackAPI['SNG_ID'] == 0:
         result['error'] = {
-            'message': "Track not available on Deezer!",
+            'message': "This track is not available on Deezer!",
         }
         if 'SNG_TITLE' in trackAPI:
             result['error']['data'] = {
@@ -444,11 +444,12 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                 'title': trackAPI['SNG_TITLE'] + (trackAPI['VERSION'] if 'VERSION' in trackAPI and trackAPI['VERSION'] and not trackAPI['VERSION'] in trackAPI['SNG_TITLE'] else ""),
                 'artist': trackAPI['ART_NAME']
             }
+        logger.error(f"[{result['error']['data']['artist']} - {result['error']['data']['title']}] This track is not available on Deezer!")
         queueItem['failed'] += 1
         queueItem['errors'].append(result['error'])
         if interface:
             interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
-                                           'error': "Track not available on Deezer!"})
+                                           'error': "This track is not available on Deezer!"})
         return result
     # Get the metadata
     logger.info(f"[{trackAPI['ART_NAME']} - {trackAPI['SNG_TITLE']}] Getting the tags")
