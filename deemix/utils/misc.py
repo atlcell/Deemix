@@ -3,7 +3,7 @@ import re
 
 
 def getBitrateInt(txt):
-    txt = str(txt)
+    txt = str(txt).lower()
     if txt in ['flac', 'lossless', '9']:
         return 9
     elif txt in ['mp3', '320', '3']:
