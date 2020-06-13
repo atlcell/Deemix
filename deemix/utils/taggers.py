@@ -70,7 +70,7 @@ def tagID3(stream, track, save):
                 APIC(3, 'image/jpeg' if track['album']['picPath'].endswith('jpg') else 'image/png', 3, desc='cover', data=f.read()))
 
     tag.save(stream, v1=2 if save['saveID3v1'] else 0, v2_version=3,
-             v23_sep=None if save['useNullSeparator'] else ' / ')
+             v23_sep=None if save['useNullSeparator'] else '/')
 
 
 def tagFLAC(stream, track, save):
