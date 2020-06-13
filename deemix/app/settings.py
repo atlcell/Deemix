@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os.path as path
-from os import makedirs, chmod
+from os import makedirs
 import random
 import string
 import logging
@@ -30,7 +30,6 @@ def initSettings(localFolder = False, configFolder = None):
     if not path.isfile(path.join(configFolder, 'config.json')):
         with open(path.join(configFolder, 'config.json'), 'w') as f:
             json.dump(defaultSettings, f, indent=2)
-        chmod(path.join(configFolder, 'config.json'), 0o770)
     with open(path.join(configFolder, 'config.json'), 'r') as configFile:
         settings = json.load(configFile)
     settingsCheck()
@@ -60,7 +59,6 @@ def saveSettings(newSettings):
     settings = newSettings
     with open(path.join(configDir, 'config.json'), 'w') as configFile:
         json.dump(settings, configFile, indent=2)
-    chmod(path.join(configDir, 'config.json'), 0o770)
     return True
 
 

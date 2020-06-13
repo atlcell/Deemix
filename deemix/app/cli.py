@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import os.path as path
-from os import mkdir, chmod
+from os import mkdir
 
 from deemix.utils import localpaths
 from deemix.api.deezer import Deezer
@@ -32,7 +32,6 @@ def login():
         arl = requestValidArl()
     with open(path.join(configFolder, '.arl'), 'w') as f:
         f.write(arl)
-    chmod(path.join(configFolder, '.arl'), 0o770)
 
 
 def downloadLink(url, settings, bitrate=None):

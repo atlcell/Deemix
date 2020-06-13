@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import json
 import os.path as path
-from os import mkdir, chmod
+from os import mkdir
 
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
@@ -42,7 +42,6 @@ class SpotifyHelper:
         if not path.isfile(path.join(self.configFolder, 'authCredentials.json')):
             with open(path.join(self.configFolder, 'authCredentials.json'), 'w') as f:
                 json.dump({'clientId': "", 'clientSecret': ""}, f, indent=2)
-            chmod(path.join(self.configFolder, 'authCredentials.json'), 0o770)
         with open(path.join(self.configFolder, 'authCredentials.json'), 'r') as credentialsFile:
             self.credentials = json.load(credentialsFile)
         self.checkCredentials()
@@ -65,7 +64,6 @@ class SpotifyHelper:
     def setCredentials(self, spotifyCredentials):
         with open(path.join(self.configFolder, 'authCredentials.json'), 'w') as f:
             json.dump(spotifyCredentials, f, indent=2)
-        chmod(path.join(self.configFolder, 'authCredentials.json'), 0o770)
         self.credentials = spotifyCredentials
         self.checkCredentials()
 
