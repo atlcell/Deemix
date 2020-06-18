@@ -92,7 +92,7 @@ class Deezer:
             time.sleep(2)
             return self.api_call(method, args)
         if 'error' in result_json.keys():
-            if result_json['error']['code'] == 4:
+            if 'code' in result_json['error'] and result_json['error']['code'] == 4:
                 time.sleep(5)
                 return self.api_call(method, args)
             raise APIError(result_json)
