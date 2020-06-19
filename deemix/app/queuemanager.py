@@ -251,8 +251,18 @@ def addToQueue(dz, sp, url, settings, bitrate=None, interface=None):
     global currentItem, queueList, queue
     if not dz.logged_in:
         return "Not logged in"
-    logger.info("Generating queue item for: "+url)
-    queueItem = generateQueueItem(dz, sp, url, settings, bitrate, interface=interface)
+    if type(url) is list:
+        queueItem = []
+        for link in url:
+            logger.info("Generating queue item for: "+link)
+            item = generateQueueItem(dz, sp, link, settings, bitrate, interface=interface)
+            if type(item) is list:
+                queueItem += item
+            else:
+                queueItem.append(item)
+    else:
+        logger.info("Generating queue item for: "+url)
+        queueItem = generateQueueItem(dz, sp, url, settings, bitrate, interface=interface)
     if type(queueItem) is list:
         for x in queueItem:
             if 'error' in x:
@@ -263,9 +273,9 @@ def addToQueue(dz, sp, url, settings, bitrate=None, interface=None):
                 continue
             if interface:
                 interface.send("addedToQueue", slimQueueItem(x))
-            logger.info(f"[{x['uuid']}] Added to queue.")
             queue.append(x['uuid'])
             queueList[x['uuid']] = x
+            logger.info(f"[{x['uuid']}] Added to queue.")
     else:
         if 'error' in queueItem:
             logger.error(f"[{url}] {queueItem['error']}")
