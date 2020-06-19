@@ -35,5 +35,4 @@ def login():
 
 
 def downloadLink(url, settings, bitrate=None):
-    url = url.strip()
     addToQueue(dz, sp, url, settings, bitrate)

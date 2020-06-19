@@ -62,6 +62,7 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
     type = getTypeFromLink(url)
     id = getIDFromLink(url, type)
     result = {}
+    result['link'] = url
     if type == None or id == None:
         logger.warn("URL not recognized")
         result['error'] = "URL not recognized"
@@ -254,6 +255,9 @@ def addToQueue(dz, sp, url, settings, bitrate=None, interface=None):
     if type(url) is list:
         queueItem = []
         for link in url:
+            link = link.strip()
+            if link == "":
+                continue
             logger.info("Generating queue item for: "+link)
             item = generateQueueItem(dz, sp, link, settings, bitrate, interface=interface)
             if type(item) is list:
@@ -261,12 +265,15 @@ def addToQueue(dz, sp, url, settings, bitrate=None, interface=None):
             else:
                 queueItem.append(item)
     else:
+        url = url.strip()
+        if url == "":
+            return False
         logger.info("Generating queue item for: "+url)
         queueItem = generateQueueItem(dz, sp, url, settings, bitrate, interface=interface)
     if type(queueItem) is list:
         for x in queueItem:
             if 'error' in x:
-                logger.error(f"[{url}] {x['error']}")
+                logger.error(f"[{x['link']}] {x['error']}")
                 continue
             if x['uuid'] in list(queueList.keys()):
                 logger.warn(f"[{x['uuid']}] Already in queue, will not be added again.")
@@ -278,7 +285,7 @@ def addToQueue(dz, sp, url, settings, bitrate=None, interface=None):
             logger.info(f"[{x['uuid']}] Added to queue.")
     else:
         if 'error' in queueItem:
-            logger.error(f"[{url}] {queueItem['error']}")
+            logger.error(f"[{queueItem['link']}] {queueItem['error']}")
             if interface:
                 interface.send("errorMessage", queueItem['error'])
             return False

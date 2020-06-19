@@ -13,12 +13,12 @@ from os.path import isfile
 def download(bitrate, local, url):
     settings = initSettings(local)
     app.login()
+    url = list(url)
     if isfile(url[0]):
         filename = url[0]
         with open(filename) as f:
             url = f.readlines()
-    for u in url:
-        app.downloadLink(u, settings, bitrate)
+    app.downloadLink(url, settings, bitrate)
     click.echo("All done!")
     if local:
         click.echo(settings['downloadLocation']) #folder name output
