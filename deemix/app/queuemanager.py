@@ -187,11 +187,15 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
         totalSize = len(playlistTracksAPI)
         result['collection'] = []
         for pos, trackAPI in enumerate(playlistTracksAPI, start=1):
+            if 'EXPLICIT_TRACK_CONTENT' in trackAPI and 'EXPLICIT_LYRICS_STATUS' in trackAPI['EXPLICIT_TRACK_CONTENT'] and trackAPI['EXPLICIT_TRACK_CONTENT']['EXPLICIT_LYRICS_STATUS'] in [1,4]:
+                playlistAPI['explicit'] = True
             trackAPI['_EXTRA_PLAYLIST'] = playlistAPI
             trackAPI['POSITION'] = pos
             trackAPI['SIZE'] = totalSize
             trackAPI['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
             result['collection'].append(trackAPI)
+        if not 'explicit' in playlistAPI:
+            playlistAPI['explicit'] = False
 
     elif type == "artist":
         artistAPI = dz.get_artist(id)

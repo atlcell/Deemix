@@ -227,11 +227,15 @@ class SpotifyHelper:
                 }
             else:
                 deezerTrack = dz.get_track_gw(trackID)
+            if 'EXPLICIT_LYRICS' in deezerTrack and deezerTrack['EXPLICIT_LYRICS'] == "1":
+                playlistAPI['explicit'] = True
             deezerTrack['_EXTRA_PLAYLIST'] = playlistAPI
             deezerTrack['POSITION'] = pos
             deezerTrack['SIZE'] = totalSize
             deezerTrack['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
             result['collection'].append(deezerTrack)
+        if not 'explicit' in playlistAPI:
+            playlistAPI['explicit'] = False
         with open(path.join(self.configFolder, 'spotifyCache.json'), 'w') as spotifyCache:
             json.dump(cache, spotifyCache)
         return result

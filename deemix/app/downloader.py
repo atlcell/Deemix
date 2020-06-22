@@ -593,38 +593,42 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                                            'error': "Track is not available in Reality Audio 360."})
         return result
     track['selectedFormat'] = format
-    if settings['tags']['savePlaylistAsCompilation'] and "_EXTRA_PLAYLIST" in trackAPI:
+    if "_EXTRA_PLAYLIST" in trackAPI:
+        track['playlist'] = {}
         if 'dzcdn.net' in trackAPI["_EXTRA_PLAYLIST"]['picture_small']:
-            track['album']['picUrl'] = trackAPI["_EXTRA_PLAYLIST"]['picture_small'][:-24] + "/{}x{}-{}".format(
+            track['playlist']['picUrl'] = trackAPI["_EXTRA_PLAYLIST"]['picture_small'][:-24] + "/{}x{}-{}".format(
                 settings['embeddedArtworkSize'], settings['embeddedArtworkSize'],
                 'none-100-0-0.png' if settings['PNGcovers'] else f'000000-{settings["jpegImageQuality"]}-0-0.jpg')
         else:
-            track['album']['picUrl'] = trackAPI["_EXTRA_PLAYLIST"]['picture_xl']
-        track['album']['title'] = trackAPI["_EXTRA_PLAYLIST"]['title']
-        track['album']['mainArtist'] = {
+            track['playlist']['picUrl'] = trackAPI["_EXTRA_PLAYLIST"]['picture_xl']
+        track['playlist']['title'] = trackAPI["_EXTRA_PLAYLIST"]['title']
+        track['playlist']['mainArtist'] = {
             'id': trackAPI["_EXTRA_PLAYLIST"]['various_artist']['id'],
             'name': trackAPI["_EXTRA_PLAYLIST"]['various_artist']['name'],
             'pic': trackAPI["_EXTRA_PLAYLIST"]['various_artist']['picture_small'][
                    trackAPI["_EXTRA_PLAYLIST"]['various_artist']['picture_small'].find('artist/') + 7:-24]
         }
         if settings['albumVariousArtists']:
-            track['album']['artist'] = {"Main": [trackAPI["_EXTRA_PLAYLIST"]['various_artist']['name'], ]}
-            track['album']['artists'] = [trackAPI["_EXTRA_PLAYLIST"]['various_artist']['name'], ]
+            track['playlist']['artist'] = {"Main": [trackAPI["_EXTRA_PLAYLIST"]['various_artist']['name'], ]}
+            track['playlist']['artists'] = [trackAPI["_EXTRA_PLAYLIST"]['various_artist']['name'], ]
         else:
-            track['album']['artist'] = {"Main": []}
-            track['album']['artists'] = []
+            track['playlist']['artist'] = {"Main": []}
+            track['playlist']['artists'] = []
         track['trackNumber'] = trackAPI["POSITION"]
-        track['album']['trackTotal'] = trackAPI["_EXTRA_PLAYLIST"]['nb_tracks']
-        track['album']['recordType'] = "Compilation"
-        track['album']['barcode'] = ""
-        track['album']['label'] = ""
-        track['album']['date'] = {
+        track['playlist']['trackTotal'] = trackAPI["_EXTRA_PLAYLIST"]['nb_tracks']
+        track['playlist']['recordType'] = "Compilation"
+        track['playlist']['barcode'] = ""
+        track['playlist']['label'] = ""
+        track['playlist']['explicit'] = trackAPI['_EXTRA_PLAYLIST']['explicit']
+        track['playlist']['date'] = {
             'day': trackAPI["_EXTRA_PLAYLIST"]["creation_date"][8:10],
             'month': trackAPI["_EXTRA_PLAYLIST"]["creation_date"][5:7],
             'year': trackAPI["_EXTRA_PLAYLIST"]["creation_date"][0:4]
         }
         track['discNumber'] = "1"
-        track['album']['discTotal'] = "1"
+        track['playlist']['discTotal'] = "1"
+    if settings['tags']['savePlaylistAsCompilation'] and "playlist" in track:
+        track['album'] = {**track['album'], **track['playlist']}
     else:
         if 'date' in track['album']:
             track['date'] = track['album']['date']
@@ -728,6 +732,18 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
     if extrasPath:
         result['extrasPath'] = extrasPath
         result['playlistPosition'] = writepath[len(extrasPath):]
+        if "playlist" in track:
+            if 'dzcdn.net' in track['playlist']['picUrl']:
+                result['playlistURL'] = track['playlist']['picUrl'].replace(
+                    f"{settings['embeddedArtworkSize']}x{settings['embeddedArtworkSize']}",
+                    f"{settings['localArtworkSize']}x{settings['localArtworkSize']}")
+            else:
+                result['playlistURL'] = track['playlist']['picUrl']
+            track['playlist']['id'] = "pl_" + str(trackAPI['_EXTRA_PLAYLIST']['id'])
+            track['playlist']['genre'] = ["Compilation", ]
+            track['playlist']['bitrate'] = format
+            track['playlist']['dateString'] = formatDate(track['playlist']['date'], settings['dateFormat'])
+            result['playlistCover'] = f"{settingsRegexAlbum(settings['coverImageTemplate'], track['playlist'], settings, trackAPI['_EXTRA_PLAYLIST'])}.{'png' if settings['PNGcovers'] else 'jpg'}"
 
     track['downloadUrl'] = dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'],
                                                    track['selectedFormat'])
@@ -895,6 +911,8 @@ def download(dz, queueItem, interface=None):
 def after_download(tracks, settings, queueItem):
     extrasPath = None
     playlist = [None] * len(tracks)
+    playlistCover = None
+    playlistURL = None
     errors = ""
     searched = ""
     for index in range(len(tracks)):
@@ -909,6 +927,9 @@ def after_download(tracks, settings, queueItem):
             searched += result['searched'] + "\r\n"
         if not extrasPath and 'extrasPath' in result:
             extrasPath = result['extrasPath']
+        if not playlistCover and 'playlistCover' in result:
+            playlistCover = result['playlistCover']
+            playlistURL = result['playlistURL']
         if settings['saveArtwork'] and 'albumPath' in result:
             downloadImage(result['albumURL'], result['albumPath'], settings['overwriteFile'])
         if settings['saveArtworkArtist'] and 'artistPath' in result:
@@ -922,6 +943,8 @@ def after_download(tracks, settings, queueItem):
     if settings['logErrors'] and errors != "":
         with open(os.path.join(extrasPath, 'errors.txt'), 'wb') as f:
             f.write(errors.encode('utf-8'))
+    if settings['saveArtwork'] and playlistCover and not settings['tags']['savePlaylistAsCompilation']:
+        downloadImage(playlistURL, os.path.join(extrasPath, playlistCover), settings['overwriteFile'])
     if settings['logSearched'] and searched != "":
         with open(os.path.join(extrasPath, 'searched.txt'), 'wb') as f:
             f.write(searched.encode('utf-8'))

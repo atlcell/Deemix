@@ -158,8 +158,13 @@ def settingsRegex(filename, track, settings, playlist=None):
 def settingsRegexAlbum(foldername, album, settings, playlist=None):
     if playlist and settings['tags']['savePlaylistAsCompilation']:
         foldername = foldername.replace("%album_id%", "pl_" + str(playlist['id']))
+        foldername = foldername.replace("%genre%", "Compilation")
     else:
         foldername = foldername.replace("%album_id%", str(album['id']))
+        if len(album['genre']) > 0:
+            foldername = foldername.replace("%genre%", fixName(album['genre'][0], settings['illegalCharacterReplacer']))
+        else:
+            foldername = foldername.replace("%genre%", "Unknown")
     foldername = foldername.replace("%album%", fixName(album['title'], settings['illegalCharacterReplacer']))
     foldername = foldername.replace("%artist%",
                                     fixName(album['mainArtist']['name'], settings['illegalCharacterReplacer']))
@@ -171,10 +176,6 @@ def settingsRegexAlbum(foldername, album, settings, playlist=None):
     foldername = foldername.replace("%upc%", album['barcode'])
     foldername = foldername.replace("%explicit%", "(Explicit)" if album['explicit'] else "")
     foldername = foldername.replace("%label%", fixName(album['label'], settings['illegalCharacterReplacer']))
-    if len(album['genre']) > 0:
-        foldername = foldername.replace("%genre%", fixName(album['genre'][0], settings['illegalCharacterReplacer']))
-    else:
-        foldername = foldername.replace("%genre%", "Unknown")
     foldername = foldername.replace("%year%", str(album['date']['year']))
     foldername = foldername.replace("%date%", album['dateString'])
     foldername = foldername.replace("%bitrate%", bitrateLabels[int(album['bitrate'])])
@@ -198,6 +199,7 @@ def settingsRegexPlaylist(foldername, playlist, settings):
     foldername = foldername.replace("%owner_id%", str(playlist['creator']['id']))
     foldername = foldername.replace("%year%", str(playlist['creation_date'][:4]))
     foldername = foldername.replace("%date%", str(playlist['creation_date'][:10]))
+    foldername = foldername.replace("%explicit%", "(Explicit)" if playlist['explicit'] else "")
     foldername = foldername.replace('\\', pathSep).replace('/', pathSep)
     return antiDot(fixLongName(foldername))
 
