@@ -80,7 +80,7 @@ class SpotifyHelper:
         deezer_obj = {
             'checksum': spotify_obj['snapshot_id'],
             'collaborative': spotify_obj['collaborative'],
-            'creation_date': "????-00-00",
+            'creation_date': "XXXX-00-00",
             'creator': {
                 'id': spotify_obj['owner']['id'],
                 'name': spotify_obj['owner']['display_name'],
