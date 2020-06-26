@@ -7,6 +7,7 @@ from Cryptodome.Cipher import Blowfish, AES
 from Cryptodome.Hash import MD5
 from Cryptodome.Util.Padding import pad
 import re
+import json
 
 USER_AGENT_HEADER = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) " \
                     "Chrome/79.0.3945.130 Safari/537.36"
@@ -95,7 +96,7 @@ class Deezer:
             if 'code' in result_json['error'] and result_json['error']['code'] == 4:
                 time.sleep(5)
                 return self.api_call(method, args)
-            raise APIError(result_json)
+            raise APIError(json.dumps(result_json))
         return result_json
 
     def login(self, email, password, re_captcha_token, child=0):

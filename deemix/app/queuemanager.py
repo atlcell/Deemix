@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 from deemix.app.downloader import download
 from deemix.utils.misc import getIDFromLink, getTypeFromLink, getBitrateInt
+from deemix.api.deezer import APIError
 import logging
+import json
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('deemix')
@@ -67,6 +69,20 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
         logger.warn("URL not recognized")
         result['error'] = "URL not recognized"
     elif type == "track":
+        if id.startswith("isrc"):
+            try:
+                trackAPI = dz.get_track(id)
+                if 'id' in dz_track and 'title' in dz_track:
+                    id = trackAPI['id']
+                else:
+                    result['error'] = "Track ISRC is not available on deezer"
+                    return result
+            except APIError as e:
+                e = json.loads(str(e))
+                result['error'] = "Wrong URL"
+                if 'error' in e:
+                    result['error'] += f": {e['error']['type']+': ' if 'type' in e['error'] else ''}{e['error']['message'] if 'message' in e['error'] else ''}"
+                return result
         trackAPI = dz.get_track_gw(id)
         if albumAPI:
             trackAPI['_EXTRA_ALBUM'] = albumAPI
@@ -95,7 +111,16 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
         result['single'] = trackAPI
 
     elif type == "album":
-        albumAPI = dz.get_album(id)
+        try:
+            albumAPI = dz.get_album(id)
+        except APIError as e:
+            e = json.loads(str(e))
+            result['error'] = "Wrong URL"
+            if 'error' in e:
+                result['error'] += f": {e['error']['type']+': ' if 'type' in e['error'] else ''}{e['error']['message'] if 'message' in e['error'] else ''}"
+            return result
+        if id.startswith('upc'):
+            id = albumAPI['id']
         albumAPI_gw = dz.get_album_gw(id)
         albumAPI['nb_disk'] = albumAPI_gw['NUMBER_DISK']
         albumAPI['copyright'] = albumAPI_gw['COPYRIGHT']
@@ -198,7 +223,14 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
             playlistAPI['explicit'] = False
 
     elif type == "artist":
-        artistAPI = dz.get_artist(id)
+        try:
+            albumAPI = artistAPI = dz.get_artist(id)
+        except APIError as e:
+            e = json.loads(str(e))
+            result['error'] = "Wrong URL"
+            if 'error' in e:
+                result['error'] += f": {e['error']['type']+': ' if 'type' in e['error'] else ''}{e['error']['message'] if 'message' in e['error'] else ''}"
+            return result
         if interface:
             interface.send("startAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
         artistAPITracks = dz.get_artist_albums(id)
