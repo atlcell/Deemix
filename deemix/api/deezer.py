@@ -73,9 +73,12 @@ class Deezer:
                 json=args,
                 headers=self.http_headers
             )
+            result_json = result.json()
         except:
             time.sleep(2)
             return self.gw_api_call(method, args)
+        if len(result_json['error']):
+            raise APIError(json.dumps(result_json['error']))
         return result.json()
 
     def api_call(self, method, args=None):
@@ -96,7 +99,7 @@ class Deezer:
             if 'code' in result_json['error'] and result_json['error']['code'] == 4:
                 time.sleep(5)
                 return self.api_call(method, args)
-            raise APIError(json.dumps(result_json))
+            raise APIError(json.dumps(result_json['error']))
         return result_json
 
     def login(self, email, password, re_captcha_token, child=0):

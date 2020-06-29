@@ -2,6 +2,7 @@
 from deemix.app.downloader import download
 from deemix.utils.misc import getIDFromLink, getTypeFromLink, getBitrateInt
 from deemix.api.deezer import APIError
+from spotipy.exceptions import SpotifyException
 import logging
 import json
 
@@ -79,11 +80,16 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
                     return result
             except APIError as e:
                 e = json.loads(str(e))
-                result['error'] = "Wrong URL"
-                if 'error' in e:
-                    result['error'] += f": {e['error']['type']+': ' if 'type' in e['error'] else ''}{e['error']['message'] if 'message' in e['error'] else ''}"
+                result['error'] = f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}"
                 return result
-        trackAPI = dz.get_track_gw(id)
+        try:
+            trackAPI = dz.get_track_gw(id)
+        except APIError as e:
+            e = json.loads(str(e))
+            result['error'] = "Wrong URL"
+            if "DATA_ERROR" in e:
+                result['error'] += f": {e['DATA_ERROR']}"
+            return result
         if albumAPI:
             trackAPI['_EXTRA_ALBUM'] = albumAPI
         if settings['createSingleFolder']:
@@ -115,9 +121,7 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
             albumAPI = dz.get_album(id)
         except APIError as e:
             e = json.loads(str(e))
-            result['error'] = "Wrong URL"
-            if 'error' in e:
-                result['error'] += f": {e['error']['type']+': ' if 'type' in e['error'] else ''}{e['error']['message'] if 'message' in e['error'] else ''}"
+            result['error'] = f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}"
             return result
         if id.startswith('upc'):
             id = albumAPI['id']
@@ -158,7 +162,14 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
         try:
             playlistAPI = dz.get_playlist(id)
         except:
-            playlistAPI = dz.get_playlist_gw(id)['results']['DATA']
+            try:
+                playlistAPI = dz.get_playlist_gw(id)['results']['DATA']
+            except APIError as e:
+                e = json.loads(str(e))
+                result['error'] = "Wrong URL"
+                if "DATA_ERROR" in e:
+                    result['error'] += f": {e['DATA_ERROR']}"
+                return result
             newPlaylist = {
                 'id': playlistAPI['PLAYLIST_ID'],
                 'title': playlistAPI['TITLE'],
@@ -227,9 +238,7 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
             albumAPI = artistAPI = dz.get_artist(id)
         except APIError as e:
             e = json.loads(str(e))
-            result['error'] = "Wrong URL"
-            if 'error' in e:
-                result['error'] += f": {e['error']['type']+': ' if 'type' in e['error'] else ''}{e['error']['message'] if 'message' in e['error'] else ''}"
+            result['error'] = f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}"
             return result
         if interface:
             interface.send("startAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
@@ -241,38 +250,47 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
             interface.send("finishAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
         return albumList
     elif type == "spotifytrack":
-        result = {}
         if not sp.spotifyEnabled:
             logger.warn("Spotify Features is not setted up correctly.")
             result['error'] = "Spotify Features is not setted up correctly."
             return result
-        track_id = sp.get_trackid_spotify(dz, id, settings['fallbackSearch'])
+        try:
+            track_id = sp.get_trackid_spotify(dz, id, settings['fallbackSearch'])
+        except SpotifyException as e:
+            result['error'] = "Wrong URL: "+e.msg[e.msg.find('\n')+2:]
+            return result
         if track_id != 0:
             return generateQueueItem(dz, sp, f'https://www.deezer.com/track/{track_id}', settings, bitrate)
         else:
             logger.warn("Track not found on deezer!")
             result['error'] = "Track not found on deezer!"
     elif type == "spotifyalbum":
-        result = {}
         if not sp.spotifyEnabled:
             logger.warn("Spotify Features is not setted up correctly.")
             result['error'] = "Spotify Features is not setted up correctly."
             return result
-        album_id = sp.get_albumid_spotify(dz, id)
+        try:
+            album_id = sp.get_albumid_spotify(dz, id)
+        except SpotifyException as e:
+            result['error'] = "Wrong URL: "+e.msg[e.msg.find('\n')+2:]
+            return result
         if album_id != 0:
             return generateQueueItem(dz, sp, f'https://www.deezer.com/album/{album_id}', settings, bitrate)
         else:
             logger.warn("Album not found on deezer!")
             result['error'] = "Album not found on deezer!"
     elif type == "spotifyplaylist":
-        result = {}
         if not sp.spotifyEnabled:
             logger.warn("Spotify Features is not setted up correctly.")
             result['error'] = "Spotify Features is not setted up correctly."
             return result
         if interface:
             interface.send("startConvertingSpotifyPlaylist", str(id))
-        playlist = sp.convert_spotify_playlist(dz, id, settings)
+        try:
+            playlist = sp.convert_spotify_playlist(dz, id, settings)
+        except SpotifyException as e:
+            result['error'] = "Wrong URL: "+e.msg[e.msg.find('\n')+2:]
+            return result
         playlist['bitrate'] = bitrate
         playlist['uuid'] = f"{playlist['type']}_{id}_{bitrate}"
         result = playlist
