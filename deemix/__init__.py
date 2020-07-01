@@ -1,2 +1,3 @@
 #!/usr/bin/env python3
-# Empty File
+
+__version__ = "1.1.2"

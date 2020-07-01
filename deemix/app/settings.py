@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 import json
 import os.path as path
-from os import makedirs
+from os import makedirs, listdir, remove
+from deemix import __version__ as deemixVersion
 import random
 import string
 import logging
+import datetime
+import platform
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('deemix')
@@ -41,6 +44,26 @@ def initSettings(localFolder = False, configFolder = None):
         settings['downloadLocation'] = path.join(localpaths.getHomeFolder(), 'deemix Music')
         saveSettings(settings)
     makedirs(settings['downloadLocation'], exist_ok=True)
+
+    # logfiles
+    # logfile name
+    logspath = path.join(configFolder, 'logs')
+    now = datetime.datetime.now()
+    logfile = now.strftime("%Y-%m-%d_%H%M%S")+".log"
+    makedirs(logspath, exist_ok=True)
+    # add handler for logfile
+    fh = logging.FileHandler(path.join(logspath, logfile))
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(logging.Formatter('%(asctime)s - [%(levelname)s] %(message)s'))
+    logger.addHandler(fh)
+    logger.info(f"{platform.platform(True, True)} - Python {platform.python_version()}, deemix {deemixVersion}")
+    #delete old logfiles
+    logslist = listdir(logspath)
+    logslist.sort()
+    if len(logslist)>5:
+        for i in range(len(logslist)-5):
+            remove(path.join(logspath, logslist[i]))
+
     return settings
 
 

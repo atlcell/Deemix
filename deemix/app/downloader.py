@@ -844,7 +844,7 @@ def downloadTrackObj_wrap(dz, track, settings, bitrate, queueItem, interface):
     try:
         result = downloadTrackObj(dz, track, settings, bitrate, queueItem, interface=interface)
     except Exception as e:
-        traceback.print_exc()
+        logger.exception(str(e))
         result = {'error': {
             'message': str(e),
             'data': {
@@ -872,7 +872,7 @@ def download(dz, queueItem, interface=None):
         try:
             result = downloadTrackObj(dz, queueItem['single'], settings, bitrate, queueItem, interface=interface)
         except Exception as e:
-            traceback.print_exc()
+            logger.exception(str(e))
             result = {'error': {
                 'message': str(e),
                 'data': {
