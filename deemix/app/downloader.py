@@ -26,6 +26,7 @@ if not os.path.isdir(TEMPDIR):
 
 extensions = {
     9: '.flac',
+    0: '.mp3',
     3: '.mp3',
     1: '.mp3',
     8: '.mp3',
@@ -127,6 +128,8 @@ def formatDate(date, template):
 
 
 def getPreferredBitrate(dz, track, bitrate, fallback=True):
+    if 'localTrack' in track:
+        return 0
     formatsnon360 = [9, 3, 1] # flac, mp3_320, mp3_128
     formats360 = [15, 14, 13] # 360_hq, 360_mq, 360_lq
     if not fallback:
@@ -187,178 +190,200 @@ def getTrackData(dz, trackAPI_gw, settings, trackAPI=None, albumAPI_gw=None, alb
         track['mainArtist'] = {}
         track['mainArtist']['id'] = 0
         track['mainArtist']['name'] = trackAPI_gw['ART_NAME']
+        track['mainArtist']['pic'] = ""
         track['artists'] = [trackAPI_gw['ART_NAME']]
-        track['aritst'] = {
+        track['artist'] = {
             'Main': [trackAPI_gw['ART_NAME']]
         }
         track['date'] = {
-            'day': 0,
-            'month': 0,
-            'year': 0
+            'day': "XXXX",
+            'month': "00",
+            'year': "00"
         }
+        if 'POSITION' in trackAPI_gw: track['position'] = trackAPI_gw['POSITION']
         track['localTrack'] = True
-        return track
-
-    if 'DISK_NUMBER' in trackAPI_gw:
-        track['discNumber'] = trackAPI_gw['DISK_NUMBER']
-    if 'EXPLICIT_LYRICS' in trackAPI_gw:
-        track['explicit'] = trackAPI_gw['EXPLICIT_LYRICS'] != "0"
-    if 'COPYRIGHT' in trackAPI_gw:
-        track['copyright'] = trackAPI_gw['COPYRIGHT']
-    track['replayGain'] = "{0:.2f} dB".format(
-        (float(trackAPI_gw['GAIN']) + 18.4) * -1) if 'GAIN' in trackAPI_gw else None
-    track['ISRC'] = trackAPI_gw['ISRC']
-    track['trackNumber'] = trackAPI_gw['TRACK_NUMBER']
-    track['contributors'] = trackAPI_gw['SNG_CONTRIBUTORS']
-    if 'POSITION' in trackAPI_gw:
-        track['position'] = trackAPI_gw['POSITION']
-
-    track['lyrics'] = {}
-    if 'LYRICS_ID' in trackAPI_gw:
-        track['lyrics']['id'] = trackAPI_gw['LYRICS_ID']
-    if not "LYRICS" in trackAPI_gw and int(track['lyrics']['id']) != 0:
-        logger.info(f"[{trackAPI_gw['ART_NAME']} - {track['title']}] Getting lyrics")
-        trackAPI_gw["LYRICS"] = dz.get_lyrics_gw(track['id'])
-    if int(track['lyrics']['id']) != 0:
-        if "LYRICS_TEXT" in trackAPI_gw["LYRICS"]:
-            track['lyrics']['unsync'] = trackAPI_gw["LYRICS"]["LYRICS_TEXT"]
-        if "LYRICS_SYNC_JSON" in trackAPI_gw["LYRICS"]:
-            track['lyrics']['sync'] = ""
-            lastTimestamp = ""
-            for i in range(len(trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"])):
-                if "lrc_timestamp" in trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]:
-                    track['lyrics']['sync'] += trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["lrc_timestamp"]
-                    lastTimestamp = trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["lrc_timestamp"]
-                else:
-                    track['lyrics']['sync'] += lastTimestamp
-                track['lyrics']['sync'] += trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["line"] + "\r\n"
-
-    track['mainArtist'] = {}
-    track['mainArtist']['id'] = trackAPI_gw['ART_ID']
-    track['mainArtist']['name'] = trackAPI_gw['ART_NAME']
-    if 'ART_PICTURE' in trackAPI_gw:
-        track['mainArtist']['pic'] = trackAPI_gw['ART_PICTURE']
-
-    if 'PHYSICAL_RELEASE_DATE' in trackAPI_gw:
-        track['date'] = {
-            'day': trackAPI_gw["PHYSICAL_RELEASE_DATE"][8:10],
-            'month': trackAPI_gw["PHYSICAL_RELEASE_DATE"][5:7],
-            'year': trackAPI_gw["PHYSICAL_RELEASE_DATE"][0:4]
-        }
-
-    track['album'] = {}
-    track['album']['id'] = trackAPI_gw['ALB_ID']
-    track['album']['title'] = trackAPI_gw['ALB_TITLE']
-    if 'ALB_PICTURE' in trackAPI_gw:
-        track['album']['pic'] = trackAPI_gw['ALB_PICTURE']
-
-    try:
-        if not albumAPI:
-            logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Getting album infos")
-            albumAPI = dz.get_album(track['album']['id'])
-        track['album']['title'] = albumAPI['title']
-        track['album']['mainArtist'] = {
-            'id': albumAPI['artist']['id'],
-            'name': albumAPI['artist']['name'],
-            'pic': albumAPI['artist']['picture_small'][albumAPI['artist']['picture_small'].find('artist/') + 7:-24]
-        }
-        track['album']['artist'] = {}
-        track['album']['artists'] = []
-        for artist in albumAPI['contributors']:
-            if artist['id'] != 5080 or artist['id'] == 5080 and settings['albumVariousArtists']:
-                track['album']['artists'].append(artist['name'])
-                if not artist['role'] in track['album']['artist']:
-                    track['album']['artist'][artist['role']] = []
-                track['album']['artist'][artist['role']].append(artist['name'])
-        if settings['removeDuplicateArtists']:
-            track['album']['artists'] = uniqueArray(track['album']['artists'])
-            for role in track['album']['artist'].keys():
-                track['album']['artist'][role] = uniqueArray(track['album']['artist'][role])
-        track['album']['trackTotal'] = albumAPI['nb_tracks']
-        track['album']['recordType'] = albumAPI['record_type']
-        track['album']['barcode'] = albumAPI['upc'] if 'upc' in albumAPI else "Unknown"
-        track['album']['label'] = albumAPI['label'] if 'label' in albumAPI else "Unknown"
-        track['album']['explicit'] = albumAPI['explicit_lyrics'] if 'explicit_lyrics' in albumAPI else False
-        if not 'pic' in track['album']:
-            track['album']['pic'] = albumAPI['cover_small'][albumAPI['cover_small'].find('cover/') + 6:-24]
-        if 'release_date' in albumAPI:
-            track['album']['date'] = {
-                'day': albumAPI["release_date"][8:10],
-                'month': albumAPI["release_date"][5:7],
-                'year': albumAPI["release_date"][0:4]
-            }
-        track['album']['discTotal'] = albumAPI['nb_disk'] if 'nb_disk' in albumAPI else None
-        track['copyright'] = albumAPI['copyright'] if 'copyright' in albumAPI else None
-        track['album']['genre'] = []
-        if 'genres' in albumAPI and 'data' in albumAPI['genres'] and len(albumAPI['genres']['data']) > 0:
-            for genre in albumAPI['genres']['data']:
-                track['album']['genre'].append(genre['name'])
-    except APIError:
-        if not albumAPI_gw:
-            logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Getting more album infos")
-            albumAPI_gw = dz.get_album_gw(track['album']['id'])
-        track['album']['title'] = albumAPI_gw['ALB_TITLE']
-        track['album']['mainArtist'] = {
-            'id': albumAPI_gw['ART_ID'],
-            'name': albumAPI_gw['ART_NAME']
-        }
-        logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Getting artist picture fallback")
-        artistAPI = dz.get_artist(track['album']['mainArtist']['id'])
-        track['album']['artists'] = albumAPI_gw['ART_NAME']
-        track['album']['mainArtist']['pic'] = artistAPI['picture_small'][
-                                              artistAPI['picture_small'].find('artist/') + 7:-24]
-        track['album']['trackTotal'] = albumAPI_gw['NUMBER_TRACK']
-        track['album']['discTotal'] = albumAPI_gw['NUMBER_DISK']
-        track['album']['recordType'] = "Album"
+        # Missing tags
+        track['ISRC'] = ""
+        track['album']['artist'] = track['artist']
+        track['album']['artists'] = track['artists']
         track['album']['barcode'] = "Unknown"
-        track['album']['label'] = albumAPI_gw['LABEL_NAME'] if 'LABEL_NAME' in albumAPI_gw else "Unknown"
-        track['album']['explicit'] = albumAPI_gw['EXPLICIT_ALBUM_CONTENT']['EXPLICIT_LYRICS_STATUS'] in [1,4] if 'EXPLICIT_ALBUM_CONTENT' in albumAPI_gw and 'EXPLICIT_LYRICS_STATUS' in albumAPI_gw['EXPLICIT_ALBUM_CONTENT'] else False
-        if not 'pic' in track['album']:
-            track['album']['pic'] = albumAPI_gw['ALB_PICTURE']
-        if 'PHYSICAL_RELEASE_DATE' in albumAPI_gw:
-            track['album']['date'] = {
-                'day': albumAPI_gw["PHYSICAL_RELEASE_DATE"][8:10],
-                'month': albumAPI_gw["PHYSICAL_RELEASE_DATE"][5:7],
-                'year': albumAPI_gw["PHYSICAL_RELEASE_DATE"][0:4]
-            }
+        track['album']['date'] = track['date']
+        track['album']['discTotal'] = "0"
+        track['album']['explicit'] = False
         track['album']['genre'] = []
+        track['album']['label'] = "Unknown"
+        track['album']['mainArtist'] = track['mainArtist']
+        track['album']['recordType'] = "Album"
+        track['album']['trackTotal'] = "0"
+        track['bpm'] = 0
+        track['contributors'] = {}
+        track['copyright'] = ""
+        track['discNumber'] = "0"
+        track['explicit'] = False
+        track['lyrics'] = {}
+        track['replayGain'] = ""
+        track['trackNumber'] = "0"
+    else:
+        if 'DISK_NUMBER' in trackAPI_gw:
+            track['discNumber'] = trackAPI_gw['DISK_NUMBER']
+        if 'EXPLICIT_LYRICS' in trackAPI_gw:
+            track['explicit'] = trackAPI_gw['EXPLICIT_LYRICS'] != "0"
+        if 'COPYRIGHT' in trackAPI_gw:
+            track['copyright'] = trackAPI_gw['COPYRIGHT']
+        track['replayGain'] = "{0:.2f} dB".format(
+            (float(trackAPI_gw['GAIN']) + 18.4) * -1) if 'GAIN' in trackAPI_gw else None
+        track['ISRC'] = trackAPI_gw['ISRC']
+        track['trackNumber'] = trackAPI_gw['TRACK_NUMBER']
+        track['contributors'] = trackAPI_gw['SNG_CONTRIBUTORS']
+        if 'POSITION' in trackAPI_gw:
+            track['position'] = trackAPI_gw['POSITION']
 
-    if 'date' in track['album'] and 'date' not in track:
-        track['date'] = track['album']['date']
+        track['lyrics'] = {}
+        if 'LYRICS_ID' in trackAPI_gw:
+            track['lyrics']['id'] = trackAPI_gw['LYRICS_ID']
+        if not "LYRICS" in trackAPI_gw and int(track['lyrics']['id']) != 0:
+            logger.info(f"[{trackAPI_gw['ART_NAME']} - {track['title']}] Getting lyrics")
+            trackAPI_gw["LYRICS"] = dz.get_lyrics_gw(track['id'])
+        if int(track['lyrics']['id']) != 0:
+            if "LYRICS_TEXT" in trackAPI_gw["LYRICS"]:
+                track['lyrics']['unsync'] = trackAPI_gw["LYRICS"]["LYRICS_TEXT"]
+            if "LYRICS_SYNC_JSON" in trackAPI_gw["LYRICS"]:
+                track['lyrics']['sync'] = ""
+                lastTimestamp = ""
+                for i in range(len(trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"])):
+                    if "lrc_timestamp" in trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]:
+                        track['lyrics']['sync'] += trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["lrc_timestamp"]
+                        lastTimestamp = trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["lrc_timestamp"]
+                    else:
+                        track['lyrics']['sync'] += lastTimestamp
+                    track['lyrics']['sync'] += trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["line"] + "\r\n"
 
-    if not trackAPI:
-        logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Getting extra track infos")
-        trackAPI = dz.get_track(track['id'])
-    track['bpm'] = trackAPI['bpm']
-    if not 'replayGain' in track or not track['replayGain']:
-        track['replayGain'] = "{0:.2f} dB".format((float(trackAPI['gain']) + 18.4) * -1) if 'gain' in trackAPI else ""
-    if not 'explicit' in track:
-        track['explicit'] = trackAPI['explicit_lyrics']
-    if not 'discNumber' in track:
-        track['discNumber'] = trackAPI['disk_number']
-    track['artist'] = {}
-    track['artists'] = []
-    for artist in trackAPI['contributors']:
-        if artist['id'] != 5080 or artist['id'] == 5080 and len(trackAPI['contributors']) == 1:
-            track['artists'].append(artist['name'])
-            if not artist['role'] in track['artist']:
-                track['artist'][artist['role']] = []
-            track['artist'][artist['role']].append(artist['name'])
-    if settings['removeDuplicateArtists']:
-        track['artists'] = uniqueArray(track['artists'])
-        for role in track['artist'].keys():
-            track['artist'][role] = uniqueArray(track['artist'][role])
+        track['mainArtist'] = {}
+        track['mainArtist']['id'] = trackAPI_gw['ART_ID']
+        track['mainArtist']['name'] = trackAPI_gw['ART_NAME']
+        if 'ART_PICTURE' in trackAPI_gw:
+            track['mainArtist']['pic'] = trackAPI_gw['ART_PICTURE']
 
-    if not 'discTotal' in track['album'] or not track['album']['discTotal']:
-        if not albumAPI_gw:
-            logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Getting more album infos")
-            albumAPI_gw = dz.get_album_gw(track['album']['id'])
-        track['album']['discTotal'] = albumAPI_gw['NUMBER_DISK']
-    if not 'copyright' in track or not track['copyright']:
-        if not albumAPI_gw:
-            logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Getting more album infos")
-            albumAPI_gw = dz.get_album_gw(track['album']['id'])
-        track['copyright'] = albumAPI_gw['COPYRIGHT']
+        if 'PHYSICAL_RELEASE_DATE' in trackAPI_gw:
+            track['date'] = {
+                'day': trackAPI_gw["PHYSICAL_RELEASE_DATE"][8:10],
+                'month': trackAPI_gw["PHYSICAL_RELEASE_DATE"][5:7],
+                'year': trackAPI_gw["PHYSICAL_RELEASE_DATE"][0:4]
+            }
+
+        track['album'] = {}
+        track['album']['id'] = trackAPI_gw['ALB_ID']
+        track['album']['title'] = trackAPI_gw['ALB_TITLE']
+        if 'ALB_PICTURE' in trackAPI_gw:
+            track['album']['pic'] = trackAPI_gw['ALB_PICTURE']
+
+        try:
+            if not albumAPI:
+                logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Getting album infos")
+                albumAPI = dz.get_album(track['album']['id'])
+            track['album']['title'] = albumAPI['title']
+            track['album']['mainArtist'] = {
+                'id': albumAPI['artist']['id'],
+                'name': albumAPI['artist']['name'],
+                'pic': albumAPI['artist']['picture_small'][albumAPI['artist']['picture_small'].find('artist/') + 7:-24]
+            }
+            track['album']['artist'] = {}
+            track['album']['artists'] = []
+            for artist in albumAPI['contributors']:
+                if artist['id'] != 5080 or artist['id'] == 5080 and settings['albumVariousArtists']:
+                    track['album']['artists'].append(artist['name'])
+                    if not artist['role'] in track['album']['artist']:
+                        track['album']['artist'][artist['role']] = []
+                    track['album']['artist'][artist['role']].append(artist['name'])
+            if settings['removeDuplicateArtists']:
+                track['album']['artists'] = uniqueArray(track['album']['artists'])
+                for role in track['album']['artist'].keys():
+                    track['album']['artist'][role] = uniqueArray(track['album']['artist'][role])
+            track['album']['trackTotal'] = albumAPI['nb_tracks']
+            track['album']['recordType'] = albumAPI['record_type']
+            track['album']['barcode'] = albumAPI['upc'] if 'upc' in albumAPI else "Unknown"
+            track['album']['label'] = albumAPI['label'] if 'label' in albumAPI else "Unknown"
+            track['album']['explicit'] = albumAPI['explicit_lyrics'] if 'explicit_lyrics' in albumAPI else False
+            if not 'pic' in track['album']:
+                track['album']['pic'] = albumAPI['cover_small'][albumAPI['cover_small'].find('cover/') + 6:-24]
+            if 'release_date' in albumAPI:
+                track['album']['date'] = {
+                    'day': albumAPI["release_date"][8:10],
+                    'month': albumAPI["release_date"][5:7],
+                    'year': albumAPI["release_date"][0:4]
+                }
+            track['album']['discTotal'] = albumAPI['nb_disk'] if 'nb_disk' in albumAPI else None
+            track['copyright'] = albumAPI['copyright'] if 'copyright' in albumAPI else None
+            track['album']['genre'] = []
+            if 'genres' in albumAPI and 'data' in albumAPI['genres'] and len(albumAPI['genres']['data']) > 0:
+                for genre in albumAPI['genres']['data']:
+                    track['album']['genre'].append(genre['name'])
+        except APIError:
+            if not albumAPI_gw:
+                logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Getting more album infos")
+                albumAPI_gw = dz.get_album_gw(track['album']['id'])
+            track['album']['title'] = albumAPI_gw['ALB_TITLE']
+            track['album']['mainArtist'] = {
+                'id': albumAPI_gw['ART_ID'],
+                'name': albumAPI_gw['ART_NAME']
+            }
+            logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Getting artist picture fallback")
+            artistAPI = dz.get_artist(track['album']['mainArtist']['id'])
+            track['album']['artists'] = albumAPI_gw['ART_NAME']
+            track['album']['mainArtist']['pic'] = artistAPI['picture_small'][
+                                                  artistAPI['picture_small'].find('artist/') + 7:-24]
+            track['album']['trackTotal'] = albumAPI_gw['NUMBER_TRACK']
+            track['album']['discTotal'] = albumAPI_gw['NUMBER_DISK']
+            track['album']['recordType'] = "Album"
+            track['album']['barcode'] = "Unknown"
+            track['album']['label'] = albumAPI_gw['LABEL_NAME'] if 'LABEL_NAME' in albumAPI_gw else "Unknown"
+            track['album']['explicit'] = albumAPI_gw['EXPLICIT_ALBUM_CONTENT']['EXPLICIT_LYRICS_STATUS'] in [1,4] if 'EXPLICIT_ALBUM_CONTENT' in albumAPI_gw and 'EXPLICIT_LYRICS_STATUS' in albumAPI_gw['EXPLICIT_ALBUM_CONTENT'] else False
+            if not 'pic' in track['album']:
+                track['album']['pic'] = albumAPI_gw['ALB_PICTURE']
+            if 'PHYSICAL_RELEASE_DATE' in albumAPI_gw:
+                track['album']['date'] = {
+                    'day': albumAPI_gw["PHYSICAL_RELEASE_DATE"][8:10],
+                    'month': albumAPI_gw["PHYSICAL_RELEASE_DATE"][5:7],
+                    'year': albumAPI_gw["PHYSICAL_RELEASE_DATE"][0:4]
+                }
+            track['album']['genre'] = []
+
+        if 'date' in track['album'] and 'date' not in track:
+            track['date'] = track['album']['date']
+
+        if not trackAPI:
+            logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Getting extra track infos")
+            trackAPI = dz.get_track(track['id'])
+        track['bpm'] = trackAPI['bpm']
+        if not 'replayGain' in track or not track['replayGain']:
+            track['replayGain'] = "{0:.2f} dB".format((float(trackAPI['gain']) + 18.4) * -1) if 'gain' in trackAPI else ""
+        if not 'explicit' in track:
+            track['explicit'] = trackAPI['explicit_lyrics']
+        if not 'discNumber' in track:
+            track['discNumber'] = trackAPI['disk_number']
+        track['artist'] = {}
+        track['artists'] = []
+        for artist in trackAPI['contributors']:
+            if artist['id'] != 5080 or artist['id'] == 5080 and len(trackAPI['contributors']) == 1:
+                track['artists'].append(artist['name'])
+                if not artist['role'] in track['artist']:
+                    track['artist'][artist['role']] = []
+                track['artist'][artist['role']].append(artist['name'])
+        if settings['removeDuplicateArtists']:
+            track['artists'] = uniqueArray(track['artists'])
+            for role in track['artist'].keys():
+                track['artist'][role] = uniqueArray(track['artist'][role])
+
+        if not 'discTotal' in track['album'] or not track['album']['discTotal']:
+            if not albumAPI_gw:
+                logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Getting more album infos")
+                albumAPI_gw = dz.get_album_gw(track['album']['id'])
+            track['album']['discTotal'] = albumAPI_gw['NUMBER_DISK']
+        if not 'copyright' in track or not track['copyright']:
+            if not albumAPI_gw:
+                logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Getting more album infos")
+                albumAPI_gw = dz.get_album_gw(track['album']['id'])
+            track['copyright'] = albumAPI_gw['COPYRIGHT']
 
     # Fix incorrect day month when detectable
     if int(track['date']['month']) > 12:
@@ -825,7 +850,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
     else:
         logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Skipping track as it's already downloaded")
         trackCompletePercentage(trackAPI, queueItem, interface)
-    if not trackAlreadyDownloaded or settings['overwriteFile'] in ['t', 'y']:
+    if (not trackAlreadyDownloaded or settings['overwriteFile'] in ['t', 'y']) and not 'localTrack' in track:
         logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Applying tags to the track")
         if track['selectedFormat'] in [3, 1, 8]:
             tagID3(writepath, track, settings['tags'])
