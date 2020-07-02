@@ -36,27 +36,6 @@ class Deezer:
         token_data = self.gw_api_call('deezer.getUserData')
         return token_data["results"]["checkForm"]
 
-    def get_track_md5(self, sng_id):
-        try:
-            site = self.session.post(
-                "https://api.deezer.com/1.0/gateway.php",
-                params={
-                    'api_key': "4VCYIJUCDLOUELGD1V8WBVYBNVDYOXEWSLLZDONGBBDFVXTZJRXPR29JRLQFO6ZE",
-                    'sid': self.sid,
-                    'input': '3',
-                    'output': '3',
-                    'method': 'song_getData'
-                },
-                timeout=30,
-                json={'sng_id': sng_id},
-                headers=self.http_headers
-            )
-        except:
-            time.sleep(2)
-            return self.get_track_md5(sng_id)
-        response = site.json()
-        return response['results']['PUID']
-
     def gw_api_call(self, method, args=None):
         if args is None:
             args = {}

@@ -171,9 +171,6 @@ def parseEssentialTrackData(track, trackAPI):
 
 
 def getTrackData(dz, trackAPI_gw, settings, trackAPI=None, albumAPI_gw=None, albumAPI=None):
-    if not 'MD5_ORIGIN' in trackAPI_gw:
-        trackAPI_gw['MD5_ORIGIN'] = dz.get_track_md5(trackAPI_gw['SNG_ID'])
-
     track = {}
     track['title'] = trackAPI_gw['SNG_TITLE'].strip()
     if 'VERSION' in trackAPI_gw and trackAPI_gw['VERSION'] and not trackAPI_gw['VERSION'] in trackAPI_gw['SNG_TITLE']:
@@ -493,8 +490,6 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         if track['fallbackId'] != 0:
             logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Track not yet encoded, using fallback id")
             trackNew = dz.get_track_gw(track['fallbackId'])
-            if not 'MD5_ORIGIN' in trackNew:
-                trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
             track = parseEssentialTrackData(track, trackNew)
             return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, interface=interface)
         elif not 'searched' in track and settings['fallbackSearch']:
@@ -503,8 +498,6 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                                                     track['album']['title'])
             if searchedId != 0:
                 trackNew = dz.get_track_gw(searchedId)
-                if not 'MD5_ORIGIN' in trackNew:
-                    trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
                 track = parseEssentialTrackData(track, trackNew)
                 track['searched'] = True
                 return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track,
@@ -550,8 +543,6 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         if track['fallbackId'] != 0:
             logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Track not found at desired bitrate, using fallback id")
             trackNew = dz.get_track_gw(track['fallbackId'])
-            if not 'MD5_ORIGIN' in trackNew:
-                trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
             track = parseEssentialTrackData(track, trackNew)
             return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, interface=interface)
         elif not 'searched' in track and settings['fallbackSearch']:
@@ -560,8 +551,6 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                                                     track['album']['title'])
             if searchedId != 0:
                 trackNew = dz.get_track_gw(searchedId)
-                if not 'MD5_ORIGIN' in trackNew:
-                    trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
                 track = parseEssentialTrackData(track, trackNew)
                 track['searched'] = True
                 return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track,
@@ -788,8 +777,6 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                 if track['fallbackId'] != 0:
                     logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Track not available, using fallback id")
                     trackNew = dz.get_track_gw(track['fallbackId'])
-                    if not 'MD5_ORIGIN' in trackNew:
-                        trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
                     track = parseEssentialTrackData(track, trackNew)
                     return 2
                 elif not 'searched' in track and settings['fallbackSearch']:
@@ -798,8 +785,6 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                                                             track['album']['title'])
                     if searchedId != 0:
                         trackNew = dz.get_track_gw(searchedId)
-                        if not 'MD5_ORIGIN' in trackNew:
-                            trackNew['MD5_ORIGIN'] = dz.get_track_md5(trackNew['SNG_ID'])
                         track = parseEssentialTrackData(track, trackNew)
                         track['searched'] = True
                         return 2
