@@ -2,4 +2,4 @@ click
 pycryptodomex
 mutagen
 requests
-spotipy
+spotipy>=2.11.0
