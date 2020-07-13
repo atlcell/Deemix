@@ -132,6 +132,8 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
             return generateQueueItem(dz, sp, f"https://www.deezer.com/track/{albumAPI['tracks']['data'][0]['id']}",
                                      settings, bitrate, albumAPI)
         tracksArray = dz.get_album_tracks_gw(id)
+        if albumAPI['nb_tracks'] == 255:
+            albumAPI['nb_tracks'] = len(tracksArray)
 
         result['title'] = albumAPI['title']
         result['artist'] = albumAPI['artist']['name']
