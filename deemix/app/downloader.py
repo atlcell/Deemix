@@ -628,7 +628,6 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         else:
             track['playlist']['artist'] = {"Main": []}
             track['playlist']['artists'] = []
-        track['trackNumber'] = trackAPI["POSITION"]
         track['playlist']['trackTotal'] = trackAPI["_EXTRA_PLAYLIST"]['nb_tracks']
         track['playlist']['recordType'] = "Compilation"
         track['playlist']['barcode'] = ""
@@ -639,9 +638,10 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
             'month': trackAPI["_EXTRA_PLAYLIST"]["creation_date"][5:7],
             'year': trackAPI["_EXTRA_PLAYLIST"]["creation_date"][0:4]
         }
-        track['discNumber'] = "1"
         track['playlist']['discTotal'] = "1"
     if settings['tags']['savePlaylistAsCompilation'] and "playlist" in track:
+        track['trackNumber'] = trackAPI["POSITION"]
+        track['discNumber'] = "1"
         track['album'] = {**track['album'], **track['playlist']}
     else:
         if 'date' in track['album']:
