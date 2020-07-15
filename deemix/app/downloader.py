@@ -846,7 +846,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
     logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Track download completed")
     queueItem['downloaded'] += 1
     if interface:
-        interface.send("updateQueue", {'uuid': queueItem['uuid'], 'downloaded': True})
+        interface.send("updateQueue", {'uuid': queueItem['uuid'], 'downloaded': True, 'downloadPath': writepath})
     return result
 
 
