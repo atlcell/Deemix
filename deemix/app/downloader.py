@@ -538,8 +538,8 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
             return result
 
     # Get the selected bitrate
-    format = getPreferredBitrate(dz, track, bitrate, settings['fallbackBitrate'])
-    if format == -100:
+    selectedBitrate = getPreferredBitrate(dz, track, bitrate, settings['fallbackBitrate'])
+    if selectedBitrate == -100:
         if track['fallbackId'] != 0:
             logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Track not found at desired bitrate, using fallback id")
             trackNew = dz.get_track_gw(track['fallbackId'])
@@ -589,7 +589,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                 interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
                                                'error': "Track not found at desired bitrate."})
             return result
-    elif format == -200:
+    elif selectedBitrate == -200:
         logger.error(f"[{track['mainArtist']['name']} - {track['title']}] This track is not available in 360 Reality Audio format. Please select another format.")
         trackCompletePercentage(trackAPI, queueItem, interface)
         result['error'] = {
@@ -606,7 +606,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
             interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
                                            'error': "Track is not available in Reality Audio 360."})
         return result
-    track['selectedFormat'] = format
+    track['selectedFormat'] = selectedBitrate
     if "_EXTRA_PLAYLIST" in trackAPI:
         track['playlist'] = {}
         if 'dzcdn.net' in trackAPI["_EXTRA_PLAYLIST"]['picture_small']:
@@ -649,7 +649,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         track['album']['picUrl'] = "https://e-cdns-images.dzcdn.net/images/cover/{}/{}x{}-{}".format(
             track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'],
             f'000000-{settings["jpegImageQuality"]}-0-0.jpg')
-    track['album']['bitrate'] = format
+    track['album']['bitrate'] = selectedBitrate
     track['dateString'] = formatDate(track['date'], settings['dateFormat'])
     track['album']['dateString'] = formatDate(track['album']['date'], settings['dateFormat'])
 
@@ -771,7 +771,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                 result['playlistURLs'].append({'url': track['playlist']['picUrl'], 'ext': 'jpg'})
             track['playlist']['id'] = "pl_" + str(trackAPI['_EXTRA_PLAYLIST']['id'])
             track['playlist']['genre'] = ["Compilation", ]
-            track['playlist']['bitrate'] = format
+            track['playlist']['bitrate'] = selectedBitrate
             track['playlist']['dateString'] = formatDate(track['playlist']['date'], settings['dateFormat'])
             result['playlistCover'] = f"{settingsRegexAlbum(settings['coverImageTemplate'], track['playlist'], settings, trackAPI['_EXTRA_PLAYLIST'])}"
 
@@ -938,7 +938,6 @@ def after_download(tracks, settings, queueItem):
     extrasPath = None
     playlist = [None] * len(tracks)
     playlistCover = None
-    playlistURL = None
     errors = ""
     searched = ""
     for index in range(len(tracks)):
@@ -955,7 +954,6 @@ def after_download(tracks, settings, queueItem):
             extrasPath = result['extrasPath']
         if not playlistCover and 'playlistCover' in result:
             playlistCover = result['playlistCover']
-            playlistURL = result['playlistURL']
         if settings['saveArtwork'] and 'albumPath' in result:
             for image in result['albumURLs']:
                 downloadImage(image['url'], f"{result['albumPath']}.{image['ext']}", settings['overwriteFile'])
