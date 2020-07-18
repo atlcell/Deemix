@@ -14,15 +14,21 @@ def tagID3(stream, track, save):
     if save['title']:
         tag.add(TIT2(text=track['title']))
     if save['artist'] and len(track['artists']):
-        if save['multitagSeparator'] != "default":
-            tag.add(TPE1(text=track['artistsString']))
+        if save['multiArtistSeparator'] != "default":
+            if save['multiArtistSeparator'] == "nothing":
+                tag.add(TPE1(text=track['mainArtist']['name']))
+            else:
+                tag.add(TPE1(text=track['artistsString']))
             tag.add(TXXX(desc="ARTISTS", text=track['artists']))
         else:
             tag.add(TPE1(text=track['artists']))
     if save['album']:
         tag.add(TALB(text=track['album']['title']))
     if save['albumArtist'] and len(track['album']['artists']):
-        tag.add(TPE2(text=track['album']['artists']))
+        if save['singleAlbumArtist']:
+            tag.add(TPE2(text=track['album']['mainArtist']['name']))
+        else:
+            tag.add(TPE2(text=track['album']['artists']))
     if save['trackNumber']:
         tag.add(TRCK(
             text=str(track['trackNumber']) + ("/" + str(track['album']['trackTotal']) if save['trackTotal'] else "")))
@@ -80,15 +86,21 @@ def tagFLAC(stream, track, save):
     if save['title']:
         tag["TITLE"] = track['title']
     if save['artist'] and len(track['artists']):
-        if save['multitagSeparator'] != "default":
-            tag["ARTIST"] = track['artistsString']
+        if save['multiArtistSeparator'] != "default":
+            if save['multiArtistSeparator'] == "nothing":
+                tag["ARTIST"] = track['mainArtist']['name']
+            else:
+                tag["ARTIST"] = track['artistsString']
             tag["ARTISTS"] = track['artists']
         else:
             tag["ARTIST"] = track['artists']
     if save['album']:
         tag["ALBUM"] = track['album']['title']
     if save['albumArtist'] and len(track['album']['artists']):
-        tag["ALBUMARTIST"] = track['album']['artists']
+        if save['singleAlbumArtist']:
+            tag["ALBUMARTIST"] = track['album']['mainArtist']['name']
+        else:
+            tag["ALBUMARTIST"] = track['album']['artists']
     if save['trackNumber']:
         tag["TRACKNUMBER"] = str(track['trackNumber'])
     if save['trackTotal']:

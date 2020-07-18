@@ -69,6 +69,7 @@
     "savePlaylistAsCompilation": false,
     "useNullSeparator": false,
     "saveID3v1": true,
-    "multitagSeparator": "default"
+    "multiArtistSeparator": "default",
+    "singleAlbumArtist": false,
   }
 }

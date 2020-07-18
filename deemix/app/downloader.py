@@ -672,13 +672,13 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
             track['title'] = re.sub(r' ?\(Album Version\)', "", track['title']).strip()
 
     # Generate artist tag if needed
-    if settings['tags']['multitagSeparator'] != "default":
-        if settings['tags']['multitagSeparator'] == "andFeat":
+    if settings['tags']['multiArtistSeparator'] != "default":
+        if settings['tags']['multiArtistSeparator'] == "andFeat":
             track['artistsString'] = track['mainArtistsString']
             if 'featArtistsString' in track and settings['featuredToTitle'] != "2":
                 track['artistsString'] += " " + track['featArtistsString']
         else:
-            track['artistsString'] = settings['tags']['multitagSeparator'].join(track['artists'])
+            track['artistsString'] = settings['tags']['multiArtistSeparator'].join(track['artists'])
     else:
         track['artistsString'] = ", ".join(track['artists'])
 
