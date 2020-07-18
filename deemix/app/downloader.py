@@ -993,11 +993,11 @@ def after_download_single(track, settings, queueItem):
     if 'extrasPath' not in track:
         track['extrasPath'] = settings['downloadLocation']
     if settings['saveArtwork'] and 'albumPath' in track:
-        for image in result['albumURLs']:
-            downloadImage(image['url'], f"{result['albumPath']}.{image['ext']}", settings['overwriteFile'])
+        for image in track['albumURLs']:
+            downloadImage(image['url'], f"{track['albumPath']}.{image['ext']}", settings['overwriteFile'])
     if settings['saveArtworkArtist'] and 'artistPath' in track:
-        for image in result['artistURLs']:
-            downloadImage(image['url'], f"{result['artistPath']}.{image['ext']}", settings['overwriteFile'])
+        for image in track['artistURLs']:
+            downloadImage(image['url'], f"{track['artistPath']}.{image['ext']}", settings['overwriteFile'])
     if settings['logSearched'] and 'searched' in track:
         with open(os.path.join(track['extrasPath'], 'searched.txt'), 'wb+') as f:
             orig = f.read().decode('utf-8')
