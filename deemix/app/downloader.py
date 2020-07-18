@@ -612,7 +612,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         if 'dzcdn.net' in trackAPI["_EXTRA_PLAYLIST"]['picture_small']:
             track['playlist']['picUrl'] = trackAPI["_EXTRA_PLAYLIST"]['picture_small'][:-24] + "/{}x{}-{}".format(
                 settings['embeddedArtworkSize'], settings['embeddedArtworkSize'],
-                'none-100-0-0.png' if settings['PNGcovers'] else f'000000-{settings["jpegImageQuality"]}-0-0.jpg')
+                f'000000-{settings["jpegImageQuality"]}-0-0.jpg')
         else:
             track['playlist']['picUrl'] = trackAPI["_EXTRA_PLAYLIST"]['picture_xl']
         track['playlist']['title'] = trackAPI["_EXTRA_PLAYLIST"]['title']
@@ -648,7 +648,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
             track['date'] = track['album']['date']
         track['album']['picUrl'] = "https://e-cdns-images.dzcdn.net/images/cover/{}/{}x{}-{}".format(
             track['album']['pic'], settings['embeddedArtworkSize'], settings['embeddedArtworkSize'],
-            'none-100-0-0.png' if settings['PNGcovers'] else f'000000-{settings["jpegImageQuality"]}-0-0.jpg')
+            f'000000-{settings["jpegImageQuality"]}-0-0.jpg')
     track['album']['bitrate'] = format
     track['dateString'] = formatDate(track['date'], settings['dateFormat'])
     track['album']['dateString'] = formatDate(track['album']['date'], settings['dateFormat'])
@@ -700,10 +700,10 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
     # Download and cache coverart
     if settings['tags']['savePlaylistAsCompilation'] and "_EXTRA_PLAYLIST" in trackAPI:
         track['album']['picPath'] = os.path.join(TEMPDIR,
-                                                 f"pl{trackAPI['_EXTRA_PLAYLIST']['id']}_{settings['embeddedArtworkSize']}.{'png' if settings['PNGcovers'] else 'jpg'}")
+                                                 f"pl{trackAPI['_EXTRA_PLAYLIST']['id']}_{settings['embeddedArtworkSize']}.jpg")
     else:
         track['album']['picPath'] = os.path.join(TEMPDIR,
-                                                 f"alb{track['album']['id']}_{settings['embeddedArtworkSize']}.{'png' if settings['PNGcovers'] else 'jpg'}")
+                                                 f"alb{track['album']['id']}_{settings['embeddedArtworkSize']}.jpg")
     logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Getting the album cover")
     track['album']['picPath'] = downloadImage(track['album']['picUrl'], track['album']['picPath'])
 
@@ -722,42 +722,58 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 
     # Save local album art
     if coverPath:
-        result['albumURL'] = track['album']['picUrl'].replace(
-            f"{settings['embeddedArtworkSize']}x{settings['embeddedArtworkSize']}",
-            f"{settings['localArtworkSize']}x{settings['localArtworkSize']}")
+        result['albumURLs'] = []
+        for format in settings['localArtworkFormat'].split(","):
+            if format in ["png","jpg"]:
+                url = track['album']['picUrl'].replace(
+                    f"{settings['embeddedArtworkSize']}x{settings['embeddedArtworkSize']}",
+                    f"{settings['localArtworkSize']}x{settings['localArtworkSize']}")
+                if format == "png":
+                    url = url[:url.find("000000-")]+"none-100-0-0.png"
+                result['albumURLs'].append({'url': url, 'ext': format})
         result['albumPath'] = os.path.join(coverPath,
-                                           f"{settingsRegexAlbum(settings['coverImageTemplate'], track['album'], settings, trackAPI['_EXTRA_PLAYLIST'] if'_EXTRA_PLAYLIST' in trackAPI else None)}.{'png' if settings['PNGcovers'] else 'jpg'}")
+                                           f"{settingsRegexAlbum(settings['coverImageTemplate'], track['album'], settings, trackAPI['_EXTRA_PLAYLIST'] if'_EXTRA_PLAYLIST' in trackAPI else None)}")
 
     # Save artist art
     if artistPath:
-        if track['album']['mainArtist']['pic'] != "":
-            result['artistURL'] = "https://e-cdns-images.dzcdn.net/images/artist/{}/{}x{}-{}".format(
-                track['album']['mainArtist']['pic'], settings['localArtworkSize'], settings['localArtworkSize'],
-                'none-100-0-0.png' if settings['PNGcovers'] else f'000000-{settings["jpegImageQuality"]}-0-0.jpg')
-            result['artistPath'] = os.path.join(artistPath,
-                f"{settingsRegexArtist(settings['artistImageTemplate'], track['album']['mainArtist'], settings)}.{'png' if settings['PNGcovers'] else 'jpg'}")
-        else:
-            result['artistURL'] = "https://e-cdns-images.dzcdn.net/images/artist//{}x{}-{}".format(
-                settings['localArtworkSize'], settings['localArtworkSize'], f'000000-{settings["jpegImageQuality"]}-0-0.jpg')
-            result['artistPath'] = os.path.join(artistPath,
-                f"{settingsRegexArtist(settings['artistImageTemplate'], track['album']['mainArtist'], settings)}.jpg")
+        result['artistURLs'] = []
+        for format in settings['localArtworkFormat'].split(","):
+            if format in ["png","jpg"]:
+                url = ""
+                if track['album']['mainArtist']['pic'] != "":
+                    url = "https://e-cdns-images.dzcdn.net/images/artist/{}/{}x{}-{}".format(
+                        track['album']['mainArtist']['pic'], settings['localArtworkSize'], settings['localArtworkSize'],
+                        'none-100-0-0.png' if format == "png" else f'000000-{settings["jpegImageQuality"]}-0-0.jpg')
+                elif format == "jpg":
+                    url = "https://e-cdns-images.dzcdn.net/images/artist//{}x{}-{}".format(
+                        settings['localArtworkSize'], settings['localArtworkSize'], f'000000-{settings["jpegImageQuality"]}-0-0.jpg')
+                if url:
+                    result['artistURLs'].append({'url': url, 'ext': format})
+        result['artistPath'] = os.path.join(artistPath,
+            f"{settingsRegexArtist(settings['artistImageTemplate'], track['album']['mainArtist'], settings)}")
 
     # Data for m3u file
     if extrasPath:
         result['extrasPath'] = extrasPath
         result['playlistPosition'] = writepath[len(extrasPath):]
         if "playlist" in track:
+            result['playlistURLs'] = []
             if 'dzcdn.net' in track['playlist']['picUrl']:
-                result['playlistURL'] = track['playlist']['picUrl'].replace(
-                    f"{settings['embeddedArtworkSize']}x{settings['embeddedArtworkSize']}",
-                    f"{settings['localArtworkSize']}x{settings['localArtworkSize']}")
+                for format in settings['localArtworkFormat'].split(","):
+                    if format in ["png","jpg"]:
+                        url = track['playlist']['picUrl'].replace(
+                            f"{settings['embeddedArtworkSize']}x{settings['embeddedArtworkSize']}",
+                            f"{settings['localArtworkSize']}x{settings['localArtworkSize']}")
+                        if format == "png":
+                            url = url[:url.find("000000-")]+"none-100-0-0.png"
+                        result['playlistURLs'].append({'url': url, 'ext': format})
             else:
-                result['playlistURL'] = track['playlist']['picUrl']
+                result['playlistURLs'].append({'url': track['playlist']['picUrl'], 'ext': 'jpg'})
             track['playlist']['id'] = "pl_" + str(trackAPI['_EXTRA_PLAYLIST']['id'])
             track['playlist']['genre'] = ["Compilation", ]
             track['playlist']['bitrate'] = format
             track['playlist']['dateString'] = formatDate(track['playlist']['date'], settings['dateFormat'])
-            result['playlistCover'] = f"{settingsRegexAlbum(settings['coverImageTemplate'], track['playlist'], settings, trackAPI['_EXTRA_PLAYLIST'])}.{'png' if settings['PNGcovers'] else 'jpg'}"
+            result['playlistCover'] = f"{settingsRegexAlbum(settings['coverImageTemplate'], track['playlist'], settings, trackAPI['_EXTRA_PLAYLIST'])}"
 
     track['downloadUrl'] = dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'],
                                                    track['selectedFormat'])
@@ -941,9 +957,11 @@ def after_download(tracks, settings, queueItem):
             playlistCover = result['playlistCover']
             playlistURL = result['playlistURL']
         if settings['saveArtwork'] and 'albumPath' in result:
-            downloadImage(result['albumURL'], result['albumPath'], settings['overwriteFile'])
+            for image in result['albumURLs']:
+                downloadImage(image['url'], f"{result['albumPath']}.{image['ext']}", settings['overwriteFile'])
         if settings['saveArtworkArtist'] and 'artistPath' in result:
-            downloadImage(result['artistURL'], result['artistPath'], settings['overwriteFile'])
+            for image in result['artistURLs']:
+                downloadImage(image['url'], f"{result['artistPath']}.{image['ext']}", settings['overwriteFile'])
         if 'playlistPosition' in result:
             playlist[index] = result['playlistPosition']
         else:
@@ -954,7 +972,8 @@ def after_download(tracks, settings, queueItem):
         with open(os.path.join(extrasPath, 'errors.txt'), 'wb') as f:
             f.write(errors.encode('utf-8'))
     if settings['saveArtwork'] and playlistCover and not settings['tags']['savePlaylistAsCompilation']:
-        downloadImage(playlistURL, os.path.join(extrasPath, playlistCover), settings['overwriteFile'])
+        for image in result['playlistURLs']:
+            downloadImage(image['url'], os.path.join(extrasPath, playlistCover)+f".{image['ext']}", settings['overwriteFile'])
     if settings['logSearched'] and searched != "":
         with open(os.path.join(extrasPath, 'searched.txt'), 'wb') as f:
             f.write(searched.encode('utf-8'))
@@ -974,9 +993,11 @@ def after_download_single(track, settings, queueItem):
     if 'extrasPath' not in track:
         track['extrasPath'] = settings['downloadLocation']
     if settings['saveArtwork'] and 'albumPath' in track:
-        downloadImage(track['albumURL'], track['albumPath'], settings['overwriteFile'])
+        for image in result['albumURLs']:
+            downloadImage(image['url'], f"{result['albumPath']}.{image['ext']}", settings['overwriteFile'])
     if settings['saveArtworkArtist'] and 'artistPath' in track:
-        downloadImage(track['artistURL'], track['artistPath'], settings['overwriteFile'])
+        for image in result['artistURLs']:
+            downloadImage(image['url'], f"{result['artistPath']}.{image['ext']}", settings['overwriteFile'])
     if settings['logSearched'] and 'searched' in track:
         with open(os.path.join(track['extrasPath'], 'searched.txt'), 'wb+') as f:
             orig = f.read().decode('utf-8')

@@ -28,11 +28,11 @@
   "syncedLyrics": false,
   "embeddedArtworkSize": 800,
   "localArtworkSize": 1400,
+  "localArtworkFormat": "jpg",
   "saveArtwork": true,
   "coverImageTemplate": "cover",
   "saveArtworkArtist": false,
   "artistImageTemplate": "folder",
-  "PNGcovers": false,
   "jpegImageQuality": 80,
   "dateFormat": "Y-M-D",
   "albumVariousArtists": true,
@@ -70,6 +70,6 @@
     "useNullSeparator": false,
     "saveID3v1": true,
     "multiArtistSeparator": "default",
-    "singleAlbumArtist": false,
+    "singleAlbumArtist": false
   }
 }
