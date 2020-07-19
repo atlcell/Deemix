@@ -938,6 +938,7 @@ def after_download(tracks, settings, queueItem):
     extrasPath = None
     playlist = [None] * len(tracks)
     playlistCover = None
+    playlistURLs = []
     errors = ""
     searched = ""
     for index in range(len(tracks)):
@@ -954,6 +955,7 @@ def after_download(tracks, settings, queueItem):
             extrasPath = result['extrasPath']
         if not playlistCover and 'playlistCover' in result:
             playlistCover = result['playlistCover']
+            playlistURLs = result['playlistURLs']
         if settings['saveArtwork'] and 'albumPath' in result:
             for image in result['albumURLs']:
                 downloadImage(image['url'], f"{result['albumPath']}.{image['ext']}", settings['overwriteFile'])
