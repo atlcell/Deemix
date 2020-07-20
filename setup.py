@@ -11,7 +11,7 @@ setup(
     description="A barebone deezer downloader library",
     long_description=README,
     long_description_content_type="text/markdown",
-    url="https://notabug.org/RemixDev/deemix",
+    url="https://deemix.app",
     author="RemixDev",
     author_email="RemixDev64@gmail.com",
     license="GPL3",
