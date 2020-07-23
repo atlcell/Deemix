@@ -73,7 +73,7 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
         if id.startswith("isrc"):
             try:
                 trackAPI = dz.get_track(id)
-                if 'id' in dz_track and 'title' in dz_track:
+                if 'id' in trackAPI and 'title' in trackAPI:
                     id = trackAPI['id']
                 else:
                     result['error'] = "Track ISRC is not available on deezer"
