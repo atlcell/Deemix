@@ -458,6 +458,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
     if trackAPI['SNG_ID'] == 0:
         result['error'] = {
             'message': "This track is not available on Deezer!",
+            'errid': 'notOnDeezer'
         }
         if 'SNG_TITLE' in trackAPI:
             result['error']['data'] = {
@@ -470,7 +471,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         queueItem['errors'].append(result['error'])
         if interface:
             interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
-                                           'error': "This track is not available on Deezer!", 'errid': 'notOnDeezer'})
+                                           'error': result['error']['message'], 'errid': result['error']['errid']})
         return result
     # Get the metadata
     logger.info(f"[{trackAPI['ART_NAME']} - {trackAPI['SNG_TITLE']}] Getting the tags")
@@ -507,6 +508,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                 trackCompletePercentage(trackAPI, queueItem, interface)
                 result['error'] = {
                     'message': "Track not yet encoded and no alternative found!",
+                    'errid': 'notEncodedNoAlternative',
                     'data': {
                         'id': track['id'],
                         'title': track['title'],
@@ -517,13 +519,14 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                 queueItem['errors'].append(result['error'])
                 if interface:
                     interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
-                                                   'error': "Track not yet encoded and no alternative found!", 'errid': 'notEncodedNoAlternative'})
+                                                   'error': result['error']['message'], 'errid': result['error']['errid']})
                 return result
         else:
             logger.error(f"[{track['mainArtist']['name']} - {track['title']}] Track not yet encoded!")
             trackCompletePercentage(trackAPI, queueItem, interface)
             result['error'] = {
                 'message': "Track not yet encoded!",
+                'errid': 'notEncoded',
                 'data': {
                     'id': track['id'],
                     'title': track['title'],
@@ -534,7 +537,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
             queueItem['errors'].append(result['error'])
             if interface:
                 interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
-                                               'error': "Track not yet encoded!", 'errid': 'notEncoded'})
+                                               'error': result['error']['message'], 'errid': result['error']['errid']})
             return result
 
     # Get the selected bitrate
@@ -560,6 +563,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                 trackCompletePercentage(trackAPI, queueItem, interface)
                 result['error'] = {
                     'message': "Track not found at desired bitrate and no alternative found!",
+                    'errid': 'wrongBitrateNoAlternative',
                     'data': {
                         'id': track['id'],
                         'title': track['title'],
@@ -570,13 +574,14 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                 queueItem['errors'].append(result['error'])
                 if interface:
                     interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
-                                                   'error': "Track not found at desired bitrate and no alternative found!", 'errid': 'wrongBitrateNoAlternative'})
+                                                   'error': result['error']['message'], 'errid': result['error']['errid']})
                 return result
         else:
             logger.error(f"[{track['mainArtist']['name']} - {track['title']}] Track not found at desired bitrate. Enable fallback to lower bitrates to fix this issue.")
             trackCompletePercentage(trackAPI, queueItem, interface)
             result['error'] = {
                 'message': "Track not found at desired bitrate.",
+                'errid': 'wrongBitrate',
                 'data': {
                     'id': track['id'],
                     'title': track['title'],
@@ -587,13 +592,14 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
             queueItem['errors'].append(result['error'])
             if interface:
                 interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
-                                               'error': "Track not found at desired bitrate.", 'errid': 'wrongBitrate'})
+                                               'error': result['error']['message'], 'errid': result['error']['errid']})
             return result
     elif selectedBitrate == -200:
         logger.error(f"[{track['mainArtist']['name']} - {track['title']}] This track is not available in 360 Reality Audio format. Please select another format.")
         trackCompletePercentage(trackAPI, queueItem, interface)
         result['error'] = {
             'message': "Track is not available in Reality Audio 360.",
+            'errid': 'no360RA',
             'data': {
                 'id': track['id'],
                 'title': track['title'],
@@ -604,7 +610,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         queueItem['errors'].append(result['error'])
         if interface:
             interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
-                                           'error': "Track is not available in Reality Audio 360.", 'errid': 'no360RA'})
+                                           'error': result['error']['message'], 'errid': result['error']['errid']})
         return result
     track['selectedFormat'] = selectedBitrate
     if "_EXTRA_PLAYLIST" in trackAPI:
@@ -809,6 +815,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                         trackCompletePercentage(trackAPI, queueItem, interface)
                         result['error'] = {
                             'message': "Track not available on deezer's servers and no alternative found!",
+                            'errid': 'notAvailableNoAlternative',
                             'data': {
                                 'id': track['id'],
                                 'title': track['title'],
@@ -819,13 +826,14 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                         queueItem['errors'].append(result['error'])
                         if interface:
                             interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
-                                                           'error': "Track not available on deezer's servers and no alternative found!", 'errid': 'notAvailableNoAlternative'})
+                                                           'error': result['error']['message'], 'errid': result['error']['errid']})
                         return 1
                 else:
                     logger.error(f"[{track['mainArtist']['name']} - {track['title']}] Track not available on deezer's servers!")
                     trackCompletePercentage(trackAPI, queueItem, interface)
                     result['error'] = {
                         'message': "Track not available on deezer's servers!",
+                        'errid': 'notAvailable',
                         'data': {
                             'id': track['id'],
                             'title': track['title'],
@@ -836,7 +844,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                     queueItem['errors'].append(result['error'])
                     if interface:
                         interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
-                                                       'error': "Track not available on deezer's servers!", 'errid': 'notAvailable'})
+                                                       'error': result['error']['message'], 'errid': result['error']['errid']})
                     return 1
             except:
                 logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Error while downloading the track, trying again in 5s...")
