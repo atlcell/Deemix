@@ -459,7 +459,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 
     if trackAPI['SNG_ID'] == 0:
         result['error'] = {
-            'message': "This track is not available on Deezer!",
+            'message': "Track not available on Deezer!",
             'errid': 'notOnDeezer'
         }
         if 'SNG_TITLE' in trackAPI:
