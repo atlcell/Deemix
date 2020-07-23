@@ -68,7 +68,7 @@ def tagID3(stream, track, save):
         tag.add(IPLS(people=involved_people))
     if save['copyright']:
         tag.add(TCOP(text=track['copyright']))
-    if save['savePlaylistAsCompilation']:
+    if save['savePlaylistAsCompilation'] and "playlist" in track:
         tag.add(TCMP(text="1"))
     if save['cover'] and track['album']['picPath']:
         with open(track['album']['picPath'], 'rb') as f:
@@ -139,7 +139,7 @@ def tagFLAC(stream, track, save):
             tag["ORGANIZATION"] = track['contributors']['musicpublisher']
     if save['copyright']:
         tag["COPYRIGHT"] = track['copyright']
-    if save['savePlaylistAsCompilation']:
+    if save['savePlaylistAsCompilation'] and "playlist" in track:
         tag["COMPILATION"] = "1"
 
     if save['cover'] and track['album']['picPath']:
