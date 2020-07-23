@@ -291,7 +291,8 @@ def getTrackData(dz, trackAPI_gw, settings, trackAPI=None, albumAPI_gw=None, alb
                     track['album']['artists'].append(artist['name'])
                     if not artist['role'] in track['album']['artist']:
                         track['album']['artist'][artist['role']] = []
-                    track['album']['artist'][artist['role']].append(artist['name'])
+                    if artist['role'] != "Main" and artist['name'] not in track['album']['artist']['Main']:
+                        track['album']['artist'][artist['role']].append(artist['name'])
             if settings['removeDuplicateArtists']:
                 track['album']['artists'] = uniqueArray(track['album']['artists'])
                 for role in track['album']['artist'].keys():
@@ -365,7 +366,8 @@ def getTrackData(dz, trackAPI_gw, settings, trackAPI=None, albumAPI_gw=None, alb
                 track['artists'].append(artist['name'])
                 if not artist['role'] in track['artist']:
                     track['artist'][artist['role']] = []
-                track['artist'][artist['role']].append(artist['name'])
+                if artist['role'] != "Main" and artist['name'] not in track['artist']['Main']:
+                    track['artist'][artist['role']].append(artist['name'])
         if settings['removeDuplicateArtists']:
             track['artists'] = uniqueArray(track['artists'])
             for role in track['artist'].keys():
