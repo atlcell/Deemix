@@ -69,6 +69,7 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
     if type == None or id == None:
         logger.warn("URL not recognized")
         result['error'] = "URL not recognized"
+        result['errid'] = "invalidURL"
     elif type == "track":
         if id.startswith("isrc"):
             try:
@@ -77,6 +78,7 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
                     id = trackAPI['id']
                 else:
                     result['error'] = "Track ISRC is not available on deezer"
+                    result['errid'] = "ISRCnotOnDeezer"
                     return result
             except APIError as e:
                 e = json.loads(str(e))
@@ -204,6 +206,7 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
         if not playlistAPI['public'] and playlistAPI['creator']['id'] != str(dz.user['id']):
             logger.warn("You can't download others private playlists.")
             result['error'] = "You can't download others private playlists."
+            result['errid'] = "notYourPrivatePlaylist"
             return result
 
         playlistTracksAPI = dz.get_playlist_tracks_gw(id)
@@ -255,6 +258,7 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
         if not sp.spotifyEnabled:
             logger.warn("Spotify Features is not setted up correctly.")
             result['error'] = "Spotify Features is not setted up correctly."
+            result['errid'] = "spotifyDisabled"
             return result
         try:
             track_id = sp.get_trackid_spotify(dz, id, settings['fallbackSearch'])
@@ -266,10 +270,12 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
         else:
             logger.warn("Track not found on deezer!")
             result['error'] = "Track not found on deezer!"
+            result['errid'] = "trackNotOnDeezer"
     elif type == "spotifyalbum":
         if not sp.spotifyEnabled:
             logger.warn("Spotify Features is not setted up correctly.")
             result['error'] = "Spotify Features is not setted up correctly."
+            result['errid'] = "spotifyDisabled"
             return result
         try:
             album_id = sp.get_albumid_spotify(dz, id)
@@ -281,10 +287,12 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
         else:
             logger.warn("Album not found on deezer!")
             result['error'] = "Album not found on deezer!"
+            result['errid'] = "albumNotOnDeezer"
     elif type == "spotifyplaylist":
         if not sp.spotifyEnabled:
             logger.warn("Spotify Features is not setted up correctly.")
             result['error'] = "Spotify Features is not setted up correctly."
+            result['errid'] = "spotifyDisabled"
             return result
         if interface:
             interface.send("startConvertingSpotifyPlaylist", str(id))
@@ -301,6 +309,7 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
     else:
         logger.warn("URL not supported yet")
         result['error'] = "URL not supported yet"
+        result['errid'] = "unsupportedURL"
     return result
 
 
@@ -343,7 +352,7 @@ def addToQueue(dz, sp, url, settings, bitrate=None, interface=None):
         if 'error' in queueItem:
             logger.error(f"[{queueItem['link']}] {queueItem['error']}")
             if interface:
-                interface.send("errorMessage", queueItem['error'])
+                interface.send("queueError", queueItem)
             return False
         if queueItem['uuid'] in list(queueList.keys()):
             logger.warn(f"[{queueItem['uuid']}] Already in queue, will not be added again.")
