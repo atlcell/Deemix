@@ -288,10 +288,11 @@ def getTrackData(dz, trackAPI_gw, settings, trackAPI=None, albumAPI_gw=None, alb
             track['album']['artists'] = []
             for artist in albumAPI['contributors']:
                 if artist['id'] != 5080 or artist['id'] == 5080 and settings['albumVariousArtists']:
-                    track['album']['artists'].append(artist['name'])
-                    if not artist['role'] in track['album']['artist']:
-                        track['album']['artist'][artist['role']] = []
+                    if artist['name'] not in track['album']['artists']:
+                        track['album']['artists'].append(artist['name'])
                     if artist['role'] != "Main" and artist['name'] not in track['album']['artist']['Main'] or artist['role'] == "Main":
+                        if not artist['role'] in track['album']['artist']:
+                            track['album']['artist'][artist['role']] = []
                         track['album']['artist'][artist['role']].append(artist['name'])
             if settings['removeDuplicateArtists']:
                 track['album']['artists'] = uniqueArray(track['album']['artists'])
@@ -363,10 +364,11 @@ def getTrackData(dz, trackAPI_gw, settings, trackAPI=None, albumAPI_gw=None, alb
         track['artists'] = []
         for artist in trackAPI['contributors']:
             if artist['id'] != 5080 or artist['id'] == 5080 and len(trackAPI['contributors']) == 1:
-                track['artists'].append(artist['name'])
-                if not artist['role'] in track['artist']:
-                    track['artist'][artist['role']] = []
+                if artist['name'] not in track['artists']:
+                    track['artists'].append(artist['name'])
                 if artist['role'] != "Main" and artist['name'] not in track['artist']['Main'] or artist['role'] == "Main":
+                    if not artist['role'] in track['artist']:
+                        track['artist'][artist['role']] = []
                     track['artist'][artist['role']].append(artist['name'])
         if settings['removeDuplicateArtists']:
             track['artists'] = uniqueArray(track['artists'])
