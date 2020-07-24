@@ -56,7 +56,7 @@ def stream_track(dz, track, stream, trackAPI, queueItem, interface=None):
     for chunk in request.iter_content(2048):
         if 'cancel' in queueItem:
             raise downloadCancelled
-        if (i % 3) == 0 and len(chunk) == 2048:
+        if i % 3 == 0 and len(chunk) == 2048:
             chunk = Blowfish.new(blowfish_key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07").decrypt(chunk)
         stream.write(chunk)
         chunkLength += len(chunk)
@@ -130,31 +130,42 @@ def formatDate(date, template):
 def getPreferredBitrate(dz, track, bitrate, fallback=True):
     if 'localTrack' in track:
         return 0
-    formatsnon360 = [9, 3, 1] # flac, mp3_320, mp3_128
-    formats360 = [15, 14, 13] # 360_hq, 360_mq, 360_lq
-    if not fallback:
-        errorNum = -100
-        formats = formats360
-        formats.extend(formatsnon360)
-    elif int(bitrate) in formats360:
-        errorNum = -200
-        formats = formats360
-    else:
-        errorNum = 8
-        formats = formatsnon360
+    
+    formats_non_360 = {
+        9: "FLAC",
+        3: "MP3_320",
+        1: "MP3_128",
+    }
+    formats_360 = {
+        15: "MP4_RA3",
+        14: "MP4_RA2",
+        13: "MP4_RA1",
+    }
 
-    for formatNum in formats:
-        if formatNum <= int(bitrate):
-            request = get(dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'], formatNum), stream=True)
-            try:
-                request.raise_for_status()
-            except HTTPError: # if the format is not available, Deezer returns a 403 error
+    if not fallback:
+        error_num = -100
+        formats = formats360
+        formats.extend(formats_non_360)
+    elif int(bitrate) in formats_360:
+        error_num = -200
+        formats = formats_360
+    else:
+        error_num = 8
+        formats = formats_non_360
+
+    filesizes = dz.get_track_filesizes(track["id"])
+
+    for format_num, format in formats.items():
+        if format_num <= int(bitrate):
+            if f"FILESIZE_{format}" in filesizes and int(filesizes[f"FILESIZE_{format}"]) != 0:
+                return format_num
+            else:
                 if fallback:
                     continue
                 else:
-                    return errorNum
-            return formatNum
-    return errorNum # fallback is enabled and loop went through all formats
+                    return error_num
+    
+    return error_num # fallback is enabled and loop went through all formats
 
 
 def parseEssentialTrackData(track, trackAPI):

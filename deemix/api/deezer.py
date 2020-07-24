@@ -29,12 +29,37 @@ class Deezer:
         self.selectedAccount = 0
         self.session = requests.Session()
         self.logged_in = False
-        self.session.post("http://www.deezer.com/", headers=self.http_headers)
-        self.sid = self.session.cookies.get('sid')
+        self.session.post("https://www.deezer.com/", headers=self.http_headers)
+        self.guest_sid = self.session.cookies.get('sid')
 
     def get_token(self):
         token_data = self.gw_api_call('deezer.getUserData')
         return token_data["results"]["checkForm"]
+    
+    def get_track_filesizes(self, sng_id):
+        try:
+            site = requests.post(
+                "https://api.deezer.com/1.0/gateway.php",
+                params={
+                    'api_key': "4VCYIJUCDLOUELGD1V8WBVYBNVDYOXEWSLLZDONGBBDFVXTZJRXPR29JRLQFO6ZE",
+                    'sid': self.guest_sid,
+                    'input': '3',
+                    'output': '3',
+                    'method': 'song_getData'
+                },
+                timeout=30,
+                json={'sng_id': sng_id},
+                headers=self.http_headers
+            )
+        except:
+            time.sleep(2)
+            return self.get_track_filesizes(sng_id)
+        response = site.json()["results"]
+        filesizes = {}
+        for key, value in response.items():
+            if key.startswith("FILESIZE_"):
+                filesizes[key] = value
+        return filesizes
 
     def gw_api_call(self, method, args=None):
         if args is None:
@@ -129,13 +154,14 @@ class Deezer:
 
     def login_via_arl(self, arl, child=0):
         cookie_obj = requests.cookies.create_cookie(
-            domain='deezer.com',
+            domain='.deezer.com',
             name='arl',
             value=arl,
             path="/",
             rest={'HttpOnly': True}
         )
         self.session.cookies.set_cookie(cookie_obj)
+        self.session.cookies.clear(".deezer.com", "/", "sid")
         user_data = self.gw_api_call("deezer.getUserData")
         if user_data["results"]["USER"]["USER_ID"] == 0:
             self.logged_in = False
