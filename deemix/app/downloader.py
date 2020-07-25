@@ -144,8 +144,8 @@ def getPreferredBitrate(dz, track, bitrate, fallback=True):
 
     if not fallback:
         error_num = -100
-        formats = formats360
-        formats.extend(formats_non_360)
+        formats = formats_360
+        formats.update(formats_non_360)
     elif int(bitrate) in formats_360:
         error_num = -200
         formats = formats_360
