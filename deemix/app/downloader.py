@@ -15,6 +15,7 @@ from deemix.api.deezer import APIError, USER_AGENT_HEADER
 from deemix.utils.misc import changeCase, uniqueArray
 from deemix.utils.pathtemplates import generateFilename, generateFilepath, settingsRegexAlbum, settingsRegexArtist, settingsRegexPlaylistFile
 from deemix.utils.taggers import tagID3, tagFLAC
+from mutagen.flac import FLACNoHeaderError
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -86,6 +87,18 @@ def trackCompletePercentage(trackAPI, queueItem, interface):
         if interface:
             interface.send("updateQueue", {'uuid': queueItem['uuid'], 'progress': lastPercentage})
 
+def trackRemovePercentage(trackAPI, queueItem, interface):
+    global downloadPercentage, lastPercentage
+    if 'SINGLE_TRACK' in trackAPI:
+        downloadPercentage = 0
+    else:
+        downloadPercentage -= 1 / trackAPI['SIZE'] * 100
+    if round(downloadPercentage) != lastPercentage and round(downloadPercentage) % 2 == 0:
+        lastPercentage = round(downloadPercentage)
+        queueItem['progress'] = lastPercentage
+        if interface:
+            interface.send("updateQueue", {'uuid': queueItem['uuid'], 'progress': lastPercentage})
+
 
 def downloadImage(url, path, overwrite="n"):
     if not os.path.isfile(path) or overwrite in ['y', 't']:
@@ -130,7 +143,7 @@ def formatDate(date, template):
 def getPreferredBitrate(dz, track, bitrate, fallback=True):
     if 'localTrack' in track:
         return 0
-    
+
     formats_non_360 = {
         9: "FLAC",
         3: "MP3_320",
@@ -157,7 +170,7 @@ def getPreferredBitrate(dz, track, bitrate, fallback=True):
 
     for format_num, format in formats.items():
         if format_num <= int(bitrate):
-            if f"FILESIZE_{format}" in filesizes and int(filesizes[f"FILESIZE_{format}"]) != 0:
+            if f"FILESIZE_{format}" in filesizes and int(filesizes[f"FILESIZE_{format}"]) != 0 and ((format_num == 9 and not 'flacCorrupted' in track) or format_num != 9):
                 return format_num
             else:
                 if fallback:
@@ -177,7 +190,6 @@ def parseEssentialTrackData(track, trackAPI):
         track['fallbackId'] = trackAPI['FALLBACK']['SNG_ID']
     else:
         track['fallbackId'] = 0
-
     return track
 
 
@@ -507,6 +519,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
             logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Track not yet encoded, using fallback id")
             trackNew = dz.get_track_gw(track['fallbackId'])
             track = parseEssentialTrackData(track, trackNew)
+            if 'flacCorrupted' in track: del track['flacCorrupted']
             return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, interface=interface)
         elif not 'searched' in track and settings['fallbackSearch']:
             logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Track not yet encoded, searching for alternative")
@@ -515,6 +528,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
             if searchedId != 0:
                 trackNew = dz.get_track_gw(searchedId)
                 track = parseEssentialTrackData(track, trackNew)
+                if 'flacCorrupted' in track: del track['flacCorrupted']
                 track['searched'] = True
                 return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track,
                                         interface=interface)
@@ -562,6 +576,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
             logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Track not found at desired bitrate, using fallback id")
             trackNew = dz.get_track_gw(track['fallbackId'])
             track = parseEssentialTrackData(track, trackNew)
+            if 'flacCorrupted' in track: del track['flacCorrupted']
             return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, interface=interface)
         elif not 'searched' in track and settings['fallbackSearch']:
             logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Track not found at desired bitrate, searching for alternative")
@@ -570,6 +585,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
             if searchedId != 0:
                 trackNew = dz.get_track_gw(searchedId)
                 track = parseEssentialTrackData(track, trackNew)
+                if 'flacCorrupted' in track: del track['flacCorrupted']
                 track['searched'] = True
                 return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track,
                                         interface=interface)
@@ -815,6 +831,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                     logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Track not available, using fallback id")
                     trackNew = dz.get_track_gw(track['fallbackId'])
                     track = parseEssentialTrackData(track, trackNew)
+                    if 'flacCorrupted' in track: del track['flacCorrupted']
                     return 2
                 elif not 'searched' in track and settings['fallbackSearch']:
                     logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Track not available, searching for alternative")
@@ -823,6 +840,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                     if searchedId != 0:
                         trackNew = dz.get_track_gw(searchedId)
                         track = parseEssentialTrackData(track, trackNew)
+                        if 'flacCorrupted' in track: del track['flacCorrupted']
                         track['searched'] = True
                         return 2
                     else:
@@ -861,7 +879,8 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                         interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
                                                        'error': result['error']['message'], 'errid': result['error']['errid']})
                     return 1
-            except:
+            except Exception as e:
+                logger.exception(str(e))
                 logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Error while downloading the track, trying again in 5s...")
                 sleep(5)
                 return downloadMusic(dz, track, trackAPI, queueItem, interface, writepath, result, settings)
@@ -879,7 +898,14 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         if track['selectedFormat'] in [3, 1, 8]:
             tagID3(writepath, track, settings['tags'])
         elif track['selectedFormat'] == 9:
-            tagFLAC(writepath, track, settings['tags'])
+            try:
+                tagFLAC(writepath, track, settings['tags'])
+            except FLACNoHeaderError:
+                remove(writepath)
+                logger.warn(f"[{track['mainArtist']['name']} - {track['title']}] Track not available in FLAC, falling back if necessary")
+                trackRemovePercentage(trackAPI, queueItem, interface)
+                track['flacCorrupted'] = True
+                return downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=track, interface=interface)
         if 'searched' in track:
             result['searched'] = f'{track["mainArtist"]["name"]} - {track["title"]}'
     logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Track download completed")
