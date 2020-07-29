@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import re
+import string
 
 
 def getBitrateInt(txt):
@@ -20,29 +21,17 @@ def getBitrateInt(txt):
         return None
 
 
-def changeCase(string, type):
+def changeCase(str, type):
     if type == "lower":
-        return string.lower()
+        return str.lower()
     elif type == "upper":
-        return string.upper()
+        return str.upper()
     elif type == "start":
-        string = string.split(" ")
-        res = []
-        for index, value in enumerate(string):
-            if len(value) > 2:
-                res.append(value[0].upper() + value[1:].lower())
-            else:
-                res.append(value.upper())
-        res = " ".join(res)
-        return res
+        return string.capwords(str)
     elif type == "sentence":
-        if len(string) > 2:
-            res = string[0].upper() + string[1:].lower()
-        else:
-            res = string.upper()
-        return res
+        return str.capitalize()
     else:
-        return string
+        return str
 
 
 def getIDFromLink(link, type):
