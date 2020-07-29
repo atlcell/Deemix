@@ -35,4 +35,9 @@ def login():
 
 
 def downloadLink(url, settings, bitrate=None):
-    addToQueue(dz, sp, url, settings, bitrate)
+    for link in url:
+        if ';' in link:
+            for l in link.split(";"):
+                addToQueue(dz, sp, l, settings, bitrate)
+        else:
+            addToQueue(dz, sp, link, settings, bitrate)
