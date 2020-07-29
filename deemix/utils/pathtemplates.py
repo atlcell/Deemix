@@ -19,17 +19,29 @@ def fixName(txt, char='_'):
     txt = re.sub(r'[\0\/\\:*?"<>|]', char, txt)
     return txt
 
+def fixEndOfData(bString):
+    try:
+        bString.decode()
+        return True
+    except:
+        return False
 
 def fixLongName(name):
     if pathSep in name:
         name2 = name.split(pathSep)
         name = ""
         for txt in name2:
-            txt = txt[:200]
+            txt = txt.encode('utf-8')[:200]
+            while not fixEndOfData(txt):
+                txt = txt[:-1]
+            txt = txt.decode()
             name += txt + pathSep
         name = name[:-1]
     else:
-        name = name[:200]
+        name = name.encode('utf-8')[:200]
+        while not fixEndOfData(name):
+            name = name[:-1]
+        name = name.decode()
     return name
 
 
