@@ -205,6 +205,7 @@ class SpotifyHelper:
             if item['track']:
                 tracklist.append(item['track'])
         totalSize = len(tracklist)
+        result['size'] = totalSize
         if path.isfile(path.join(self.configFolder, 'spotifyCache.json')):
             with open(path.join(self.configFolder, 'spotifyCache.json'), 'r') as spotifyCache:
                 cache = json.load(spotifyCache)

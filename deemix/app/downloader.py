@@ -1031,7 +1031,7 @@ def after_download(tracks, settings, queueItem):
         with open(os.path.join(extrasPath, 'errors.txt'), 'wb') as f:
             f.write(errors.encode('utf-8'))
     if settings['saveArtwork'] and playlistCover and not settings['tags']['savePlaylistAsCompilation']:
-        for image in result['playlistURLs']:
+        for image in playlistURLs:
             downloadImage(image['url'], os.path.join(extrasPath, playlistCover)+f".{image['ext']}", settings['overwriteFile'])
     if settings['logSearched'] and searched != "":
         with open(os.path.join(extrasPath, 'searched.txt'), 'wb') as f:
