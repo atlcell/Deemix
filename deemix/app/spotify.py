@@ -195,11 +195,15 @@ class SpotifyHelper:
                 'cover'] = "https://e-cdns-images.dzcdn.net/images/cover/d41d8cd98f00b204e9800998ecf8427e/75x75-000000-80-0-0.jpg"
         playlistAPI = self._convert_playlist_structure(spotify_playlist)
         playlistAPI['various_artist'] = dz.get_artist(5080)
-        tracklist = spotify_playlist['tracks']['items']
+        tracklistTmp = spotify_playlist['tracks']['items']
         result['collection'] = []
+        tracklist = []
         while spotify_playlist['tracks']['next']:
             spotify_playlist['tracks'] = self.sp.next(spotify_playlist['tracks'])
-            tracklist += spotify_playlist['tracks']['items']
+            tracklistTmp += spotify_playlist['tracks']['items']
+        for item in tracklistTmp:
+            if item['track']:
+                tracklist.append(item['track'])
         totalSize = len(tracklist)
         if path.isfile(path.join(self.configFolder, 'spotifyCache.json')):
             with open(path.join(self.configFolder, 'spotifyCache.json'), 'r') as spotifyCache:
@@ -207,23 +211,23 @@ class SpotifyHelper:
         else:
             cache = {'tracks': {}, 'albums': {}}
         for pos, track in enumerate(tracklist, start=1):
-            if str(track['track']['id']) in cache['tracks']:
-                trackID = cache['tracks'][str(track['track']['id'])]
+            if str(track['id']) in cache['tracks']:
+                trackID = cache['tracks'][str(track['id'])]
             else:
-                trackID = self.get_trackid_spotify(dz, 0, settings['fallbackSearch'], track['track'])
-                cache['tracks'][str(track['track']['id'])] = trackID
+                trackID = self.get_trackid_spotify(dz, 0, settings['fallbackSearch'], track)
+                cache['tracks'][str(track['id'])] = trackID
             if trackID == 0:
                 deezerTrack = {
                     'SNG_ID': 0,
-                    'SNG_TITLE': track['track']['name'],
+                    'SNG_TITLE': track['name'],
                     'DURATION': 0,
                     'MD5_ORIGIN': 0,
                     'MEDIA_VERSION': 0,
                     'FILESIZE': 0,
-                    'ALB_TITLE': track['track']['album']['name'],
+                    'ALB_TITLE': track['album']['name'],
                     'ALB_PICTURE': "",
                     'ART_ID': 0,
-                    'ART_NAME': track['track']['artists'][0]['name']
+                    'ART_NAME': track['artists'][0]['name']
                 }
             else:
                 deezerTrack = dz.get_track_gw(trackID)
