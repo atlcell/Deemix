@@ -25,7 +25,7 @@ def tagID3(stream, track, save):
     if save['album']:
         tag.add(TALB(text=track['album']['title']))
     if save['albumArtist'] and len(track['album']['artists']):
-        if save['singleAlbumArtist']:
+        if save['singleAlbumArtist'] and track['album']['mainArtist']['save']:
             tag.add(TPE2(text=track['album']['mainArtist']['name']))
         else:
             tag.add(TPE2(text=track['album']['artists']))

@@ -307,6 +307,7 @@ def getTrackData(dz, trackAPI_gw, settings, trackAPI=None, albumAPI_gw=None, alb
                 'name': albumAPI['artist']['name'],
                 'pic': albumAPI['artist']['picture_small'][albumAPI['artist']['picture_small'].find('artist/') + 7:-24]
             }
+            track['album']['mainArtist']['save'] = track['album']['mainArtist']['id'] != 5080 or track['album']['mainArtist']['id'] == 5080 and settings['albumVariousArtists']
             track['album']['artist'] = {}
             track['album']['artists'] = []
             for artist in albumAPI['contributors']:
