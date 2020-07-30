@@ -101,7 +101,7 @@ def trackRemovePercentage(trackAPI, queueItem, interface):
 
 
 def downloadImage(url, path, overwrite="n"):
-    if not os.path.isfile(path) or overwrite in ['y', 't']:
+    if not os.path.isfile(path) or overwrite in ['y', 't', 'b']:
         try:
             image = get(url, headers={'User-Agent': USER_AGENT_HEADER}, timeout=30)
             image.raise_for_status()
@@ -177,7 +177,7 @@ def getPreferredBitrate(dz, track, bitrate, fallback=True):
                     continue
                 else:
                     return error_num
-    
+
     return error_num # fallback is enabled and loop went through all formats
 
 
@@ -790,6 +790,16 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         result['artistPath'] = os.path.join(artistPath,
             f"{settingsRegexArtist(settings['artistImageTemplate'], track['album']['mainArtist'], settings)}")
 
+    trackAlreadyDownloaded = os.path.isfile(writepath)
+    if trackAlreadyDownloaded and settings['overwriteFile'] == 'b':
+        baseFilename = os.path.join(filepath, filename)
+        i = 1
+        currentFilename = baseFilename+' ('+str(i)+')'+ extensions[track['selectedFormat']]
+        while os.path.isfile(currentFilename):
+            i += 1
+            currentFilename = baseFilename+' ('+str(i)+')'+ extensions[track['selectedFormat']]
+        trackAlreadyDownloaded = False
+        writepath = currentFilename
     # Data for m3u file
     if extrasPath:
         result['extrasPath'] = extrasPath
@@ -815,7 +825,6 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
 
     track['downloadUrl'] = dz.get_track_stream_url(track['id'], track['MD5'], track['mediaVersion'],
                                                    track['selectedFormat'])
-    trackAlreadyDownloaded = os.path.isfile(writepath)
     if not trackAlreadyDownloaded or settings['overwriteFile'] == 'y':
         logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Downloading the track")
         def downloadMusic(dz, track, trackAPI, queueItem, interface, writepath, result, settings):
