@@ -35,7 +35,7 @@ class Deezer:
     def get_token(self):
         token_data = self.gw_api_call('deezer.getUserData')
         return token_data["results"]["checkForm"]
-    
+
     def get_track_filesizes(self, sng_id):
         try:
             site = requests.post(
@@ -153,6 +153,7 @@ class Deezer:
         return True
 
     def login_via_arl(self, arl, child=0):
+        arl = arl.strip()
         cookie_obj = requests.cookies.create_cookie(
             domain='.deezer.com',
             name='arl',

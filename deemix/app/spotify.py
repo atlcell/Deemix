@@ -62,6 +62,8 @@ class SpotifyHelper:
         return self.credentials
 
     def setCredentials(self, spotifyCredentials):
+        spotifyCredentials['clientId'] = spotifyCredentials['clientId'].strip()
+        spotifyCredentials['clientSecret'] = spotifyCredentials['clientSecret'].strip()
         with open(path.join(self.configFolder, 'authCredentials.json'), 'w') as f:
             json.dump(spotifyCredentials, f, indent=2)
         self.credentials = spotifyCredentials
