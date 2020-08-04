@@ -306,7 +306,7 @@ class Deezer:
                 'nb_song': release['NUMBER_TRACK'],
                 'nb_disk': release['NUMBER_DISK']
             }
-            if release['ART_ID'] == art_id or release['ART_ID'] != art_id and release['ROLE_ID'] == 0 and release['ARTISTS_ALBUMS_IS_OFFICIAL']:
+            if (release['ART_ID'] == art_id or release['ART_ID'] != art_id and release['ROLE_ID'] == 0) and release['ARTISTS_ALBUMS_IS_OFFICIAL']:
                 if not obj['record_type'] in result:
                     result[obj['record_type']] = []
                 result[obj['record_type']].append(obj)
