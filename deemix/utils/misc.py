@@ -56,6 +56,8 @@ def getIDFromLink(link, type):
             return link[link.find("album:") + 6:]
     elif type == "artisttop":
         return re.search(r"\/artist\/(\d+)\/top_track", link)[1]
+    elif type == "artistdiscography":
+        return re.search(r"\/artist\/(\d+)\/discography", link)[1]
     else:
         return link[link.rfind("/") + 1:]
 
@@ -79,6 +81,8 @@ def getTypeFromLink(link):
             type = 'album'
         elif re.search("\/artist\/(\d+)\/top_track", link):
             type = 'artisttop'
+        elif re.search("\/artist\/(\d+)\/discography", link):
+            type = 'artistdiscography'
         elif '/artist' in link:
             type = 'artist'
     return type

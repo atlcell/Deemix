@@ -240,7 +240,7 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
 
     elif type == "artist":
         try:
-            albumAPI = artistAPI = dz.get_artist(id)
+            artistAPI = dz.get_artist(id)
         except APIError as e:
             e = json.loads(str(e))
             result['error'] = f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}"
@@ -254,6 +254,89 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
         if interface:
             interface.send("finishAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
         return albumList
+    elif type == "artistdiscography":
+        try:
+            artistAPI = dz.get_artist(id)
+        except APIError as e:
+            e = json.loads(str(e))
+            result['error'] = f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}"
+            return result
+        if interface:
+            interface.send("startAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
+        artistDiscographyAPI = dz.get_artist_discography_gw(id, 100)
+        albumList = []
+        for type in artistDiscographyAPI:
+            if type != 'all':
+                for album in artistDiscographyAPI[type]:
+                    albumList.append(generateQueueItem(dz, sp, album['link'], settings, bitrate))
+        if interface:
+            interface.send("finishAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
+        return albumList
+    elif type == "artisttop":
+        try:
+            artistAPI = dz.get_artist(id)
+        except APIError as e:
+            e = json.loads(str(e))
+            result['error'] = f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}"
+            return result
+
+        playlistAPI = {
+            'id': str(artistAPI['id'])+"_top_track",
+            'title': artistAPI['name']+" - Top Tracks",
+            'description': "Top Tracks for "+artistAPI['name'],
+            'duration': 0,
+            'public': True,
+            'is_loved_track': False,
+            'collaborative': False,
+            'nb_tracks': 0,
+            'fans': artistAPI['nb_fan'],
+            'link': "https://www.deezer.com/artist/"+str(artistAPI['id'])+"/top_track",
+            'share': None,
+            'picture': artistAPI['picture'],
+            'picture_small': artistAPI['picture_small'],
+            'picture_medium': artistAPI['picture_medium'],
+            'picture_big': artistAPI['picture_big'],
+            'picture_xl': artistAPI['picture_xl'],
+            'checksum': None,
+            'tracklist': "https://api.deezer.com/artist/"+str(artistAPI['id'])+"/top",
+            'creation_date': "XXXX-00-00",
+            'creator': {
+                'id': "art_"+str(artistAPI['id']),
+                'name': artistAPI['name'],
+                'type': "user"
+            },
+            'type': "playlist"
+        }
+
+        artistTopTracksAPI_gw = dz.get_artist_toptracks_gw(id)
+        playlistAPI['various_artist'] = dz.get_artist(5080)
+        playlistAPI['nb_tracks'] = len(artistTopTracksAPI_gw)
+
+        result['title'] = playlistAPI['title']
+        result['artist'] = playlistAPI['creator']['name']
+        result['cover'] = playlistAPI['picture_small'][:-24] + '/75x75-000000-80-0-0.jpg'
+        result['size'] = playlistAPI['nb_tracks']
+        result['downloaded'] = 0
+        result['failed'] = 0
+        result['errors'] = []
+        result['progress'] = 0
+        result['type'] = 'playlist'
+        result['id'] = id
+        result['bitrate'] = bitrate
+        result['uuid'] = f"{result['type']}_{id}_{bitrate}"
+        result['settings'] = settings or {}
+        totalSize = len(artistTopTracksAPI_gw)
+        result['collection'] = []
+        for pos, trackAPI in enumerate(artistTopTracksAPI_gw, start=1):
+            if 'EXPLICIT_TRACK_CONTENT' in trackAPI and 'EXPLICIT_LYRICS_STATUS' in trackAPI['EXPLICIT_TRACK_CONTENT'] and trackAPI['EXPLICIT_TRACK_CONTENT']['EXPLICIT_LYRICS_STATUS'] in [1,4]:
+                playlistAPI['explicit'] = True
+            trackAPI['_EXTRA_PLAYLIST'] = playlistAPI
+            trackAPI['POSITION'] = pos
+            trackAPI['SIZE'] = totalSize
+            trackAPI['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
+            result['collection'].append(trackAPI)
+        if not 'explicit' in playlistAPI:
+            playlistAPI['explicit'] = False
     elif type == "spotifytrack":
         if not sp.spotifyEnabled:
             logger.warn("Spotify Features is not setted up correctly.")
