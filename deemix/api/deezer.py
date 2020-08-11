@@ -280,6 +280,7 @@ class Deezer:
         releases = []
         RELEASE_TYPE = ["single", "album", "compile", "ep"]
         result = {'all': []}
+        IDs = []
         while True:
             response = self.gw_api_call('album.getDiscography', {'art_id': art_id, "discography_mode":"all", 'nb': nb, 'nb_songs': 0, 'start': start})
             releases += response['results']['data']
@@ -287,39 +288,41 @@ class Deezer:
             if start > response['results']['total']:
                 break
         for release in releases:
-            obj = {
-                'id': release['ALB_ID'],
-                'title': release['ALB_TITLE'],
-                'link': f"https://www.deezer.com/album/{release['ALB_ID']}",
-                'cover': f"https://api.deezer.com/album/{release['ALB_ID']}/image",
-                'cover_small': f"https://cdns-images.dzcdn.net/images/cover/{release['ALB_PICTURE']}/56x56-000000-80-0-0.jpg",
-                'cover_medium': f"https://cdns-images.dzcdn.net/images/cover/{release['ALB_PICTURE']}/250x250-000000-80-0-0.jpg",
-                'cover_big': f"https://cdns-images.dzcdn.net/images/cover/{release['ALB_PICTURE']}/500x500-000000-80-0-0.jpg",
-                'cover_xl': f"https://cdns-images.dzcdn.net/images/cover/{release['ALB_PICTURE']}/1000x1000-000000-80-0-0.jpg",
-                'genre_id': release['GENRE_ID'],
-                'fans': release['RANK'],
-                'release_date': release['PHYSICAL_RELEASE_DATE'],
-                'record_type': RELEASE_TYPE[int(release['TYPE'])],
-                'tracklist': f"https://api.deezer.com/album/{release['ALB_ID']}/tracks",
-                'explicit_lyrics': int(release['EXPLICIT_LYRICS']) > 0,
-                'type': release['__TYPE__'],
-                'nb_song': release['NUMBER_TRACK'],
-                'nb_disk': release['NUMBER_DISK']
-            }
-            if (release['ART_ID'] == art_id or release['ART_ID'] != art_id and release['ROLE_ID'] == 0) and release['ARTISTS_ALBUMS_IS_OFFICIAL']:
-                if not obj['record_type'] in result:
-                    result[obj['record_type']] = []
-                result[obj['record_type']].append(obj)
-                result['all'].append(obj)
-            else:
-                if release['ROLE_ID'] == 5:
-                    if not 'featured' in result:
-                        result['featured'] = []
-                    result['featured'].append(obj)
-                elif release['ROLE_ID'] == 0:
-                    if not 'more' in result:
-                        result['more'] = []
-                    result['more'].append(obj)
+            if release['ALB_ID'] not in IDs:
+                IDs.append(release['ALB_ID'])
+                obj = {
+                    'id': release['ALB_ID'],
+                    'title': release['ALB_TITLE'],
+                    'link': f"https://www.deezer.com/album/{release['ALB_ID']}",
+                    'cover': f"https://api.deezer.com/album/{release['ALB_ID']}/image",
+                    'cover_small': f"https://cdns-images.dzcdn.net/images/cover/{release['ALB_PICTURE']}/56x56-000000-80-0-0.jpg",
+                    'cover_medium': f"https://cdns-images.dzcdn.net/images/cover/{release['ALB_PICTURE']}/250x250-000000-80-0-0.jpg",
+                    'cover_big': f"https://cdns-images.dzcdn.net/images/cover/{release['ALB_PICTURE']}/500x500-000000-80-0-0.jpg",
+                    'cover_xl': f"https://cdns-images.dzcdn.net/images/cover/{release['ALB_PICTURE']}/1000x1000-000000-80-0-0.jpg",
+                    'genre_id': release['GENRE_ID'],
+                    'fans': release['RANK'],
+                    'release_date': release['PHYSICAL_RELEASE_DATE'],
+                    'record_type': RELEASE_TYPE[int(release['TYPE'])],
+                    'tracklist': f"https://api.deezer.com/album/{release['ALB_ID']}/tracks",
+                    'explicit_lyrics': int(release['EXPLICIT_LYRICS']) > 0,
+                    'type': release['__TYPE__'],
+                    'nb_song': release['NUMBER_TRACK'],
+                    'nb_disk': release['NUMBER_DISK']
+                }
+                if (release['ART_ID'] == art_id or release['ART_ID'] != art_id and release['ROLE_ID'] == 0) and release['ARTISTS_ALBUMS_IS_OFFICIAL']:
+                    if not obj['record_type'] in result:
+                        result[obj['record_type']] = []
+                    result[obj['record_type']].append(obj)
+                    result['all'].append(obj)
+                else:
+                    if release['ROLE_ID'] == 5:
+                        if not 'featured' in result:
+                            result['featured'] = []
+                        result['featured'].append(obj)
+                    elif release['ROLE_ID'] == 0:
+                        if not 'more' in result:
+                            result['more'] = []
+                        result['more'].append(obj)
         return result
 
     def search_main_gw(self, term):
