@@ -3,393 +3,344 @@ from deemix.app.downloader import download
 from deemix.utils.misc import getIDFromLink, getTypeFromLink, getBitrateInt
 from deemix.api.deezer import APIError
 from spotipy.exceptions import SpotifyException
+from deemix.app.queueitem import QISingle, QICollection
 import logging
 import json
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('deemix')
 
-queue = []
-queueList = {}
-queueComplete = []
-currentItem = ""
+class QueueManager:
+    def __init__(self):
+        self.queue = []
+        self.queueList = {}
+        self.queueComplete = []
+        self.currentItem = ""
 
-"""
-queueItem base structure
-	title
-	artist
-	cover
-	size
-	downloaded
-	failed
-    errors
-	progress
-	type
-	id
-	bitrate
-	uuid: type+id+bitrate
-if its a single track
-	single
-if its an album/playlist
-	collection
-"""
+    def generateQueueItem(self, dz, sp, url, settings, bitrate=None, albumAPI=None, interface=None):
+        forcedBitrate = getBitrateInt(bitrate)
+        bitrate = forcedBitrate if forcedBitrate else settings['maxBitrate']
+        type = getTypeFromLink(url)
+        id = getIDFromLink(url, type)
 
-def resetQueueItems(items, q):
-    result = {}
-    for item in items.keys():
-        result[item] = items[item].copy()
-        if item in q:
-            result[item]['downloaded'] = 0
-            result[item]['failed'] = 0
-            result[item]['progress'] = 0
-            result[item]['errors'] = []
-    return result
 
-def slimQueueItems(items):
-    result = {}
-    for item in items.keys():
-        result[item] = slimQueueItem(items[item])
-    return result
+        if type == None or id == None:
+            logger.warn("URL not recognized")
+            return queueError(url, "URL not recognized", "invalidURL")
 
-def slimQueueItem(item):
-    light = item.copy()
-    propertiesToDelete = ['single', 'collection', 'unconverted', '_EXTRA']
-    for property in propertiesToDelete:
-        if property in light:
-            del light[property]
-    return light
+        elif type == "track":
+            if id.startswith("isrc"):
+                try:
+                    trackAPI = dz.get_track(id)
+                    if 'id' in trackAPI and 'title' in trackAPI:
+                        id = trackAPI['id']
+                    else:
 
-def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interface=None):
-    forcedBitrate = getBitrateInt(bitrate)
-    bitrate = forcedBitrate if forcedBitrate else settings['maxBitrate']
-    type = getTypeFromLink(url)
-    id = getIDFromLink(url, type)
-    result = {}
-    result['link'] = url
-    if type == None or id == None:
-        logger.warn("URL not recognized")
-        result['error'] = "URL not recognized"
-        result['errid'] = "invalidURL"
-    elif type == "track":
-        if id.startswith("isrc"):
+                except APIError as e:
+                    e = json.loads(str(e))
+                    return queueError(url, f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
             try:
-                trackAPI = dz.get_track(id)
-                if 'id' in trackAPI and 'title' in trackAPI:
-                    id = trackAPI['id']
-                else:
-                    result['error'] = "Track ISRC is not available on deezer"
-                    result['errid'] = "ISRCnotOnDeezer"
-                    return result
+                trackAPI = dz.get_track_gw(id)
             except APIError as e:
                 e = json.loads(str(e))
-                result['error'] = f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}"
-                return result
-        try:
-            trackAPI = dz.get_track_gw(id)
-        except APIError as e:
-            e = json.loads(str(e))
-            result['error'] = "Wrong URL"
-            if "DATA_ERROR" in e:
-                result['error'] += f": {e['DATA_ERROR']}"
-            return result
-        if albumAPI:
-            trackAPI['_EXTRA_ALBUM'] = albumAPI
-        if settings['createSingleFolder']:
-            trackAPI['FILENAME_TEMPLATE'] = settings['albumTracknameTemplate']
-        else:
-            trackAPI['FILENAME_TEMPLATE'] = settings['tracknameTemplate']
-        trackAPI['SINGLE_TRACK'] = True
-
-        result['title'] = trackAPI['SNG_TITLE']
-        if 'VERSION' in trackAPI and trackAPI['VERSION']:
-            result['title'] += " " + trackAPI['VERSION']
-        result['artist'] = trackAPI['ART_NAME']
-        result[
-            'cover'] = f"https://e-cdns-images.dzcdn.net/images/cover/{trackAPI['ALB_PICTURE']}/75x75-000000-80-0-0.jpg"
-        result['size'] = 1
-        result['downloaded'] = 0
-        result['failed'] = 0
-        result['errors'] = []
-        result['progress'] = 0
-        result['type'] = 'track'
-        result['id'] = id
-        result['bitrate'] = bitrate
-        result['uuid'] = f"{result['type']}_{id}_{bitrate}"
-        result['settings'] = settings or {}
-        result['single'] = trackAPI
-
-    elif type == "album":
-        try:
-            albumAPI = dz.get_album(id)
-        except APIError as e:
-            e = json.loads(str(e))
-            result['error'] = f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}"
-            return result
-        if id.startswith('upc'):
-            id = albumAPI['id']
-        albumAPI_gw = dz.get_album_gw(id)
-        albumAPI['nb_disk'] = albumAPI_gw['NUMBER_DISK']
-        albumAPI['copyright'] = albumAPI_gw['COPYRIGHT']
-        if albumAPI['nb_tracks'] == 1:
-            return generateQueueItem(dz, sp, f"https://www.deezer.com/track/{albumAPI['tracks']['data'][0]['id']}",
-                                     settings, bitrate, albumAPI)
-        tracksArray = dz.get_album_tracks_gw(id)
-        if albumAPI['nb_tracks'] == 255:
-            albumAPI['nb_tracks'] = len(tracksArray)
-
-        result['title'] = albumAPI['title']
-        result['artist'] = albumAPI['artist']['name']
-        if albumAPI['cover_small'] != None:
-            result['cover'] = albumAPI['cover_small'][:-24] + '/75x75-000000-80-0-0.jpg'
-        else:
-            result['cover'] = f"https://e-cdns-images.dzcdn.net/images/cover/{albumAPI_gw['ALB_PICTURE']}/75x75-000000-80-0-0.jpg"
-        result['size'] = albumAPI['nb_tracks']
-        result['downloaded'] = 0
-        result['failed'] = 0
-        result['errors'] = []
-        result['progress'] = 0
-        result['type'] = 'album'
-        result['id'] = id
-        result['bitrate'] = bitrate
-        result['uuid'] = f"{result['type']}_{id}_{bitrate}"
-        result['settings'] = settings or {}
-        totalSize = len(tracksArray)
-        result['collection'] = []
-        for pos, trackAPI in enumerate(tracksArray, start=1):
-            trackAPI['_EXTRA_ALBUM'] = albumAPI
-            trackAPI['POSITION'] = pos
-            trackAPI['SIZE'] = totalSize
-            trackAPI['FILENAME_TEMPLATE'] = settings['albumTracknameTemplate']
-            result['collection'].append(trackAPI)
-
-    elif type == "playlist":
-        try:
-            playlistAPI = dz.get_playlist(id)
-        except:
-            try:
-                playlistAPI = dz.get_playlist_gw(id)['results']['DATA']
-            except APIError as e:
-                e = json.loads(str(e))
-                result['error'] = "Wrong URL"
+                message = "Wrong URL"
                 if "DATA_ERROR" in e:
-                    result['error'] += f": {e['DATA_ERROR']}"
-                return result
-            newPlaylist = {
-                'id': playlistAPI['PLAYLIST_ID'],
-                'title': playlistAPI['TITLE'],
-                'description': playlistAPI['DESCRIPTION'],
-                'duration': playlistAPI['DURATION'],
-                'public': False,
+                    message += f": {e['DATA_ERROR']}"
+                return queueError(url, message)
+            if albumAPI:
+                trackAPI['_EXTRA_ALBUM'] = albumAPI
+            if settings['createSingleFolder']:
+                trackAPI['FILENAME_TEMPLATE'] = settings['albumTracknameTemplate']
+            else:
+                trackAPI['FILENAME_TEMPLATE'] = settings['tracknameTemplate']
+            trackAPI['SINGLE_TRACK'] = True
+
+            title = trackAPI['SNG_TITLE']
+            if 'VERSION' in trackAPI and trackAPI['VERSION']:
+                title += " " + trackAPI['VERSION']
+            return QISingle(
+                id,
+                bitrate,
+                title,
+                trackAPI['ART_NAME'],
+                f"https://e-cdns-images.dzcdn.net/images/cover/{trackAPI['ALB_PICTURE']}/75x75-000000-80-0-0.jpg",
+                'track',
+                settings,
+                trackAPI,
+            )
+
+        elif type == "album":
+            try:
+                albumAPI = dz.get_album(id)
+            except APIError as e:
+                e = json.loads(str(e))
+                return queueError(url, f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
+            if id.startswith('upc'):
+                id = albumAPI['id']
+            albumAPI_gw = dz.get_album_gw(id)
+            albumAPI['nb_disk'] = albumAPI_gw['NUMBER_DISK']
+            albumAPI['copyright'] = albumAPI_gw['COPYRIGHT']
+            if albumAPI['nb_tracks'] == 1:
+                return generateQueueItem(dz, sp, f"https://www.deezer.com/track/{albumAPI['tracks']['data'][0]['id']}",
+                                         settings, bitrate, albumAPI)
+            tracksArray = dz.get_album_tracks_gw(id)
+            if albumAPI['nb_tracks'] == 255:
+                albumAPI['nb_tracks'] = len(tracksArray)
+
+
+            if albumAPI['cover_small'] != None:
+                cover = albumAPI['cover_small'][:-24] + '/75x75-000000-80-0-0.jpg'
+            else:
+                cover = f"https://e-cdns-images.dzcdn.net/images/cover/{albumAPI_gw['ALB_PICTURE']}/75x75-000000-80-0-0.jpg"
+            totalSize = len(tracksArray)
+            collection = []
+            for pos, trackAPI in enumerate(tracksArray, start=1):
+                trackAPI['_EXTRA_ALBUM'] = albumAPI
+                trackAPI['POSITION'] = pos
+                trackAPI['SIZE'] = totalSize
+                trackAPI['FILENAME_TEMPLATE'] = settings['albumTracknameTemplate']
+                collection.append(trackAPI)
+
+            return return QICollection(
+                id,
+                bitrate,
+                albumAPI['title'],
+                albumAPI['artist']['name'],
+                cover,
+                totalSize,
+                'album',
+                settings,
+                collection,
+            )
+
+
+        elif type == "playlist":
+            try:
+                playlistAPI = dz.get_playlist(id)
+            except:
+                try:
+                    playlistAPI = dz.get_playlist_gw(id)['results']['DATA']
+                except APIError as e:
+                    e = json.loads(str(e))
+                    message = "Wrong URL"
+                    if "DATA_ERROR" in e:
+                        message += f": {e['DATA_ERROR']}"
+                    return queueError(url, message)
+                newPlaylist = {
+                    'id': playlistAPI['PLAYLIST_ID'],
+                    'title': playlistAPI['TITLE'],
+                    'description': playlistAPI['DESCRIPTION'],
+                    'duration': playlistAPI['DURATION'],
+                    'public': False,
+                    'is_loved_track': False,
+                    'collaborative': False,
+                    'nb_tracks': playlistAPI['NB_SONG'],
+                    'fans': playlistAPI['NB_FAN'],
+                    'link': "https://www.deezer.com/playlist/"+playlistAPI['PLAYLIST_ID'],
+                    'share': None,
+                    'picture': "https://api.deezer.com/playlist/"+playlistAPI['PLAYLIST_ID']+"/image",
+                    'picture_small': "https://cdns-images.dzcdn.net/images/"+playlistAPI['PICTURE_TYPE']+"/"+playlistAPI['PLAYLIST_PICTURE']+"/56x56-000000-80-0-0.jpg",
+                    'picture_medium': "https://cdns-images.dzcdn.net/images/"+playlistAPI['PICTURE_TYPE']+"/"+playlistAPI['PLAYLIST_PICTURE']+"/250x250-000000-80-0-0.jpg",
+                    'picture_big': "https://cdns-images.dzcdn.net/images/"+playlistAPI['PICTURE_TYPE']+"/"+playlistAPI['PLAYLIST_PICTURE']+"/500x500-000000-80-0-0.jpg",
+                    'picture_xl': "https://cdns-images.dzcdn.net/images/"+playlistAPI['PICTURE_TYPE']+"/"+playlistAPI['PLAYLIST_PICTURE']+"/1000x1000-000000-80-0-0.jpg",
+                    'checksum': playlistAPI['CHECKSUM'],
+                    'tracklist': "https://api.deezer.com/playlist/"+playlistAPI['PLAYLIST_ID']+"/tracks",
+                    'creation_date': playlistAPI['DATE_ADD'],
+                    'creator': {
+                        'id': playlistAPI['PARENT_USER_ID'],
+                        'name': playlistAPI['PARENT_USERNAME'],
+                        'tracklist': "https://api.deezer.com/user/"+playlistAPI['PARENT_USER_ID']+"/flow",
+                        'type': "user"
+                    },
+                    'type': "playlist"
+                }
+                playlistAPI = newPlaylist
+            if not playlistAPI['public'] and playlistAPI['creator']['id'] != str(dz.user['id']):
+                logger.warn("You can't download others private playlists.")
+                return return queueError(url, "You can't download others private playlists.", "notYourPrivatePlaylist")
+
+            playlistTracksAPI = dz.get_playlist_tracks_gw(id)
+            playlistAPI['various_artist'] = dz.get_artist(5080)
+
+            totalSize = len(playlistTracksAPI)
+            collection = []
+            for pos, trackAPI in enumerate(playlistTracksAPI, start=1):
+                if 'EXPLICIT_TRACK_CONTENT' in trackAPI and 'EXPLICIT_LYRICS_STATUS' in trackAPI['EXPLICIT_TRACK_CONTENT'] and trackAPI['EXPLICIT_TRACK_CONTENT']['EXPLICIT_LYRICS_STATUS'] in [1,4]:
+                    playlistAPI['explicit'] = True
+                trackAPI['_EXTRA_PLAYLIST'] = playlistAPI
+                trackAPI['POSITION'] = pos
+                trackAPI['SIZE'] = totalSize
+                trackAPI['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
+                collection.append(trackAPI)
+            if not 'explicit' in playlistAPI:
+                playlistAPI['explicit'] = False
+
+            return return QICollection(
+                id,
+                bitrate,
+                playlistAPI['title'],
+                playlistAPI['creator']['name'],
+                playlistAPI['picture_small'][:-24] + '/75x75-000000-80-0-0.jpg',
+                totalSize,
+                'playlist',
+                settings,
+                collection,
+            )
+
+        elif type == "artist":
+            try:
+                artistAPI = dz.get_artist(id)
+            except APIError as e:
+                e = json.loads(str(e))
+                return return queueError(url, f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
+
+            if interface:
+                interface.send("startAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
+
+            artistAPITracks = dz.get_artist_albums(id)
+            albumList = []
+            for album in artistAPITracks['data']:
+                albumList.append(generateQueueItem(dz, sp, album['link'], settings, bitrate))
+
+            if interface:
+                interface.send("finishAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
+
+            return albumList
+
+        elif type == "artistdiscography":
+            try:
+                artistAPI = dz.get_artist(id)
+            except APIError as e:
+                e = json.loads(str(e))
+                return return queueError(url, f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
+
+            if interface:
+                interface.send("startAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
+
+            artistDiscographyAPI = dz.get_artist_discography_gw(id, 100)
+            albumList = []
+            for type in artistDiscographyAPI:
+                if type != 'all':
+                    for album in artistDiscographyAPI[type]:
+                        albumList.append(generateQueueItem(dz, sp, album['link'], settings, bitrate))
+
+            if interface:
+                interface.send("finishAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
+
+            return albumList
+
+        elif type == "artisttop":
+            try:
+                artistAPI = dz.get_artist(id)
+            except APIError as e:
+                e = json.loads(str(e))
+                return return queueError(url, f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
+
+            playlistAPI = {
+                'id': str(artistAPI['id'])+"_top_track",
+                'title': artistAPI['name']+" - Top Tracks",
+                'description': "Top Tracks for "+artistAPI['name'],
+                'duration': 0,
+                'public': True,
                 'is_loved_track': False,
                 'collaborative': False,
-                'nb_tracks': playlistAPI['NB_SONG'],
-                'fans': playlistAPI['NB_FAN'],
-                'link': "https://www.deezer.com/playlist/"+playlistAPI['PLAYLIST_ID'],
+                'nb_tracks': 0,
+                'fans': artistAPI['nb_fan'],
+                'link': "https://www.deezer.com/artist/"+str(artistAPI['id'])+"/top_track",
                 'share': None,
-                'picture': "https://api.deezer.com/playlist/"+playlistAPI['PLAYLIST_ID']+"/image",
-                'picture_small': "https://cdns-images.dzcdn.net/images/"+playlistAPI['PICTURE_TYPE']+"/"+playlistAPI['PLAYLIST_PICTURE']+"/56x56-000000-80-0-0.jpg",
-                'picture_medium': "https://cdns-images.dzcdn.net/images/"+playlistAPI['PICTURE_TYPE']+"/"+playlistAPI['PLAYLIST_PICTURE']+"/250x250-000000-80-0-0.jpg",
-                'picture_big': "https://cdns-images.dzcdn.net/images/"+playlistAPI['PICTURE_TYPE']+"/"+playlistAPI['PLAYLIST_PICTURE']+"/500x500-000000-80-0-0.jpg",
-                'picture_xl': "https://cdns-images.dzcdn.net/images/"+playlistAPI['PICTURE_TYPE']+"/"+playlistAPI['PLAYLIST_PICTURE']+"/1000x1000-000000-80-0-0.jpg",
-                'checksum': playlistAPI['CHECKSUM'],
-                'tracklist': "https://api.deezer.com/playlist/"+playlistAPI['PLAYLIST_ID']+"/tracks",
-                'creation_date': playlistAPI['DATE_ADD'],
+                'picture': artistAPI['picture'],
+                'picture_small': artistAPI['picture_small'],
+                'picture_medium': artistAPI['picture_medium'],
+                'picture_big': artistAPI['picture_big'],
+                'picture_xl': artistAPI['picture_xl'],
+                'checksum': None,
+                'tracklist': "https://api.deezer.com/artist/"+str(artistAPI['id'])+"/top",
+                'creation_date': "XXXX-00-00",
                 'creator': {
-                    'id': playlistAPI['PARENT_USER_ID'],
-                    'name': playlistAPI['PARENT_USERNAME'],
-                    'tracklist': "https://api.deezer.com/user/"+playlistAPI['PARENT_USER_ID']+"/flow",
+                    'id': "art_"+str(artistAPI['id']),
+                    'name': artistAPI['name'],
                     'type': "user"
                 },
                 'type': "playlist"
             }
-            playlistAPI = newPlaylist
-        if not playlistAPI['public'] and playlistAPI['creator']['id'] != str(dz.user['id']):
-            logger.warn("You can't download others private playlists.")
-            result['error'] = "You can't download others private playlists."
-            result['errid'] = "notYourPrivatePlaylist"
-            return result
 
-        playlistTracksAPI = dz.get_playlist_tracks_gw(id)
-        playlistAPI['various_artist'] = dz.get_artist(5080)
+            artistTopTracksAPI_gw = dz.get_artist_toptracks_gw(id)
+            playlistAPI['various_artist'] = dz.get_artist(5080)
+            playlistAPI['nb_tracks'] = len(artistTopTracksAPI_gw)
 
-        result['title'] = playlistAPI['title']
-        result['artist'] = playlistAPI['creator']['name']
-        result['cover'] = playlistAPI['picture_small'][:-24] + '/75x75-000000-80-0-0.jpg'
-        result['size'] = playlistAPI['nb_tracks']
-        result['downloaded'] = 0
-        result['failed'] = 0
-        result['errors'] = []
-        result['progress'] = 0
-        result['type'] = 'playlist'
-        result['id'] = id
-        result['bitrate'] = bitrate
-        result['uuid'] = f"{result['type']}_{id}_{bitrate}"
-        result['settings'] = settings or {}
-        totalSize = len(playlistTracksAPI)
-        result['collection'] = []
-        for pos, trackAPI in enumerate(playlistTracksAPI, start=1):
-            if 'EXPLICIT_TRACK_CONTENT' in trackAPI and 'EXPLICIT_LYRICS_STATUS' in trackAPI['EXPLICIT_TRACK_CONTENT'] and trackAPI['EXPLICIT_TRACK_CONTENT']['EXPLICIT_LYRICS_STATUS'] in [1,4]:
-                playlistAPI['explicit'] = True
-            trackAPI['_EXTRA_PLAYLIST'] = playlistAPI
-            trackAPI['POSITION'] = pos
-            trackAPI['SIZE'] = totalSize
-            trackAPI['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
-            result['collection'].append(trackAPI)
-        if not 'explicit' in playlistAPI:
-            playlistAPI['explicit'] = False
+            totalSize = len(artistTopTracksAPI_gw)
+            collection = []
+            for pos, trackAPI in enumerate(artistTopTracksAPI_gw, start=1):
+                if 'EXPLICIT_TRACK_CONTENT' in trackAPI and 'EXPLICIT_LYRICS_STATUS' in trackAPI['EXPLICIT_TRACK_CONTENT'] and trackAPI['EXPLICIT_TRACK_CONTENT']['EXPLICIT_LYRICS_STATUS'] in [1,4]:
+                    playlistAPI['explicit'] = True
+                trackAPI['_EXTRA_PLAYLIST'] = playlistAPI
+                trackAPI['POSITION'] = pos
+                trackAPI['SIZE'] = totalSize
+                trackAPI['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
+                collection.append(trackAPI)
+            if not 'explicit' in playlistAPI:
+                playlistAPI['explicit'] = False
 
-    elif type == "artist":
-        try:
-            artistAPI = dz.get_artist(id)
-        except APIError as e:
-            e = json.loads(str(e))
-            result['error'] = f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}"
-            return result
-        if interface:
-            interface.send("startAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
-        artistAPITracks = dz.get_artist_albums(id)
-        albumList = []
-        for album in artistAPITracks['data']:
-            albumList.append(generateQueueItem(dz, sp, album['link'], settings, bitrate))
-        if interface:
-            interface.send("finishAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
-        return albumList
-    elif type == "artistdiscography":
-        try:
-            artistAPI = dz.get_artist(id)
-        except APIError as e:
-            e = json.loads(str(e))
-            result['error'] = f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}"
-            return result
-        if interface:
-            interface.send("startAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
-        artistDiscographyAPI = dz.get_artist_discography_gw(id, 100)
-        albumList = []
-        for type in artistDiscographyAPI:
-            if type != 'all':
-                for album in artistDiscographyAPI[type]:
-                    albumList.append(generateQueueItem(dz, sp, album['link'], settings, bitrate))
-        if interface:
-            interface.send("finishAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
-        return albumList
-    elif type == "artisttop":
-        try:
-            artistAPI = dz.get_artist(id)
-        except APIError as e:
-            e = json.loads(str(e))
-            result['error'] = f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}"
-            return result
+            return return QICollection(
+                id,
+                bitrate,
+                playlistAPI['title'],
+                playlistAPI['creator']['name'],
+                playlistAPI['picture_small'][:-24] + '/75x75-000000-80-0-0.jpg',
+                totalSize,
+                'playlist',
+                settings,
+                collection,
+            )
 
-        playlistAPI = {
-            'id': str(artistAPI['id'])+"_top_track",
-            'title': artistAPI['name']+" - Top Tracks",
-            'description': "Top Tracks for "+artistAPI['name'],
-            'duration': 0,
-            'public': True,
-            'is_loved_track': False,
-            'collaborative': False,
-            'nb_tracks': 0,
-            'fans': artistAPI['nb_fan'],
-            'link': "https://www.deezer.com/artist/"+str(artistAPI['id'])+"/top_track",
-            'share': None,
-            'picture': artistAPI['picture'],
-            'picture_small': artistAPI['picture_small'],
-            'picture_medium': artistAPI['picture_medium'],
-            'picture_big': artistAPI['picture_big'],
-            'picture_xl': artistAPI['picture_xl'],
-            'checksum': None,
-            'tracklist': "https://api.deezer.com/artist/"+str(artistAPI['id'])+"/top",
-            'creation_date': "XXXX-00-00",
-            'creator': {
-                'id': "art_"+str(artistAPI['id']),
-                'name': artistAPI['name'],
-                'type': "user"
-            },
-            'type': "playlist"
-        }
+        elif type == "spotifytrack":
+            if not sp.spotifyEnabled:
+                logger.warn("Spotify Features is not setted up correctly.")
+                return queueError(url, "Spotify Features is not setted up correctly.", "spotifyDisabled")
 
-        artistTopTracksAPI_gw = dz.get_artist_toptracks_gw(id)
-        playlistAPI['various_artist'] = dz.get_artist(5080)
-        playlistAPI['nb_tracks'] = len(artistTopTracksAPI_gw)
+            try:
+                track_id = sp.get_trackid_spotify(dz, id, settings['fallbackSearch'])
+            except SpotifyException as e:
+                return queueError(url, "Wrong URL: "+e.msg[e.msg.find('\n')+2:])
 
-        result['title'] = playlistAPI['title']
-        result['artist'] = playlistAPI['creator']['name']
-        result['cover'] = playlistAPI['picture_small'][:-24] + '/75x75-000000-80-0-0.jpg'
-        result['size'] = playlistAPI['nb_tracks']
-        result['downloaded'] = 0
-        result['failed'] = 0
-        result['errors'] = []
-        result['progress'] = 0
-        result['type'] = 'playlist'
-        result['id'] = id
-        result['bitrate'] = bitrate
-        result['uuid'] = f"{result['type']}_{id}_{bitrate}"
-        result['settings'] = settings or {}
-        totalSize = len(artistTopTracksAPI_gw)
-        result['collection'] = []
-        for pos, trackAPI in enumerate(artistTopTracksAPI_gw, start=1):
-            if 'EXPLICIT_TRACK_CONTENT' in trackAPI and 'EXPLICIT_LYRICS_STATUS' in trackAPI['EXPLICIT_TRACK_CONTENT'] and trackAPI['EXPLICIT_TRACK_CONTENT']['EXPLICIT_LYRICS_STATUS'] in [1,4]:
-                playlistAPI['explicit'] = True
-            trackAPI['_EXTRA_PLAYLIST'] = playlistAPI
-            trackAPI['POSITION'] = pos
-            trackAPI['SIZE'] = totalSize
-            trackAPI['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
-            result['collection'].append(trackAPI)
-        if not 'explicit' in playlistAPI:
-            playlistAPI['explicit'] = False
-    elif type == "spotifytrack":
-        if not sp.spotifyEnabled:
-            logger.warn("Spotify Features is not setted up correctly.")
-            result['error'] = "Spotify Features is not setted up correctly."
-            result['errid'] = "spotifyDisabled"
-            return result
-        try:
-            track_id = sp.get_trackid_spotify(dz, id, settings['fallbackSearch'])
-        except SpotifyException as e:
-            result['error'] = "Wrong URL: "+e.msg[e.msg.find('\n')+2:]
-            return result
-        if track_id != 0:
-            return generateQueueItem(dz, sp, f'https://www.deezer.com/track/{track_id}', settings, bitrate)
+            if track_id != 0:
+                return generateQueueItem(dz, sp, f'https://www.deezer.com/track/{track_id}', settings, bitrate)
+            else:
+                logger.warn("Track not found on deezer!")
+                return queueError(url, "Track not found on deezer!", "trackNotOnDeezer")
+
+        elif type == "spotifyalbum":
+            if not sp.spotifyEnabled:
+                logger.warn("Spotify Features is not setted up correctly.")
+                return queueError(url, "Spotify Features is not setted up correctly.", "spotifyDisabled")
+
+            try:
+                album_id = sp.get_albumid_spotify(dz, id)
+            except SpotifyException as e:
+                return queueError(url, "Wrong URL: "+e.msg[e.msg.find('\n')+2:])
+
+            if album_id != 0:
+                return generateQueueItem(dz, sp, f'https://www.deezer.com/album/{album_id}', settings, bitrate)
+            else:
+                logger.warn("Album not found on deezer!")
+                return queueError(url, "Album not found on deezer!", "albumNotOnDeezer")
+
+        elif type == "spotifyplaylist":
+            if not sp.spotifyEnabled:
+                logger.warn("Spotify Features is not setted up correctly.")
+                return queueError(url, "Spotify Features is not setted up correctly.", "spotifyDisabled")
+
+            try:
+                playlist = sp.adapt_spotify_playlist(dz, id, settings)
+                playlist['bitrate'] = bitrate
+                playlist['uuid'] = f"{playlist['type']}_{id}_{bitrate}"
+                return playlist
+            except SpotifyException as e:
+                return queueError(url, "Wrong URL: "+e.msg[e.msg.find('\n')+2:])
+
         else:
-            logger.warn("Track not found on deezer!")
-            result['error'] = "Track not found on deezer!"
-            result['errid'] = "trackNotOnDeezer"
-    elif type == "spotifyalbum":
-        if not sp.spotifyEnabled:
-            logger.warn("Spotify Features is not setted up correctly.")
-            result['error'] = "Spotify Features is not setted up correctly."
-            result['errid'] = "spotifyDisabled"
-            return result
-        try:
-            album_id = sp.get_albumid_spotify(dz, id)
-        except SpotifyException as e:
-            result['error'] = "Wrong URL: "+e.msg[e.msg.find('\n')+2:]
-            return result
-        if album_id != 0:
-            return generateQueueItem(dz, sp, f'https://www.deezer.com/album/{album_id}', settings, bitrate)
-        else:
-            logger.warn("Album not found on deezer!")
-            result['error'] = "Album not found on deezer!"
-            result['errid'] = "albumNotOnDeezer"
-    elif type == "spotifyplaylist":
-        if not sp.spotifyEnabled:
-            logger.warn("Spotify Features is not setted up correctly.")
-            result['error'] = "Spotify Features is not setted up correctly."
-            result['errid'] = "spotifyDisabled"
-            return result
-        try:
-            playlist = sp.adapt_spotify_playlist(dz, id, settings)
-        except SpotifyException as e:
-            result['error'] = "Wrong URL: "+e.msg[e.msg.find('\n')+2:]
-            return result
-        playlist['bitrate'] = bitrate
-        playlist['uuid'] = f"{playlist['type']}_{id}_{bitrate}"
-        result = playlist
-    else:
-        logger.warn("URL not supported yet")
-        result['error'] = "URL not supported yet"
-        result['errid'] = "unsupportedURL"
-    return result
+            logger.warn("URL not supported yet")
+            return queueError(url, "URL not supported yet", "unsupportedURL")
 
 
 def addToQueue(dz, sp, url, settings, bitrate=None, interface=None):
@@ -527,3 +478,14 @@ def removeFinishedDownloads(interface=None):
     queueComplete = []
     if interface:
         interface.send("removedFinishedDownloads")
+
+class queueError:
+    def __init__(self, link, message, errid=None):
+        self.link = link
+        self.message = message
+        self.errid = errid
+
+    def toList(self):
+        error = {
+            'link'
+        }
