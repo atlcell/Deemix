@@ -11,7 +11,10 @@ from os.path import isfile
 @click.option('-l', '--local', is_flag=True, help='Downloads in a local folder insted of using the default')
 @click.argument('url', nargs=-1, required=True)
 def download(bitrate, local, url):
-    settings = initSettings(local)
+    settings = initSettings()
+    if local:
+        settings['downloadLocation'] = randomString(12)
+        click.echo("Using a local download folder: "+settings['downloadLocation'])
     app.login()
     url = list(url)
     if isfile(url[0]):

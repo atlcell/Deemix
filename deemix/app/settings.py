@@ -18,7 +18,7 @@ settings = {}
 defaultSettings = {}
 configDir = ""
 
-def initSettings(localFolder = False, configFolder = None):
+def initSettings(configFolder = None):
     global settings
     global defaultSettings
     global configDir
@@ -37,10 +37,7 @@ def initSettings(localFolder = False, configFolder = None):
         settings = json.load(configFile)
     settingsCheck()
 
-    if localFolder:
-        settings['downloadLocation'] = randomString(12)
-        logger.info("Using a local download folder: "+settings['downloadLocation'])
-    elif settings['downloadLocation'] == "":
+    if settings['downloadLocation'] == "":
         settings['downloadLocation'] = path.join(localpaths.getHomeFolder(), 'deemix Music')
         saveSettings(settings)
     makedirs(settings['downloadLocation'], exist_ok=True)
