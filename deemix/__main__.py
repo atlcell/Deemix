@@ -4,6 +4,12 @@ import click
 import deemix.app.cli as app
 from deemix.app.settings import initSettings
 from os.path import isfile
+import random
+import string
+
+def randomString(stringLength=8):
+    letters = string.ascii_lowercase
+    return ''.join(random.choice(letters) for i in range(stringLength))
 
 
 @click.command()
@@ -26,8 +32,5 @@ def download(bitrate, local, url):
     if local:
         click.echo(settings['downloadLocation']) #folder name output
 
-def main():
-    download()
-
 if __name__ == '__main__':
-    main()
+    download()

@@ -94,12 +94,3 @@ def uniqueArray(arr):
             if iPrinc!=iRest and namePrinc.lower() in nRest.lower():
                 del arr[iRest]
     return arr
-
-
-def isValidLink(text):
-    if text.lower().startswith("http"):
-        if "deezer.com" in text.lower() or "open.spotify.com" in text.lower():
-            return True
-    elif text.lower().startswith("spotify:"):
-        return True
-    return False

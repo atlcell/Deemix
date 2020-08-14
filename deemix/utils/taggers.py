@@ -3,8 +3,9 @@ from mutagen.flac import FLAC, Picture
 from mutagen.id3 import ID3, ID3NoHeaderError, TXXX, TIT2, TPE1, TALB, TPE2, TRCK, TPOS, TCON, TYER, TDAT, TLEN, TBPM, \
     TPUB, TSRC, USLT, APIC, IPLS, TCOM, TCOP, TCMP
 
-
+# Adds tags to a MP3 file
 def tagID3(stream, track, save):
+    # Delete exsisting tags
     try:
         tag = ID3(stream)
         tag.delete()
@@ -13,6 +14,7 @@ def tagID3(stream, track, save):
 
     if save['title']:
         tag.add(TIT2(text=track['title']))
+    
     if save['artist'] and len(track['artists']):
         if save['multiArtistSeparator'] != "default":
             if save['multiArtistSeparator'] == "nothing":
@@ -22,13 +24,16 @@ def tagID3(stream, track, save):
             tag.add(TXXX(desc="ARTISTS", text=track['artists']))
         else:
             tag.add(TPE1(text=track['artists']))
+
     if save['album']:
         tag.add(TALB(text=track['album']['title']))
+
     if save['albumArtist'] and len(track['album']['artists']):
         if save['singleAlbumArtist'] and track['album']['mainArtist']['save']:
             tag.add(TPE2(text=track['album']['mainArtist']['name']))
         else:
             tag.add(TPE2(text=track['album']['artists']))
+
     if save['trackNumber']:
         tag.add(TRCK(
             text=str(track['trackNumber']) + ("/" + str(track['album']['trackTotal']) if save['trackTotal'] else "")))
@@ -57,6 +62,7 @@ def tagID3(stream, track, save):
         tag.add(TXXX(desc="REPLAYGAIN_TRACK_GAIN", text=track['replayGain']))
     if 'unsync' in track['lyrics'] and save['lyrics']:
         tag.add(USLT(text=track['lyrics']['unsync']))
+
     involved_people = []
     for role in track['contributors']:
         if role in ['author', 'engineer', 'mixer', 'producer', 'writer']:
@@ -66,10 +72,12 @@ def tagID3(stream, track, save):
             tag.add(TCOM(text=track['contributors']['composer']))
     if len(involved_people) > 0 and save['involvedPeople']:
         tag.add(IPLS(people=involved_people))
+
     if save['copyright']:
         tag.add(TCOP(text=track['copyright']))
     if save['savePlaylistAsCompilation'] and "playlist" in track:
         tag.add(TCMP(text="1"))
+
     if save['cover'] and track['album']['picPath']:
         with open(track['album']['picPath'], 'rb') as f:
             tag.add(
@@ -78,13 +86,16 @@ def tagID3(stream, track, save):
     tag.save(stream, v1=2 if save['saveID3v1'] else 0, v2_version=3,
              v23_sep=None if save['useNullSeparator'] else '/')
 
-
+# Adds tags to a FLAC file
 def tagFLAC(stream, track, save):
+    # Delete exsisting tags
     tag = FLAC(stream)
     tag.delete()
     tag.clear_pictures()
+
     if save['title']:
         tag["TITLE"] = track['title']
+
     if save['artist'] and len(track['artists']):
         if save['multiArtistSeparator'] != "default":
             if save['multiArtistSeparator'] == "nothing":
@@ -94,13 +105,16 @@ def tagFLAC(stream, track, save):
             tag["ARTISTS"] = track['artists']
         else:
             tag["ARTIST"] = track['artists']
+
     if save['album']:
         tag["ALBUM"] = track['album']['title']
+
     if save['albumArtist'] and len(track['album']['artists']):
         if save['singleAlbumArtist']:
             tag["ALBUMARTIST"] = track['album']['mainArtist']['name']
         else:
             tag["ALBUMARTIST"] = track['album']['artists']
+
     if save['trackNumber']:
         tag["TRACKNUMBER"] = str(track['trackNumber'])
     if save['trackTotal']:
@@ -131,12 +145,14 @@ def tagFLAC(stream, track, save):
         tag["REPLAYGAIN_TRACK_GAIN"] = track['replayGain']
     if 'unsync' in track['lyrics'] and save['lyrics']:
         tag["LYRICS"] = track['lyrics']['unsync']
+
     for role in track['contributors']:
         if role in ['author', 'engineer', 'mixer', 'producer', 'writer', 'composer']:
             if save['involvedPeople'] and role != 'composer' or role == 'composer' and save['composer']:
                 tag[role] = track['contributors'][role]
         elif role == 'musicpublisher' and save['involvedPeople']:
             tag["ORGANIZATION"] = track['contributors']['musicpublisher']
+
     if save['copyright']:
         tag["COPYRIGHT"] = track['copyright']
     if save['savePlaylistAsCompilation'] and "playlist" in track:
