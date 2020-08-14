@@ -174,7 +174,7 @@ class SpotifyHelper:
             json.dump(cache, spotifyCache)
         return dz_album
 
-    def convert_spotify_playlist(self, dz, playlist_id, settings):
+    def adapt_spotify_playlist(self, dz, playlist_id, settings):
         if not self.spotifyEnabled:
             raise spotifyFeaturesNotEnabled
         spotify_playlist = self.sp.playlist(playlist_id)
@@ -199,21 +199,34 @@ class SpotifyHelper:
         playlistAPI['various_artist'] = dz.get_artist(5080)
         tracklistTmp = spotify_playlist['tracks']['items']
         result['collection'] = []
-        tracklist = []
+        result['_EXTRA'] = {}
+        result['_EXTRA']['unconverted'] = []
         while spotify_playlist['tracks']['next']:
             spotify_playlist['tracks'] = self.sp.next(spotify_playlist['tracks'])
             tracklistTmp += spotify_playlist['tracks']['items']
         for item in tracklistTmp:
             if item['track']:
-                tracklist.append(item['track'])
-        totalSize = len(tracklist)
+                if item['track']['explicit']:
+                    playlistAPI['explicit'] = True
+                result['_EXTRA']['unconverted'].append(item['track'])
+        totalSize = len(result['_EXTRA']['unconverted'])
         result['size'] = totalSize
+        if not 'explicit' in playlistAPI:
+            playlistAPI['explicit'] = False
+        result['_EXTRA']['playlistAPI'] = playlistAPI
+        return result
+
+    def convert_spotify_playlist(self, dz, item, settings, interface=None):
+        convertPercentage = 0
+        lastPercentage = 0
         if path.isfile(path.join(self.configFolder, 'spotifyCache.json')):
             with open(path.join(self.configFolder, 'spotifyCache.json'), 'r') as spotifyCache:
                 cache = json.load(spotifyCache)
         else:
             cache = {'tracks': {}, 'albums': {}}
-        for pos, track in enumerate(tracklist, start=1):
+        if interface:
+            interface.send("startConversion", item['uuid'])
+        for pos, track in enumerate(item['_EXTRA']['unconverted'], start=1):
             if str(track['id']) in cache['tracks']:
                 trackID = cache['tracks'][str(track['id'])]
             else:
@@ -234,18 +247,24 @@ class SpotifyHelper:
                 }
             else:
                 deezerTrack = dz.get_track_gw(trackID)
-            if 'EXPLICIT_LYRICS' in deezerTrack and deezerTrack['EXPLICIT_LYRICS'] == "1":
-                playlistAPI['explicit'] = True
-            deezerTrack['_EXTRA_PLAYLIST'] = playlistAPI
+            deezerTrack['_EXTRA_PLAYLIST'] = item['_EXTRA']['playlistAPI']
             deezerTrack['POSITION'] = pos
-            deezerTrack['SIZE'] = totalSize
+            deezerTrack['SIZE'] = item['size']
             deezerTrack['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
-            result['collection'].append(deezerTrack)
-        if not 'explicit' in playlistAPI:
-            playlistAPI['explicit'] = False
+            item['collection'].append(deezerTrack)
+
+            convertPercentage = (pos / item['size']) * 100
+            print(convertPercentage)
+            if round(convertPercentage) != lastPercentage and round(convertPercentage) % 2 == 0:
+                lastPercentage = round(convertPercentage)
+                if interface:
+                    interface.send("updateQueue", {'uuid': item['uuid'], 'conversion': lastPercentage})
+
+        del item['_EXTRA']
         with open(path.join(self.configFolder, 'spotifyCache.json'), 'w') as spotifyCache:
             json.dump(cache, spotifyCache)
-        return result
+        if interface:
+            interface.send("startDownload", item['uuid'])
 
     def get_user_playlists(self, user):
         if not self.spotifyEnabled:

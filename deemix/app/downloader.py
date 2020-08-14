@@ -947,12 +947,14 @@ def downloadTrackObj_wrap(dz, track, settings, bitrate, queueItem, interface):
     return result
 
 
-def download(dz, queueItem, interface=None):
+def download(dz, sp, queueItem, interface=None):
     global downloadPercentage, lastPercentage
     settings = queueItem['settings']
     bitrate = queueItem['bitrate']
     downloadPercentage = 0
     lastPercentage = 0
+    if '_EXTRA' in queueItem:
+        sp.convert_spotify_playlist(dz, queueItem, settings, interface=interface)
     if 'single' in queueItem:
         try:
             result = downloadTrackObj(dz, queueItem['single'], settings, bitrate, queueItem, interface=interface)
@@ -988,6 +990,7 @@ def download(dz, queueItem, interface=None):
             interface.send("finishDownload", queueItem['uuid'])
     return {
         'dz': dz,
+        'sp': sp,
         'interface': interface,
         'download_path': download_path
     }

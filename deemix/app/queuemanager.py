@@ -53,10 +53,10 @@ def slimQueueItems(items):
 
 def slimQueueItem(item):
     light = item.copy()
-    if 'single' in light:
-        del light['single']
-    if 'collection' in light:
-        del light['collection']
+    propertiesToDelete = ['single', 'collection', 'unconverted', '_EXTRA']
+    for property in propertiesToDelete:
+        if property in light:
+            del light[property]
     return light
 
 def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interface=None):
@@ -377,18 +377,14 @@ def generateQueueItem(dz, sp, url, settings, bitrate=None, albumAPI=None, interf
             result['error'] = "Spotify Features is not setted up correctly."
             result['errid'] = "spotifyDisabled"
             return result
-        if interface:
-            interface.send("startConvertingSpotifyPlaylist", str(id))
         try:
-            playlist = sp.convert_spotify_playlist(dz, id, settings)
+            playlist = sp.adapt_spotify_playlist(dz, id, settings)
         except SpotifyException as e:
             result['error'] = "Wrong URL: "+e.msg[e.msg.find('\n')+2:]
             return result
         playlist['bitrate'] = bitrate
         playlist['uuid'] = f"{playlist['type']}_{id}_{bitrate}"
         result = playlist
-        if interface:
-            interface.send("finishConvertingSpotifyPlaylist", str(id))
     else:
         logger.warn("URL not supported yet")
         result['error'] = "URL not supported yet"
@@ -447,11 +443,11 @@ def addToQueue(dz, sp, url, settings, bitrate=None, interface=None):
         logger.info(f"[{queueItem['uuid']}] Added to queue.")
         queue.append(queueItem['uuid'])
         queueList[queueItem['uuid']] = queueItem
-    nextItem(dz, interface)
+    nextItem(dz, sp, interface)
     return True
 
 
-def nextItem(dz, interface=None):
+def nextItem(dz, sp, interface=None):
     global currentItem, queueList, queue
     if currentItem != "":
         return None
@@ -463,7 +459,7 @@ def nextItem(dz, interface=None):
         if interface:
             interface.send("startDownload", currentItem)
         logger.info(f"[{currentItem}] Started downloading.")
-        result = download(dz, queueList[currentItem], interface)
+        result = download(dz, sp, queueList[currentItem], interface)
         callbackQueueDone(result)
 
 
@@ -475,7 +471,7 @@ def callbackQueueDone(result):
         queueComplete.append(currentItem)
     logger.info(f"[{currentItem}] Finished downloading.")
     currentItem = ""
-    nextItem(result['dz'], result['interface'])
+    nextItem(result['dz'], result['sp'], result['interface'])
 
 
 def getQueue():
