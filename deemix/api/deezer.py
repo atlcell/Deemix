@@ -257,7 +257,36 @@ class Deezer:
         return self.gw_api_call('deezer.pageArtist', {'art_id': art_id})
 
     def get_playlist_gw(self, playlist_id):
-        return self.gw_api_call('deezer.pagePlaylist', {'playlist_id': playlist_id, 'lang': 'en'})
+        playlistAPI = self.gw_api_call('deezer.pagePlaylist', {'playlist_id': playlist_id, 'lang': 'en'})['results']['DATA']
+        print(json.dumps(playlistAPI))
+        return {
+            'id': playlistAPI['PLAYLIST_ID'],
+            'title': playlistAPI['TITLE'],
+            'description': playlistAPI['DESCRIPTION'],
+            'duration': playlistAPI['DURATION'],
+            'public': playlistAPI['STATUS'] == 1,
+            'is_loved_track': playlistAPI['TYPE'] == 4,
+            'collaborative': playlistAPI['STATUS'] == 2,
+            'nb_tracks': playlistAPI['NB_SONG'],
+            'fans': playlistAPI['NB_FAN'],
+            'link': "https://www.deezer.com/playlist/"+playlistAPI['PLAYLIST_ID'],
+            'share': "https://www.deezer.com/playlist/"+playlistAPI['PLAYLIST_ID'],
+            'picture': "https://api.deezer.com/playlist/"+playlistAPI['PLAYLIST_ID']+"/image",
+            'picture_small': "https://cdns-images.dzcdn.net/images/"+playlistAPI['PICTURE_TYPE']+"/"+playlistAPI['PLAYLIST_PICTURE']+"/56x56-000000-80-0-0.jpg",
+            'picture_medium': "https://cdns-images.dzcdn.net/images/"+playlistAPI['PICTURE_TYPE']+"/"+playlistAPI['PLAYLIST_PICTURE']+"/250x250-000000-80-0-0.jpg",
+            'picture_big': "https://cdns-images.dzcdn.net/images/"+playlistAPI['PICTURE_TYPE']+"/"+playlistAPI['PLAYLIST_PICTURE']+"/500x500-000000-80-0-0.jpg",
+            'picture_xl': "https://cdns-images.dzcdn.net/images/"+playlistAPI['PICTURE_TYPE']+"/"+playlistAPI['PLAYLIST_PICTURE']+"/1000x1000-000000-80-0-0.jpg",
+            'checksum': playlistAPI['CHECKSUM'],
+            'tracklist': "https://api.deezer.com/playlist/"+playlistAPI['PLAYLIST_ID']+"/tracks",
+            'creation_date': playlistAPI['DATE_ADD'],
+            'creator': {
+                'id': playlistAPI['PARENT_USER_ID'],
+                'name': playlistAPI['PARENT_USERNAME'],
+                'tracklist': "https://api.deezer.com/user/"+playlistAPI['PARENT_USER_ID']+"/flow",
+                'type': "user"
+            },
+            'type': "playlist"
+        }
 
     def get_playlist_tracks_gw(self, playlist_id):
         tracks_array = []

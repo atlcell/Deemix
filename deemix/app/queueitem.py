@@ -1,21 +1,5 @@
 #!/usr/bin/env python3
 
-"""
-queueItem base structure
-	title
-	artist
-	cover
-	size
-	downloaded
-	failed
-    errors
-	progress
-	type
-	id
-	bitrate
-	uuid: type+id+bitrate
-"""
-
 class QueueItem:
     def __init__(self, id=None, bitrate=None, title=None, artist=None, cover=None, size=None, type=None, settings=None, queueItemList=None):
         if queueItemList:
@@ -41,9 +25,10 @@ class QueueItem:
         self.errors = []
     	self.progress = 0
     	self.uuid = f"{self.type}_{self.id}_{self.bitrate}"
+        self.cancel = False
 
     def toDict(self):
-        queueItem = {
+        return {
             'title': self.title,
         	'artist': self.artist,
         	'cover': self.cover,
@@ -57,7 +42,6 @@ class QueueItem:
         	'bitrate': self.bitrate,
         	'uuid': self.uuid
         }
-        return queueItem
 
     def getResettedItem(self):
         item = self.toDict()
@@ -101,4 +85,18 @@ class QICollection(QueueItem):
     def toDict(self):
         queueItem = super().toDict()
         queueItem['collection'] = self.collection
+        return queueItem
+
+class QIConvertable(QueueItem):
+    def __init__(self, id=None, bitrate=None, title=None, artist=None, cover=None, size=None, type=None, settings=None, extra=None, queueItemList=None):
+        if queueItemList:
+            super().__init__(queueItemList=queueItemList)
+            self.extra = queueItemList['_EXTRA']
+        else:
+            super().__init__(id, bitrate, title, artist, cover, size, type, settings)
+            self.extra = extra
+
+    def toDict(self):
+        queueItem = super().toDict()
+        queueItem['_EXTRA'] = self.extra
         return queueItem
