@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from deemix.app.downloader import download
+from deemix.app.downloadjob import DownloadJob
 from deemix.utils.misc import getIDFromLink, getTypeFromLink, getBitrateInt
 from deemix.api.deezer import APIError
 from spotipy.exceptions import SpotifyException
@@ -35,7 +35,7 @@ class QueueManager:
                     if 'id' in trackAPI and 'title' in trackAPI:
                         id = trackAPI['id']
                     else:
-
+                        return QueueError(url, "Track ISRC is not available on deezer", "ISRCnotOnDeezer")
                 except APIError as e:
                     e = json.loads(str(e))
                     return QueueError(url, f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
@@ -303,7 +303,7 @@ class QueueManager:
 
             try:
                 playlist = sp.generate_playlist_queueitem(dz, id, settings)
-                playlist['bitrate'] = bitrate
+                playlist.bitrate = bitrate
                 return playlist
             except SpotifyException as e:
                 return QueueError(url, "Wrong URL: "+e.msg[e.msg.find('\n')+2:])
@@ -317,12 +317,14 @@ class QueueManager:
             if interface:
                 interface.send("loginNeededToDownload")
             return False
+
         def parseLink(link):
             link = link.strip()
             if link == "":
                 return False
             logger.info("Generating queue item for: "+link)
             return self.generateQueueItem(dz, sp, link, settings, bitrate, interface=interface)
+
         if type(url) is list:
             queueItem = []
             for link in url:
@@ -339,6 +341,7 @@ class QueueManager:
             queueItem = parseLink(url)
             if not queueItem:
                 return False
+
         if type(queueItem) is list:
             ogLen = len(self.queue)
             for x in queueItem:
@@ -369,6 +372,7 @@ class QueueManager:
             logger.info(f"[{queueItem.uuid}] Added to queue.")
             self.queue.append(queueItem.uuid)
             self.queueList[queueItem.uuid] = queueItem
+
         self.nextItem(dz, sp, interface)
         return True
 
@@ -383,7 +387,7 @@ class QueueManager:
             if interface:
                 interface.send("startDownload", self.currentItem)
             logger.info(f"[{self.currentItem}] Started downloading.")
-            download(dz, sp, self.queueList[self.currentItem], interface)
+            DownloadJob(dz, sp, self.queueList[self.currentItem]).start()
             self.afterDownload(dz, sp, interface)
 
     def afterDownload(self, dz, sp, interface):

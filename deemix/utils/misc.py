@@ -50,7 +50,6 @@ def andCommaConcat(lst):
     result = ""
     for i, art in enumerate(lst):
         result += art
-        track['commaArtistsString'] += art
         if tot != i + 1:
             if tot - 1 == i + 1:
                 result += " & "

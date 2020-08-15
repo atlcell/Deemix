@@ -13,7 +13,7 @@ class Track:
 
         self.title = trackAPI_gw['SNG_TITLE'].strip()
         if 'VERSION' in trackAPI_gw and trackAPI_gw['VERSION'] and not trackAPI_gw['VERSION'] in trackAPI_gw['SNG_TITLE']:
-            track.title += " " + trackAPI_gw['VERSION'].strip()
+            self.title += " " + trackAPI_gw['VERSION'].strip()
 
         self.position = None
         if 'POSITION' in trackAPI_gw:
@@ -87,7 +87,7 @@ class Track:
         self.album['bitrate'] = 0
         self.album['dateString'] = None
 
-        self.artistsString
+        self.artistsString = ""
 
     def parseEssentialData(self, dz, trackAPI_gw):
         self.id = trackAPI_gw['SNG_ID']
@@ -97,7 +97,7 @@ class Track:
         self.fallbackId = "0"
         if 'FALLBACK' in trackAPI_gw:
             self.fallbackId = trackAPI_gw['FALLBACK']['SNG_ID']
-        self.formats = dz.get_track_filesizes(track["id"])
+        self.filesizes = dz.get_track_filesizes(self.id)
 
     def parseLocalTrackData(self, trackAPI_gw):
         self.album = {
@@ -160,7 +160,7 @@ class Track:
         self.trackNumber = trackAPI_gw['TRACK_NUMBER']
         self.contributors = trackAPI_gw['SNG_CONTRIBUTORS']
 
-        track.lyrics = {
+        self.lyrics = {
             'id': None,
             'unsync': None,
             'sync': None
@@ -184,13 +184,13 @@ class Track:
                         self.lyrics['sync'] += lastTimestamp
                     self.lyrics['sync'] += trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["line"] + "\r\n"
 
-        track.mainArtist = {
+        self.mainArtist = {
             'id': trackAPI_gw['ART_ID'],
             'name': trackAPI_gw['ART_NAME'],
             'pic': None
         }
         if 'ART_PICTURE' in trackAPI_gw:
-            track.mainArtist['pic'] = trackAPI_gw['ART_PICTURE']
+            self.mainArtist['pic'] = trackAPI_gw['ART_PICTURE']
 
         self.date = None
         if 'PHYSICAL_RELEASE_DATE' in trackAPI_gw:
@@ -261,7 +261,7 @@ class Track:
             if 'copyright' in albumAPI:
                 self.copyright = albumAPI['copyright']
 
-            if not track.album['pic']:
+            if not self.album['pic']:
                 self.album['pic'] = albumAPI['cover_small'][albumAPI['cover_small'].find('cover/') + 6:-24]
 
             if 'genres' in albumAPI and 'data' in albumAPI['genres'] and len(albumAPI['genres']['data']) > 0:

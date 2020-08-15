@@ -213,7 +213,7 @@ class SpotifyHelper:
         if not 'explicit' in playlistAPI:
             playlistAPI['explicit'] = False
         extra['playlistAPI'] = playlistAPI
-        return QICollection(
+        return QIConvertable(
             playlist_id,
             0,
             spotify_playlist['name'],
@@ -225,7 +225,7 @@ class SpotifyHelper:
             extra,
         )
 
-    def convert_spotify_playlist(self, dz, item, settings, interface=None):
+    def convert_spotify_playlist(self, dz, queueItem, interface=None):
         convertPercentage = 0
         lastPercentage = 0
         if path.isfile(path.join(self.configFolder, 'spotifyCache.json')):
@@ -234,13 +234,13 @@ class SpotifyHelper:
         else:
             cache = {'tracks': {}, 'albums': {}}
         if interface:
-            interface.send("startConversion", item.uuid)
+            interface.send("startConversion", queueItem.uuid)
         collection = []
-        for pos, track in enumerate(item.extra['unconverted'], start=1):
+        for pos, track in enumerate(queueItem.extra['unconverted'], start=1):
             if str(track['id']) in cache['tracks']:
                 trackID = cache['tracks'][str(track['id'])]
             else:
-                trackID = self.get_trackid_spotify(dz, 0, settings['fallbackSearch'], track)
+                trackID = self.get_trackid_spotify(dz, 0, queueItem.settings['fallbackSearch'], track)
                 cache['tracks'][str(track['id'])] = trackID
             if trackID == 0:
                 deezerTrack = {
@@ -257,35 +257,25 @@ class SpotifyHelper:
                 }
             else:
                 deezerTrack = dz.get_track_gw(trackID)
-            deezerTrack['_EXTRA_PLAYLIST'] = item.extra['playlistAPI']
+            deezerTrack['_EXTRA_PLAYLIST'] = queueItem.extra['playlistAPI']
             deezerTrack['POSITION'] = pos
-            deezerTrack['SIZE'] = item.size
-            deezerTrack['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
+            deezerTrack['SIZE'] = queueItem.size
+            deezerTrack['FILENAME_TEMPLATE'] = queueItem.settings['playlistTracknameTemplate']
             collection.append(deezerTrack)
 
-            convertPercentage = (pos / item.size) * 100
-            print(convertPercentage)
+            convertPercentage = (pos / queueItem.size) * 100
             if round(convertPercentage) != lastPercentage and round(convertPercentage) % 2 == 0:
                 lastPercentage = round(convertPercentage)
                 if interface:
-                    interface.send("updateQueue", {'uuid': item.uuid, 'conversion': lastPercentage})
+                    interface.send("updateQueue", {'uuid': queueItem.uuid, 'conversion': lastPercentage})
 
-        item = QICollection(
-            item.id,
-            item.bitrate,
-            item.title,
-            item.artist,
-            item.cover,
-            item.size,
-            item.type,
-            item.settings,
-            collection,
-        )
-        
+        queueItem.extra = None
+        queueItem.collection = collection
+
         with open(path.join(self.configFolder, 'spotifyCache.json'), 'w') as spotifyCache:
             json.dump(cache, spotifyCache)
         if interface:
-            interface.send("startDownload", item['uuid'])
+            interface.send("startDownload", queueItem.uuid)
 
     def get_user_playlists(self, user):
         if not self.spotifyEnabled:

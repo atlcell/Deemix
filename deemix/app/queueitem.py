@@ -4,43 +4,43 @@ class QueueItem:
     def __init__(self, id=None, bitrate=None, title=None, artist=None, cover=None, size=None, type=None, settings=None, queueItemList=None):
         if queueItemList:
             self.title = queueItemList['title']
-        	self.artist = queueItemList['artist']
-        	self.cover = queueItemList['cover']
-        	self.size = queueItemList['size']
-        	self.type = queueItemList['type']
-        	self.id = queueItemList['id']
-        	self.bitrate = queueItemList['bitrate']
+            self.artist = queueItemList['artist']
+            self.cover = queueItemList['cover']
+            self.size = queueItemList['size']
+            self.type = queueItemList['type']
+            self.id = queueItemList['id']
+            self.bitrate = queueItemList['bitrate']
             self.settings = queueItemList['settings']
         else:
             self.title = title
-        	self.artist = artist
-        	self.cover = cover
-        	self.size = size
-        	self.type = type
-        	self.id = id
-        	self.bitrate = bitrate
+            self.artist = artist
+            self.cover = cover
+            self.size = size
+            self.type = type
+            self.id = id
+            self.bitrate = bitrate
             self.settings = settings
-    	self.downloaded = 0
-    	self.failed = 0
+        self.downloaded = 0
+        self.failed = 0
         self.errors = []
-    	self.progress = 0
-    	self.uuid = f"{self.type}_{self.id}_{self.bitrate}"
+        self.progress = 0
+        self.uuid = f"{self.type}_{self.id}_{self.bitrate}"
         self.cancel = False
 
     def toDict(self):
         return {
             'title': self.title,
-        	'artist': self.artist,
-        	'cover': self.cover,
-        	'size': self.size,
-        	'downloaded': self.downloaded,
-        	'failed': self.failed,
+            'artist': self.artist,
+            'cover': self.cover,
+            'size': self.size,
+            'downloaded': self.downloaded,
+            'failed': self.failed,
             'errors': self.errors,
-        	'progress': self.progress,
-        	'type': self.type,
-        	'id': self.id,
-        	'bitrate': self.bitrate,
-        	'uuid': self.uuid
+            'progress': self.progress,
+            'type': self.type,
+            'id': self.id,
+            'bitrate': self.bitrate,
+            'uuid': self.uuid
         }
 
     def getResettedItem(self):
@@ -87,13 +87,13 @@ class QICollection(QueueItem):
         queueItem['collection'] = self.collection
         return queueItem
 
-class QIConvertable(QueueItem):
+class QIConvertable(QICollection):
     def __init__(self, id=None, bitrate=None, title=None, artist=None, cover=None, size=None, type=None, settings=None, extra=None, queueItemList=None):
         if queueItemList:
             super().__init__(queueItemList=queueItemList)
             self.extra = queueItemList['_EXTRA']
         else:
-            super().__init__(id, bitrate, title, artist, cover, size, type, settings)
+            super().__init__(id, bitrate, title, artist, cover, size, type, settings, [])
             self.extra = extra
 
     def toDict(self):

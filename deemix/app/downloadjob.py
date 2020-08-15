@@ -11,7 +11,7 @@ from tempfile import gettempdir
 from time import sleep
 
 from deemix.app.queueitem import QIConvertable, QISingle, QICollection
-from deemix.app.Track import Track
+from deemix.app.track import Track
 from deemix.utils.misc import changeCase
 from deemix.utils.pathtemplates import generateFilename, generateFilepath, settingsRegexAlbum, settingsRegexArtist, settingsRegexPlaylistFile
 from deemix.api.deezer import USER_AGENT_HEADER
@@ -46,8 +46,8 @@ errorMessages = {
     'wrongBitrate': "Track not found at desired bitrate.",
     'wrongBitrateNoAlternative': "Track not found at desired bitrate and no alternative found!",
     'no360RA': "Track is not available in Reality Audio 360.",
-    'notAvailable': "Track not available on deezer's servers!"
-    'notAvailableNoAlternative': "Track not available on deezer's servers and no alternative found!",
+    'notAvailable': "Track not available on deezer's servers!",
+    'notAvailableNoAlternative': "Track not available on deezer's servers and no alternative found!"
 }
 
 def after_download(tracks, settings, queueItem):
@@ -168,8 +168,10 @@ class DownloadJob:
     def __init__(self, dz, sp, queueItem, interface=None):
         self.dz = dz
         self.sp = sp
-        self.queueItem = queueItem
         self.interface = interface
+        if isinstance(queueItem, QIConvertable):
+            self.sp.convert_spotify_playlist(self.dz, queueItem, interface=self.interface)
+        self.queueItem = queueItem
         self.settings = queueItem.settings
         self.bitrate = queueItem.bitrate
         self.downloadPercentage = 0
@@ -177,8 +179,6 @@ class DownloadJob:
         self.extrasPath = self.settings['downloadLocation']
 
     def start(self):
-        if isinstance(self.queueItem, QIConvertable):
-            self.sp.convert_spotify_playlist(self.dz, self.queueItem, self.settings, interface=self.interface)
         if isinstance(self.queueItem, QISingle):
             result = self.downloadWrapper(self.queueItem.single)
             if result:
@@ -215,15 +215,15 @@ class DownloadJob:
                           )
             if self.queueItem.cancel: raise DownloadCancelled
 
-        if self.MD5 == '':
+        if track.MD5 == '':
             if track.fallbackId != "0":
                 logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not yet encoded, using fallback id")
                 newTrack = self.dz.get_track_gw(track.fallbackId)
                 track.parseEssentialData(self.dz, newTrack)
                 return self.download(trackAPI_gw, track)
             elif not track.searched and self.settings['fallbackSearch']:
-                logger.warn(f"[{self.mainArtist['name']} - {self.title}] Track not yet encoded, searching for alternative")
-                searchedId = self.dz.get_track_from_metadata(self.mainArtist['name'], self.title, self.album['title'])
+                logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not yet encoded, searching for alternative")
+                searchedId = self.dz.get_track_from_metadata(track.mainArtist['name'], track.title, track.album['title'])
                 if searchedId != 0:
                     newTrack = self.dz.get_track_gw(searchedId)
                     track.parseEssentialData(self.dz, newTrack)
@@ -242,8 +242,8 @@ class DownloadJob:
                 track.parseEssentialData(self.dz, newTrack)
                 return self.download(trackAPI_gw, track)
             elif not track.searched and self.settings['fallbackSearch']:
-                logger.warn(f"[{self.mainArtist['name']} - {self.title}] Track not found at desired bitrate, searching for alternative")
-                searchedId = self.dz.get_track_from_metadata(self.mainArtist['name'], self.title, self.album['title'])
+                logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not found at desired bitrate, searching for alternative")
+                searchedId = self.dz.get_track_from_metadata(track.mainArtist['name'], track.title, track.album['title'])
                 if searchedId != 0:
                     newTrack = self.dz.get_track_gw(searchedId)
                     track.parseEssentialData(self.dz, newTrack)
@@ -261,8 +261,7 @@ class DownloadJob:
             track.trackNumber = track.position
             track.discNumber = "1"
             track.album = {**track.album, **track.playlist}
-            track.album['picPath'] = os.path.join(TEMPDIR,
-                                                     f"pl{trackAPI_gw['_EXTRA_PLAYLIST']['id']}_{settings['embeddedArtworkSize']}.jpg")
+            track.album['picPath'] = os.path.join(TEMPDIR, f"pl{trackAPI_gw['_EXTRA_PLAYLIST']['id']}_{self.settings['embeddedArtworkSize']}.jpg")
         else:
             if track.album['date']:
                 track.date = track.album['date']
@@ -271,10 +270,11 @@ class DownloadJob:
                 self.settings['embeddedArtworkSize'], self.settings['embeddedArtworkSize'],
                 f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg'
                 )
+            track.album['picPath'] = os.path.join(TEMPDIR, f"alb{track.album['id']}_{self.settings['embeddedArtworkSize']}.jpg")
         track.album['bitrate'] = selectedFormat
 
-        track.dateString = formatDate(track.date, settings['dateFormat'])
-        track.album['dateString'] = formatDate(track.album['date'], settings['dateFormat'])
+        track.dateString = formatDate(track.date, self.settings['dateFormat'])
+        track.album['dateString'] = formatDate(track.album['date'], self.settings['dateFormat'])
 
         # Check if user wants the feat in the title
         # 0 => do not change
@@ -320,11 +320,6 @@ class DownloadJob:
         if self.queueItem.cancel: raise DownloadCancelled
 
         # Download and cache coverart
-        if self.settings['tags']['savePlaylistAsCompilation'] and track.playlist:
-
-        else:
-            track.album['picPath'] = os.path.join(TEMPDIR,
-                                                     f"alb{track.album['id']}_{settings['embeddedArtworkSize']}.jpg")
         logger.info(f"[{track.mainArtist['name']} - {track.title}] Getting the album cover")
         track.album['picPath'] = downloadImage(track.album['picUrl'], track.album['picPath'])
 
@@ -418,7 +413,7 @@ class DownloadJob:
 
             if not trackAlreadyDownloaded or self.settings['overwriteFile'] == 'y':
                 logger.info(f"[{track.mainArtist['name']} - {track.title}] Downloading the track")
-                track.downloadUrl = dz.get_track_stream_url(track.id, track.MD5, track.mediaVersion, track.selectedFormat)
+                track.downloadUrl = self.dz.get_track_stream_url(track.id, track.MD5, track.mediaVersion, track.selectedFormat)
 
                 def downloadMusic(track, trackAPI_gw):
                     try:
@@ -435,8 +430,8 @@ class DownloadJob:
                             track.parseEssentialData(self.dz, newTrack)
                             return False
                         elif not track.searched and self.settings['fallbackSearch']:
-                            logger.warn(f"[{self.mainArtist['name']} - {self.title}] Track not available, searching for alternative")
-                            searchedId = self.dz.get_track_from_metadata(self.mainArtist['name'], self.title, self.album['title'])
+                            logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not available, searching for alternative")
+                            searchedId = self.dz.get_track_from_metadata(track.mainArtist['name'], track.title, track.album['title'])
                             if searchedId != 0:
                                 newTrack = self.dz.get_track_gw(searchedId)
                                 track.parseEssentialData(self.dz, newTrack)
@@ -460,7 +455,7 @@ class DownloadJob:
                 try:
                     trackDownloaded = downloadMusic(track, trackAPI_gw)
                 except DownloadFailed as e:
-                    raise DownloadFailed
+                    raise e
                 except Exception as e:
                     raise e
 
@@ -468,7 +463,7 @@ class DownloadJob:
                     return self.download(trackAPI_gw, track)
             else:
                 logger.info(f"[{track.mainArtist['name']} - {track.title}] Skipping track as it's already downloaded")
-                trackCompletePercentage(trackAPI, queueItem, interface)
+                self.completeTrackPercentage()
 
             # Adding tags
             if (not trackAlreadyDownloaded or self.settings['overwriteFile'] in ['t', 'y']) and not track.localTrack:
@@ -482,10 +477,10 @@ class DownloadJob:
                         remove(writepath)
                         logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not available in FLAC, falling back if necessary")
                         self.removeTrackPercentage(trackAPI, queueItem, interface)
-                        track.formats['FILESIZE_FLAC'] = "0"
+                        track.filesizes['FILESIZE_FLAC'] = "0"
                         return self.download(trackAPI_gw, track)
                 if track.searched:
-                    result['searched'] = f'{track.mainArtist['name']} - {track.title}'
+                    result['searched'] = f"{track.mainArtist['name']} - {track.title}"
 
             logger.info(f"[{track.mainArtist['name']} - {track.title}] Track download completed")
             self.queueItem.downloaded += 1
@@ -533,16 +528,16 @@ class DownloadJob:
 
         return error_num # fallback is enabled and loop went through all formats
 
-    def stream_track(self, stream, track, trackAPI):
+    def streamTrack(self, stream, track, trackAPI):
         if self.queueItem.cancel: raise DownloadCancelled
 
         try:
-            request = get(track.downloadUrl, headers=dz.http_headers, stream=True, timeout=30)
+            request = get(track.downloadUrl, headers=self.dz.http_headers, stream=True, timeout=30)
         except ConnectionError:
             sleep(2)
-            return stream_track(dz, track, stream, trackAPI, queueItem, interface)
+            return self.streamTrack(stream, track, trackAPI)
         request.raise_for_status()
-        blowfish_key = str.encode(dz._get_blowfish_key(str(track.id)))
+        blowfish_key = str.encode(self.dz._get_blowfish_key(str(track.id)))
         complete = int(request.headers["Content-Length"])
         chunkLength = 0
         percentage = 0
@@ -585,9 +580,9 @@ class DownloadJob:
 
     def downloadWrapper(self, trackAPI_gw):
         track = {
-            'id': queueItem.single['SNG_ID'],
-            'title': queueItem.single['SNG_TITLE'] + (queueItem.single['VERSION'] if 'VERSION' in queueItem.single and queueItem.single['VERSION'] and not queueItem.single['VERSION'] in queueItem.single['SNG_TITLE'] else ""),
-            'mainArtist': {'name': queueItem.single['ART_NAME']}
+            'id': trackAPI_gw['SNG_ID'],
+            'title': trackAPI_gw['SNG_TITLE'] + (trackAPI_gw['VERSION'] if 'VERSION' in trackAPI_gw and trackAPI_gw['VERSION'] and not trackAPI_gw['VERSION'] in trackAPI_gw['SNG_TITLE'] else ""),
+            'artist': trackAPI_gw['ART_NAME']
         }
 
         try:
@@ -595,14 +590,14 @@ class DownloadJob:
         except DownloadCancelled:
             return None
         except DownloadFailed as error:
-            logger.error(f"[{track['mainArtist']['name']} - {track['title']}] {error.message}")
+            logger.error(f"[{track['artist']} - {track['title']}] {error.message}")
             result = {'error': {
                         'message': error.message,
                         'errid': error.errid,
                         'data': track
                     }}
         except Exception as e:
-            logger.exception(str(e))
+            logger.exception(f"[{track['artist']} - {track['title']}] {str(e)}")
             result = {'error': {
                         'message': str(e),
                         'data': track
@@ -611,10 +606,10 @@ class DownloadJob:
         if 'error' in result:
             self.completeTrackPercentage()
             self.queueItem.failed += 1
-            self.queueItem.errors.append(error.message)
-            if interface:
+            self.queueItem.errors.append(result['error']['message'])
+            if self.interface:
                 error = result['error']
-                interface.send("updateQueue", {
+                self.interface.send("updateQueue", {
                     'uuid': self.queueItem.uuid,
                     'failed': True,
                     'data': error['data'],
