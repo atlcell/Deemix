@@ -49,83 +49,6 @@ errorMessages = {
     'notAvailable': "Track not available on deezer's servers!",
     'notAvailableNoAlternative': "Track not available on deezer's servers and no alternative found!"
 }
-
-def after_download(tracks, settings, queueItem):
-    extrasPath = None
-    playlist = [None] * len(tracks)
-    playlistCover = None
-    playlistURLs = []
-    errors = ""
-    searched = ""
-    for index in range(len(tracks)):
-        result = tracks[index].result()
-        if 'cancel' in result:
-            return None
-        if 'error' in result:
-            if not 'data' in result['error']:
-                result['error']['data'] = {'id': 0, 'title': 'Unknown', 'artist': 'Unknown'}
-            errors += f"{result['error']['data']['id']} | {result['error']['data']['artist']} - {result['error']['data']['title']} | {result['error']['message']}\r\n"
-        if 'searched' in result:
-            searched += result['searched'] + "\r\n"
-        if not extrasPath and 'extrasPath' in result:
-            extrasPath = result['extrasPath']
-        if not playlistCover and 'playlistCover' in result:
-            playlistCover = result['playlistCover']
-            playlistURLs = result['playlistURLs']
-        if settings['saveArtwork'] and 'albumPath' in result:
-            for image in result['albumURLs']:
-                downloadImage(image['url'], f"{result['albumPath']}.{image['ext']}", settings['overwriteFile'])
-        if settings['saveArtworkArtist'] and 'artistPath' in result:
-            for image in result['artistURLs']:
-                downloadImage(image['url'], f"{result['artistPath']}.{image['ext']}", settings['overwriteFile'])
-        if 'playlistPosition' in result:
-            playlist[index] = result['playlistPosition']
-        else:
-            playlist[index] = ""
-    if not extrasPath:
-        extrasPath = settings['downloadLocation']
-    if settings['logErrors'] and errors != "":
-        with open(os.path.join(extrasPath, 'errors.txt'), 'wb') as f:
-            f.write(errors.encode('utf-8'))
-    if settings['saveArtwork'] and playlistCover and not settings['tags']['savePlaylistAsCompilation']:
-        for image in playlistURLs:
-            downloadImage(image['url'], os.path.join(extrasPath, playlistCover)+f".{image['ext']}", settings['overwriteFile'])
-    if settings['logSearched'] and searched != "":
-        with open(os.path.join(extrasPath, 'searched.txt'), 'wb') as f:
-            f.write(searched.encode('utf-8'))
-    if settings['createM3U8File']:
-        filename = settingsRegexPlaylistFile(settings['playlistFilenameTemplate'], queueItem, settings) or "playlist"
-        with open(os.path.join(extrasPath, filename+'.m3u8'), 'wb') as f:
-            for line in playlist:
-                f.write((line + "\n").encode('utf-8'))
-    if settings['executeCommand'] != "":
-        execute(settings['executeCommand'].replace("%folder%", extrasPath))
-    return extrasPath
-
-
-def after_download_single(track, settings):
-    if 'cancel' in track:
-        return None
-    if 'extrasPath' not in track:
-        track['extrasPath'] = settings['downloadLocation']
-    if settings['saveArtwork'] and 'albumPath' in track:
-        for image in track['albumURLs']:
-            downloadImage(image['url'], f"{track['albumPath']}.{image['ext']}", settings['overwriteFile'])
-    if settings['saveArtworkArtist'] and 'artistPath' in track:
-        for image in track['artistURLs']:
-            downloadImage(image['url'], f"{track['artistPath']}.{image['ext']}", settings['overwriteFile'])
-    if settings['logSearched'] and 'searched' in track:
-        with open(os.path.join(track['extrasPath'], 'searched.txt'), 'wb+') as f:
-            orig = f.read().decode('utf-8')
-            if not track['searched'] in orig:
-                if orig != "":
-                    orig += "\r\n"
-                orig += track['searched'] + "\r\n"
-            f.write(orig.encode('utf-8'))
-    if settings['executeCommand'] != "":
-        execute(settings['executeCommand'].replace("%folder%", track['extrasPath']).replace("%filename%", track['playlistPosition']))
-    return track['extrasPath']
-
 def downloadImage(url, path, overwrite="n"):
     if not os.path.isfile(path) or overwrite in ['y', 't', 'b']:
         try:
@@ -177,25 +100,102 @@ class DownloadJob:
         self.downloadPercentage = 0
         self.lastPercentage = 0
         self.extrasPath = self.settings['downloadLocation']
+        self.playlistPath = None
+        self.playlistURLs = []
 
     def start(self):
         if isinstance(self.queueItem, QISingle):
             result = self.downloadWrapper(self.queueItem.single)
             if result:
-                download_path = after_download_single(result, self.settings)
+                singleAfterDownload(result)
         elif isinstance(self.queueItem, QICollection):
-            playlist = [None] * len(self.queueItem.collection)
+            tracks = [None] * len(self.queueItem.collection)
             with ThreadPoolExecutor(self.settings['queueConcurrency']) as executor:
                 for pos, track in enumerate(self.queueItem.collection, start=0):
-                    playlist[pos] = executor.submit(self.downloadWrapper, track)
-            download_path = after_download(playlist, self.settings, self.queueItem)
+                    tracks[pos] = executor.submit(self.downloadWrapper, track)
+            download_path = collectionAfterDownload(tracks)
         if self.interface:
             if self.queueItem.cancel:
                 self.interface.send('currentItemCancelled', self.queueItem.uuid)
                 self.interface.send("removedFromQueue", self.queueItem.uuid)
             else:
                 self.interface.send("finishDownload", self.queueItem.uuid)
-        return download_path
+        return self.extrasPath
+
+    def singleAfterDownload(self, result):
+        # Save Album Cover
+        if self.settings['saveArtwork'] and 'albumPath' in result:
+            for image in result['albumURLs']:
+                downloadImage(image['url'], f"{result['albumPath']}.{image['ext']}", self.settings['overwriteFile'])
+        # Save Artist Artwork
+        if self.settings['saveArtworkArtist'] and 'artistPath' in result:
+            for image in result['artistURLs']:
+                downloadImage(image['url'], f"{result['artistPath']}.{image['ext']}", self.settings['overwriteFile'])
+        # Create searched logfile
+        if self.settings['logSearched'] and 'searched' in result:
+            with open(os.path.join(self.extrasPath, 'searched.txt'), 'wb+') as f:
+                orig = f.read().decode('utf-8')
+                if not result['searched'] in orig:
+                    if orig != "":
+                        orig += "\r\n"
+                    orig += result['searched'] + "\r\n"
+                f.write(orig.encode('utf-8'))
+        # Execute command after download
+        if self.settings['executeCommand'] != "":
+            execute(self.settings['executeCommand'].replace("%folder%", self.extrasPath).replace("%filename%", result['filename']))
+
+    def collectionAfterDownload(self, tracks):
+        playlist = [None] * len(tracks)
+        errors = ""
+        searched = ""
+
+        for index in range(len(tracks)):
+            result = tracks[index].result()
+            # Check if queue is cancelled
+            if not result:
+                return None
+            # Log errors to file
+            if 'error' in result:
+                if not 'data' in result['error']:
+                    result['error']['data'] = {'id': 0, 'title': 'Unknown', 'artist': 'Unknown'}
+                errors += f"{result['error']['data']['id']} | {result['error']['data']['artist']} - {result['error']['data']['title']} | {result['error']['message']}\r\n"
+            # Log searched to file
+            if 'searched' in result:
+                searched += result['searched'] + "\r\n"
+            # Save Album Cover
+            if self.settings['saveArtwork'] and 'albumPath' in result:
+                for image in result['albumURLs']:
+                    downloadImage(image['url'], f"{result['albumPath']}.{image['ext']}", self.settings['overwriteFile'])
+            # Save Artist Artwork
+            if self.settings['saveArtworkArtist'] and 'artistPath' in result:
+                for image in result['artistURLs']:
+                    downloadImage(image['url'], f"{result['artistPath']}.{image['ext']}", self.settings['overwriteFile'])
+            # Save filename for playlist file
+            playlist[index] = ""
+            if 'filename' in result:
+                playlist[index] = result['filename']
+
+        # Create errors logfile
+        if self.settings['logErrors'] and errors != "":
+            with open(os.path.join(self.extrasPath, 'errors.txt'), 'wb') as f:
+                f.write(errors.encode('utf-8'))
+        # Create searched logfile
+        if self.settings['logSearched'] and searched != "":
+            with open(os.path.join(self.extrasPath, 'searched.txt'), 'wb') as f:
+                f.write(searched.encode('utf-8'))
+        # Save Playlist Artwork
+        if self.settings['saveArtwork'] and self.playlistPath and not self.settings['tags']['savePlaylistAsCompilation']:
+            for image in self.playlistURLs:
+                downloadImage(image['url'], os.path.join(self.extrasPath, self.playlistPath)+f".{image['ext']}", self.settings['overwriteFile'])
+        # Create M3U8 File
+        if self.settings['createM3U8File']:
+            filename = settingsRegexPlaylistFile(self.settings['playlistFilenameTemplate'], queueItem, self.settings) or "playlist"
+            with open(os.path.join(self.extrasPath, filename+'.m3u8'), 'wb') as f:
+                for line in playlist:
+                    f.write((line + "\n").encode('utf-8'))
+        # Execute command after download
+        if self.settings['executeCommand'] != "":
+            execute(self.settings['executeCommand'].replace("%folder%", self.extrasPath))
 
     def download(self, trackAPI_gw, track=None):
         result = {}
@@ -389,27 +389,28 @@ class DownloadJob:
             result['extrasPath'] = extrasPath
 
             # Data for m3u file
-            result['playlistPosition'] = writepath[len(extrasPath):]
+            result['filename'] = writepath[len(extrasPath):]
 
             # Save playlist cover
             if track.playlist:
-                result['playlistURLs'] = []
-                if 'dzcdn.net' in track.playlist['picUrl']:
-                    for format in self.settings['localArtworkFormat'].split(","):
-                        if format in ["png","jpg"]:
-                            url = track.playlist['picUrl'].replace(
-                                f"{self.settings['embeddedArtworkSize']}x{self.settings['embeddedArtworkSize']}",
-                                f"{self.settings['localArtworkSize']}x{self.settings['localArtworkSize']}")
-                            if format == "png":
-                                url = url[:url.find("000000-")]+"none-100-0-0.png"
-                            result['playlistURLs'].append({'url': url, 'ext': format})
-                else:
-                    result['playlistURLs'].append({'url': track.playlist['picUrl'], 'ext': 'jpg'})
-                track.playlist['id'] = "pl_" + str(trackAPI_gw['_EXTRA_PLAYLIST']['id'])
-                track.playlist['genre'] = ["Compilation", ]
-                track.playlist['bitrate'] = selectedFormat
-                track.playlist['dateString'] = formatDate(track.playlist['date'], self.settings['dateFormat'])
-                result['playlistCover'] = f"{settingsRegexAlbum(self.settings['coverImageTemplate'], track.playlist, self.settings, trackAPI_gw['_EXTRA_PLAYLIST'])}"
+                if not len(self.playlistURLs):
+                    if 'dzcdn.net' in track.playlist['picUrl']:
+                        for format in self.settings['localArtworkFormat'].split(","):
+                            if format in ["png","jpg"]:
+                                url = track.playlist['picUrl'].replace(
+                                    f"{self.settings['embeddedArtworkSize']}x{self.settings['embeddedArtworkSize']}",
+                                    f"{self.settings['localArtworkSize']}x{self.settings['localArtworkSize']}")
+                                if format == "png":
+                                    url = url[:url.find("000000-")]+"none-100-0-0.png"
+                                self.playlistURLs.append({'url': url, 'ext': format})
+                    else:
+                        self.playlistURLs.append({'url': track.playlist['picUrl'], 'ext': 'jpg'})
+                if not self.playlistPath:
+                    track.playlist['id'] = "pl_" + str(trackAPI_gw['_EXTRA_PLAYLIST']['id'])
+                    track.playlist['genre'] = ["Compilation", ]
+                    track.playlist['bitrate'] = selectedFormat
+                    track.playlist['dateString'] = formatDate(track.playlist['date'], self.settings['dateFormat'])
+                    self.playlistPath = f"{settingsRegexAlbum(self.settings['coverImageTemplate'], track.playlist, self.settings, trackAPI_gw['_EXTRA_PLAYLIST'])}"
 
             if not trackAlreadyDownloaded or self.settings['overwriteFile'] == 'y':
                 logger.info(f"[{track.mainArtist['name']} - {track.title}] Downloading the track")
@@ -422,7 +423,7 @@ class DownloadJob:
                     except DownloadCancelled:
                         remove(writepath)
                         raise DownloadCancelled
-                    except HTTPError:
+                    except HTTPError, DownloadEmpty:
                         remove(writepath)
                         if track.fallbackId != "0":
                             logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not available, using fallback id")
@@ -539,6 +540,8 @@ class DownloadJob:
         request.raise_for_status()
         blowfish_key = str.encode(self.dz._get_blowfish_key(str(track.id)))
         complete = int(request.headers["Content-Length"])
+        if complete == 0:
+            raise DownloadEmpty
         chunkLength = 0
         percentage = 0
         i = 0
@@ -628,4 +631,7 @@ class DownloadFailed(DownloadError):
         self.message = errorMessages[self.errid]
 
 class DownloadCancelled(DownloadError):
+    pass
+
+class DownloadEmpty(DownloadError):
     pass

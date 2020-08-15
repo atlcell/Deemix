@@ -133,12 +133,6 @@ class Settings:
             for i in range(len(logslist)-5):
                 remove(path.join(logspath, logslist[i]))
 
-    def getSettings(self):
-        return self.settings
-
-    def getDefaultSettings(self):
-        return self.defaultSettings
-
     # Saves the settings
     def saveSettings(self, newSettings=None):
         if newSettings:
