@@ -94,10 +94,10 @@ def generateFilepath(track, trackAPI, settings):
                 'savePlaylistAsCompilation']) or
             (settings['createArtistFolder'] and '_EXTRA_PLAYLIST' in trackAPI and settings['createStructurePlaylist'])
     ):
-        if (int(track['id']) < 0 and not 'mainArtist' in track['album']):
-            track['album']['mainArtist'] = track['mainArtist']
+        if (int(track.id) < 0 and not 'mainArtist' in track.album):
+            track.album['mainArtist'] = track.mainArtist
         filepath += antiDot(
-            settingsRegexArtist(settings['artistNameTemplate'], track['album']['mainArtist'], settings)) + pathSep
+            settingsRegexArtist(settings['artistNameTemplate'], track.album['mainArtist'], settings)) + pathSep
         artistPath = filepath
 
     if (settings['createAlbumFolder'] and
@@ -107,7 +107,7 @@ def generateFilepath(track, trackAPI, settings):
                      '_EXTRA_PLAYLIST' in trackAPI and settings['createStructurePlaylist']))
     ):
         filepath += antiDot(
-            settingsRegexAlbum(settings['albumNameTemplate'], track['album'], settings,
+            settingsRegexAlbum(settings['albumNameTemplate'], track.album, settings,
                 trackAPI['_EXTRA_PLAYLIST'] if'_EXTRA_PLAYLIST' in trackAPI else None)) + pathSep
         coverPath = filepath
 
@@ -115,55 +115,55 @@ def generateFilepath(track, trackAPI, settings):
         extrasPath = filepath
 
     if (
-            int(track['album']['discTotal']) > 1 and (
+            int(track.album['discTotal']) > 1 and (
             (settings['createAlbumFolder'] and settings['createCDFolder']) and
             (not 'SINGLE_TRACK' in trackAPI or ('SINGLE_TRACK' in trackAPI and settings['createSingleFolder'])) and
             (not '_EXTRA_PLAYLIST' in trackAPI or (
                     '_EXTRA_PLAYLIST' in trackAPI and settings['tags']['savePlaylistAsCompilation']) or (
                      '_EXTRA_PLAYLIST' in trackAPI and settings['createStructurePlaylist']))
     )):
-        filepath += 'CD' + str(track['discNumber']) + pathSep
+        filepath += 'CD' + str(track.discNumber) + pathSep
 
     return (filepath, artistPath, coverPath, extrasPath)
 
 
 def settingsRegex(filename, track, settings, playlist=None):
-    filename = filename.replace("%title%", fixName(track['title'], settings['illegalCharacterReplacer']))
-    filename = filename.replace("%artist%", fixName(track['mainArtist']['name'], settings['illegalCharacterReplacer']))
-    filename = filename.replace("%artists%", fixName(track['commaArtistsString'], settings['illegalCharacterReplacer']))
-    filename = filename.replace("%allartists%", fixName(track['artistsString'], settings['illegalCharacterReplacer']))
-    filename = filename.replace("%mainartists%", fixName(track['mainArtistsString'], settings['illegalCharacterReplacer']))
-    filename = filename.replace("%featartists%", fixName('('+track['featArtistsString']+')', settings['illegalCharacterReplacer']) if 'featArtistsString' in track else "")
-    filename = filename.replace("%album%", fixName(track['album']['title'], settings['illegalCharacterReplacer']))
+    filename = filename.replace("%title%", fixName(track.title, settings['illegalCharacterReplacer']))
+    filename = filename.replace("%artist%", fixName(track.mainArtist['name'], settings['illegalCharacterReplacer']))
+    filename = filename.replace("%artists%", fixName(track.commaArtistsString, settings['illegalCharacterReplacer']))
+    filename = filename.replace("%allartists%", fixName(track.artistsString, settings['illegalCharacterReplacer']))
+    filename = filename.replace("%mainartists%", fixName(track.mainArtistsString, settings['illegalCharacterReplacer']))
+    filename = filename.replace("%featartists%", fixName('('+track.featArtistsString+')', settings['illegalCharacterReplacer']) if 'featArtistsString' in track else "")
+    filename = filename.replace("%album%", fixName(track.album['title'], settings['illegalCharacterReplacer']))
     filename = filename.replace("%albumartist%",
-                                fixName(track['album']['mainArtist']['name'], settings['illegalCharacterReplacer']))
-    filename = filename.replace("%tracknumber%", pad(track['trackNumber'], track['album']['trackTotal'] if int(
+                                fixName(track.album['mainArtist']['name'], settings['illegalCharacterReplacer']))
+    filename = filename.replace("%tracknumber%", pad(track.trackNumber, track.album['trackTotal'] if int(
         settings['paddingSize']) == 0 else 10 ** (int(settings['paddingSize']) - 1), settings['padTracks']))
-    filename = filename.replace("%tracktotal%", str(track['album']['trackTotal']))
-    filename = filename.replace("%discnumber%", str(track['discNumber']))
-    filename = filename.replace("%disctotal%", str(track['album']['discTotal']))
-    if len(track['album']['genre']) > 0:
+    filename = filename.replace("%tracktotal%", str(track.album['trackTotal']))
+    filename = filename.replace("%discnumber%", str(track.discNumber))
+    filename = filename.replace("%disctotal%", str(track.album['discTotal']))
+    if len(track.album['genre']) > 0:
         filename = filename.replace("%genre%",
-                                    fixName(track['album']['genre'][0], settings['illegalCharacterReplacer']))
+                                    fixName(track.album['genre'][0], settings['illegalCharacterReplacer']))
     else:
         filename = filename.replace("%genre%", "Unknown")
-    filename = filename.replace("%year%", str(track['date']['year']))
-    filename = filename.replace("%date%", track['dateString'])
-    filename = filename.replace("%bpm%", str(track['bpm']))
-    filename = filename.replace("%label%", fixName(track['album']['label'], settings['illegalCharacterReplacer']))
-    filename = filename.replace("%isrc%", track['ISRC'])
-    filename = filename.replace("%upc%", track['album']['barcode'])
-    filename = filename.replace("%explicit%", "(Explicit)" if track['explicit'] else "")
+    filename = filename.replace("%year%", str(track.date['year']))
+    filename = filename.replace("%date%", track.dateString)
+    filename = filename.replace("%bpm%", str(track.bpm))
+    filename = filename.replace("%label%", fixName(track.album['label'], settings['illegalCharacterReplacer']))
+    filename = filename.replace("%isrc%", track.ISRC)
+    filename = filename.replace("%upc%", track.album['barcode'])
+    filename = filename.replace("%explicit%", "(Explicit)" if track.explicit else "")
 
-    filename = filename.replace("%track_id%", str(track['id']))
-    filename = filename.replace("%album_id%", str(track['album']['id']))
-    filename = filename.replace("%artist_id%", str(track['mainArtist']['id']))
+    filename = filename.replace("%track_id%", str(track.id))
+    filename = filename.replace("%album_id%", str(track.album['id']))
+    filename = filename.replace("%artist_id%", str(track.mainArtist['id']))
     if playlist:
         filename = filename.replace("%playlist_id%", str(playlist['id']))
-        filename = filename.replace("%position%", pad(track['position'], playlist['nb_tracks'] if int(
+        filename = filename.replace("%position%", pad(track.position, playlist['nb_tracks'] if int(
             settings['paddingSize']) == 0 else 10 ** (int(settings['paddingSize']) - 1), settings['padTracks']))
     else:
-        filename = filename.replace("%position%", pad(track['trackNumber'], track['album']['trackTotal'] if int(
+        filename = filename.replace("%position%", pad(track.trackNumber, track.album['trackTotal'] if int(
             settings['paddingSize']) == 0 else 10 ** (int(settings['paddingSize']) - 1), settings['padTracks']))
     filename = filename.replace('\\', pathSep).replace('/', pathSep)
     return antiDot(fixLongName(filename))
