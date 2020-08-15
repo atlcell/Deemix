@@ -258,7 +258,6 @@ class Deezer:
 
     def get_playlist_gw(self, playlist_id):
         playlistAPI = self.gw_api_call('deezer.pagePlaylist', {'playlist_id': playlist_id, 'lang': 'en'})['results']['DATA']
-        print(json.dumps(playlistAPI))
         return {
             'id': playlistAPI['PLAYLIST_ID'],
             'title': playlistAPI['TITLE'],

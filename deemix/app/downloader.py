@@ -15,6 +15,7 @@ from deemix.api.deezer import APIError, USER_AGENT_HEADER
 from deemix.utils.misc import changeCase, uniqueArray
 from deemix.utils.pathtemplates import generateFilename, generateFilepath, settingsRegexAlbum, settingsRegexArtist, settingsRegexPlaylistFile
 from deemix.utils.taggers import tagID3, tagFLAC
+from deemix.app.queueitem import QISingle, QICollection, QIConvertable
 from mutagen.flac import FLACNoHeaderError
 import logging
 
@@ -41,7 +42,7 @@ lastPercentage = 0
 
 def stream_track(dz, track, stream, trackAPI, queueItem, interface=None):
     global downloadPercentage, lastPercentage
-    if 'cancel' in queueItem:
+    if queueItem.cancel:
         raise downloadCancelled
     try:
         request = get(track['downloadUrl'], headers=dz.http_headers, stream=True, timeout=30)
@@ -55,7 +56,7 @@ def stream_track(dz, track, stream, trackAPI, queueItem, interface=None):
     percentage = 0
     i = 0
     for chunk in request.iter_content(2048):
-        if 'cancel' in queueItem:
+        if queueItem.cancel:
             raise downloadCancelled
         if i % 3 == 0 and len(chunk) == 2048:
             chunk = Blowfish.new(blowfish_key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07").decrypt(chunk)
@@ -69,9 +70,9 @@ def stream_track(dz, track, stream, trackAPI, queueItem, interface=None):
             downloadPercentage += chunkProgres
         if round(downloadPercentage) != lastPercentage and round(downloadPercentage) % 2 == 0:
             lastPercentage = round(downloadPercentage)
-            queueItem['progress'] = lastPercentage
+            queueItem.progress = lastPercentage
             if interface:
-                interface.send("updateQueue", {'uuid': queueItem['uuid'], 'progress': lastPercentage})
+                interface.send("updateQueue", {'uuid': queueItem.uuid, 'progress': lastPercentage})
         i += 1
 
 
@@ -83,9 +84,9 @@ def trackCompletePercentage(trackAPI, queueItem, interface):
         downloadPercentage += 1 / trackAPI['SIZE'] * 100
     if round(downloadPercentage) != lastPercentage and round(downloadPercentage) % 2 == 0:
         lastPercentage = round(downloadPercentage)
-        queueItem['progress'] = lastPercentage
+        queueItem.progress = lastPercentage
         if interface:
-            interface.send("updateQueue", {'uuid': queueItem['uuid'], 'progress': lastPercentage})
+            interface.send("updateQueue", {'uuid': queueItem.uuid, 'progress': lastPercentage})
 
 def trackRemovePercentage(trackAPI, queueItem, interface):
     global downloadPercentage, lastPercentage
@@ -95,9 +96,9 @@ def trackRemovePercentage(trackAPI, queueItem, interface):
         downloadPercentage -= 1 / trackAPI['SIZE'] * 100
     if round(downloadPercentage) != lastPercentage and round(downloadPercentage) % 2 == 0:
         lastPercentage = round(downloadPercentage)
-        queueItem['progress'] = lastPercentage
+        queueItem.progress = lastPercentage
         if interface:
-            interface.send("updateQueue", {'uuid': queueItem['uuid'], 'progress': lastPercentage})
+            interface.send("updateQueue", {'uuid': queueItem.uuid, 'progress': lastPercentage})
 
 
 def downloadImage(url, path, overwrite="n"):
@@ -474,12 +475,45 @@ def getTrackData(dz, trackAPI_gw, settings, trackAPI=None, albumAPI_gw=None, alb
     else:
         track['title_feat'] = track['title']
 
+    if "_EXTRA_PLAYLIST" in trackAPI:
+        track['playlist'] = {}
+        if 'dzcdn.net' in trackAPI["_EXTRA_PLAYLIST"]['picture_small']:
+            track['playlist']['picUrl'] = trackAPI["_EXTRA_PLAYLIST"]['picture_small'][:-24] + "/{}x{}-{}".format(
+                settings['embeddedArtworkSize'], settings['embeddedArtworkSize'],
+                f'000000-{settings["jpegImageQuality"]}-0-0.jpg')
+        else:
+            track['playlist']['picUrl'] = trackAPI["_EXTRA_PLAYLIST"]['picture_xl']
+        track['playlist']['title'] = trackAPI["_EXTRA_PLAYLIST"]['title']
+        track['playlist']['mainArtist'] = {
+            'id': trackAPI["_EXTRA_PLAYLIST"]['various_artist']['id'],
+            'name': trackAPI["_EXTRA_PLAYLIST"]['various_artist']['name'],
+            'pic': trackAPI["_EXTRA_PLAYLIST"]['various_artist']['picture_small'][
+                   trackAPI["_EXTRA_PLAYLIST"]['various_artist']['picture_small'].find('artist/') + 7:-24]
+        }
+        if settings['albumVariousArtists']:
+            track['playlist']['artist'] = {"Main": [trackAPI["_EXTRA_PLAYLIST"]['various_artist']['name'], ]}
+            track['playlist']['artists'] = [trackAPI["_EXTRA_PLAYLIST"]['various_artist']['name'], ]
+        else:
+            track['playlist']['artist'] = {"Main": []}
+            track['playlist']['artists'] = []
+        track['playlist']['trackTotal'] = trackAPI["_EXTRA_PLAYLIST"]['nb_tracks']
+        track['playlist']['recordType'] = "Compilation"
+        track['playlist']['barcode'] = ""
+        track['playlist']['label'] = ""
+        track['playlist']['explicit'] = trackAPI['_EXTRA_PLAYLIST']['explicit']
+        track['playlist']['date'] = {
+            'day': trackAPI["_EXTRA_PLAYLIST"]["creation_date"][8:10],
+            'month': trackAPI["_EXTRA_PLAYLIST"]["creation_date"][5:7],
+            'year': trackAPI["_EXTRA_PLAYLIST"]["creation_date"][0:4]
+        }
+        track['playlist']['discTotal'] = "1"
+
     return track
 
 
 def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None, interface=None):
     result = {}
-    if 'cancel' in queueItem:
+    if queueItem.cancel:
         result['cancel'] = True
         return result
 
@@ -495,10 +529,10 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                 'artist': trackAPI['ART_NAME']
             }
         logger.error(f"[{result['error']['data']['artist']} - {result['error']['data']['title']}] This track is not available on Deezer!")
-        queueItem['failed'] += 1
-        queueItem['errors'].append(result['error'])
+        queueItem.failed += 1
+        queueItem.errors.append(result['error'])
         if interface:
-            interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
+            interface.send("updateQueue", {'uuid': queueItem.uuid, 'failed': True, 'data': result['error']['data'],
                                            'error': result['error']['message'], 'errid': result['error']['errid']})
         return result
     # Get the metadata
@@ -512,7 +546,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                              trackAPI=trackAPI['_EXTRA_TRACK'] if '_EXTRA_TRACK' in trackAPI else None,
                              albumAPI=trackAPI['_EXTRA_ALBUM'] if '_EXTRA_ALBUM' in trackAPI else None
                              )
-    if 'cancel' in queueItem:
+    if queueItem.cancel:
         result['cancel'] = True
         return result
     if track['MD5'] == '':
@@ -545,10 +579,10 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                         'artist': track['mainArtist']['name']
                     }
                 }
-                queueItem['failed'] += 1
-                queueItem['errors'].append(result['error'])
+                queueItem.failed += 1
+                queueItem.errors.append(result['error'])
                 if interface:
-                    interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
+                    interface.send("updateQueue", {'uuid': queueItem.uuid, 'failed': True, 'data': result['error']['data'],
                                                    'error': result['error']['message'], 'errid': result['error']['errid']})
                 return result
         else:
@@ -563,10 +597,10 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                     'artist': track['mainArtist']['name']
                 }
             }
-            queueItem['failed'] += 1
-            queueItem['errors'].append(result['error'])
+            queueItem.failed += 1
+            queueItem.errors.append(result['error'])
             if interface:
-                interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
+                interface.send("updateQueue", {'uuid': queueItem.uuid, 'failed': True, 'data': result['error']['data'],
                                                'error': result['error']['message'], 'errid': result['error']['errid']})
             return result
 
@@ -602,10 +636,10 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                         'artist': track['mainArtist']['name']
                     }
                 }
-                queueItem['failed'] += 1
-                queueItem['errors'].append(result['error'])
+                queueItem.failed += 1
+                queueItem.errors.append(result['error'])
                 if interface:
-                    interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
+                    interface.send("updateQueue", {'uuid': queueItem.uuid, 'failed': True, 'data': result['error']['data'],
                                                    'error': result['error']['message'], 'errid': result['error']['errid']})
                 return result
         else:
@@ -620,10 +654,10 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                     'artist': track['mainArtist']['name']
                 }
             }
-            queueItem['failed'] += 1
-            queueItem['errors'].append(result['error'])
+            queueItem.failed += 1
+            queueItem.errors.append(result['error'])
             if interface:
-                interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
+                interface.send("updateQueue", {'uuid': queueItem.uuid, 'failed': True, 'data': result['error']['data'],
                                                'error': result['error']['message'], 'errid': result['error']['errid']})
             return result
     elif selectedBitrate == -200:
@@ -638,45 +672,13 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                 'artist': track['mainArtist']['name']
             }
         }
-        queueItem['failed'] += 1
-        queueItem['errors'].append(result['error'])
+        queueItem.failed += 1
+        queueItem.errors.append(result['error'])
         if interface:
-            interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
+            interface.send("updateQueue", {'uuid': queueItem.uuid, 'failed': True, 'data': result['error']['data'],
                                            'error': result['error']['message'], 'errid': result['error']['errid']})
         return result
     track['selectedFormat'] = selectedBitrate
-    if "_EXTRA_PLAYLIST" in trackAPI:
-        track['playlist'] = {}
-        if 'dzcdn.net' in trackAPI["_EXTRA_PLAYLIST"]['picture_small']:
-            track['playlist']['picUrl'] = trackAPI["_EXTRA_PLAYLIST"]['picture_small'][:-24] + "/{}x{}-{}".format(
-                settings['embeddedArtworkSize'], settings['embeddedArtworkSize'],
-                f'000000-{settings["jpegImageQuality"]}-0-0.jpg')
-        else:
-            track['playlist']['picUrl'] = trackAPI["_EXTRA_PLAYLIST"]['picture_xl']
-        track['playlist']['title'] = trackAPI["_EXTRA_PLAYLIST"]['title']
-        track['playlist']['mainArtist'] = {
-            'id': trackAPI["_EXTRA_PLAYLIST"]['various_artist']['id'],
-            'name': trackAPI["_EXTRA_PLAYLIST"]['various_artist']['name'],
-            'pic': trackAPI["_EXTRA_PLAYLIST"]['various_artist']['picture_small'][
-                   trackAPI["_EXTRA_PLAYLIST"]['various_artist']['picture_small'].find('artist/') + 7:-24]
-        }
-        if settings['albumVariousArtists']:
-            track['playlist']['artist'] = {"Main": [trackAPI["_EXTRA_PLAYLIST"]['various_artist']['name'], ]}
-            track['playlist']['artists'] = [trackAPI["_EXTRA_PLAYLIST"]['various_artist']['name'], ]
-        else:
-            track['playlist']['artist'] = {"Main": []}
-            track['playlist']['artists'] = []
-        track['playlist']['trackTotal'] = trackAPI["_EXTRA_PLAYLIST"]['nb_tracks']
-        track['playlist']['recordType'] = "Compilation"
-        track['playlist']['barcode'] = ""
-        track['playlist']['label'] = ""
-        track['playlist']['explicit'] = trackAPI['_EXTRA_PLAYLIST']['explicit']
-        track['playlist']['date'] = {
-            'day': trackAPI["_EXTRA_PLAYLIST"]["creation_date"][8:10],
-            'month': trackAPI["_EXTRA_PLAYLIST"]["creation_date"][5:7],
-            'year': trackAPI["_EXTRA_PLAYLIST"]["creation_date"][0:4]
-        }
-        track['playlist']['discTotal'] = "1"
     if settings['tags']['savePlaylistAsCompilation'] and "playlist" in track:
         track['trackNumber'] = trackAPI["POSITION"]
         track['discNumber'] = "1"
@@ -732,7 +734,7 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
     filename = generateFilename(track, trackAPI, settings)
     (filepath, artistPath, coverPath, extrasPath) = generateFilepath(track, trackAPI, settings)
 
-    if 'cancel' in queueItem:
+    if queueItem.cancel:
         result['cancel'] = True
         return result
     # Download and cache coverart
@@ -865,10 +867,10 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                                 'artist': track['mainArtist']['name']
                             }
                         }
-                        queueItem['failed'] += 1
-                        queueItem['errors'].append(result['error'])
+                        queueItem.failed += 1
+                        queueItem.errors.append(result['error'])
                         if interface:
-                            interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
+                            interface.send("updateQueue", {'uuid': queueItem.uuid, 'failed': True, 'data': result['error']['data'],
                                                            'error': result['error']['message'], 'errid': result['error']['errid']})
                         return 1
                 else:
@@ -883,10 +885,10 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
                             'artist': track['mainArtist']['name']
                         }
                     }
-                    queueItem['failed'] += 1
-                    queueItem['errors'].append(result['error'])
+                    queueItem.failed += 1
+                    queueItem.errors.append(result['error'])
                     if interface:
-                        interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
+                        interface.send("updateQueue", {'uuid': queueItem.uuid, 'failed': True, 'data': result['error']['data'],
                                                        'error': result['error']['message'], 'errid': result['error']['errid']})
                     return 1
             except Exception as e:
@@ -919,9 +921,9 @@ def downloadTrackObj(dz, trackAPI, settings, bitrate, queueItem, extraTrack=None
         if 'searched' in track:
             result['searched'] = f'{track["mainArtist"]["name"]} - {track["title"]}'
     logger.info(f"[{track['mainArtist']['name']} - {track['title']}] Track download completed")
-    queueItem['downloaded'] += 1
+    queueItem.downloaded += 1
     if interface:
-        interface.send("updateQueue", {'uuid': queueItem['uuid'], 'downloaded': True, 'downloadPath': writepath})
+        interface.send("updateQueue", {'uuid': queueItem.uuid, 'downloaded': True, 'downloadPath': writepath})
     return result
 
 
@@ -939,61 +941,56 @@ def downloadTrackObj_wrap(dz, track, settings, bitrate, queueItem, interface):
             }
             }
         }
-        queueItem['failed'] += 1
-        queueItem['errors'].append(result['error'])
+        queueItem.failed += 1
+        queueItem.errors.append(result['error'])
         if interface:
-            interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
+            interface.send("updateQueue", {'uuid': queueItem.uuid, 'failed': True, 'data': result['error']['data'],
                                            'error': result['error']['message']})
     return result
 
 
 def download(dz, sp, queueItem, interface=None):
     global downloadPercentage, lastPercentage
-    settings = queueItem['settings']
-    bitrate = queueItem['bitrate']
+    settings = queueItem.settings
+    bitrate = queueItem.bitrate
     downloadPercentage = 0
     lastPercentage = 0
-    if '_EXTRA' in queueItem:
+    if isinstance(queueItem, QIConvertable):
         sp.convert_spotify_playlist(dz, queueItem, settings, interface=interface)
-    if 'single' in queueItem:
+    if isinstance(queueItem, QISingle):
         try:
-            result = downloadTrackObj(dz, queueItem['single'], settings, bitrate, queueItem, interface=interface)
+            result = downloadTrackObj(dz, queueItem.single, settings, bitrate, queueItem, interface=interface)
         except Exception as e:
             logger.exception(str(e))
             result = {'error': {
                 'message': str(e),
                 'data': {
-                    'id': queueItem['single']['SNG_ID'],
-                    'title': queueItem['single']['SNG_TITLE'] + (queueItem['single']['VERSION'] if 'VERSION' in queueItem['single'] and queueItem['single']['VERSION'] and not queueItem['single']['VERSION'] in queueItem['single']['SNG_TITLE'] else ""),
-                    'mainArtist': {'name': queueItem['single']['ART_NAME']}
+                    'id': queueItem.single['SNG_ID'],
+                    'title': queueItem.single['SNG_TITLE'] + (queueItem.single['VERSION'] if 'VERSION' in queueItem.single and queueItem.single['VERSION'] and not queueItem.single['VERSION'] in queueItem.single['SNG_TITLE'] else ""),
+                    'mainArtist': {'name': queueItem.single['ART_NAME']}
                 }
             }
             }
-            queueItem['failed'] += 1
-            queueItem['errors'].append(result['error'])
+            queueItem.failed += 1
+            queueItem.errors.append(result['error'])
             if interface:
-                interface.send("updateQueue", {'uuid': queueItem['uuid'], 'failed': True, 'data': result['error']['data'],
+                interface.send("updateQueue", {'uuid': queueItem.uuid, 'failed': True, 'data': result['error']['data'],
                                                'error': result['error']['message']})
-        download_path = after_download_single(result, settings, queueItem)
-    elif 'collection' in queueItem:
-        playlist = [None] * len(queueItem['collection'])
+        download_path = after_download_single(result, settings)
+    elif isinstance(queueItem, QICollection):
+        playlist = [None] * len(queueItem.collection)
         with ThreadPoolExecutor(settings['queueConcurrency']) as executor:
-            for pos, track in enumerate(queueItem['collection'], start=0):
+            for pos, track in enumerate(queueItem.collection, start=0):
                 playlist[pos] = executor.submit(downloadTrackObj_wrap, dz, track, settings, bitrate, queueItem,
                                                 interface=interface)
         download_path = after_download(playlist, settings, queueItem)
     if interface:
-        if 'cancel' in queueItem:
-            interface.send('currentItemCancelled', queueItem['uuid'])
-            interface.send("removedFromQueue", queueItem['uuid'])
+        if queueItem.cancel:
+            interface.send('currentItemCancelled', queueItem.uuid)
+            interface.send("removedFromQueue", queueItem.uuid)
         else:
-            interface.send("finishDownload", queueItem['uuid'])
-    return {
-        'dz': dz,
-        'sp': sp,
-        'interface': interface,
-        'download_path': download_path
-    }
+            interface.send("finishDownload", queueItem.uuid)
+    return download_path
 
 
 def after_download(tracks, settings, queueItem):
@@ -1049,7 +1046,7 @@ def after_download(tracks, settings, queueItem):
     return extrasPath
 
 
-def after_download_single(track, settings, queueItem):
+def after_download_single(track, settings):
     if 'cancel' in track:
         return None
     if 'extrasPath' not in track:

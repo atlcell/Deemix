@@ -218,11 +218,11 @@ def settingsRegexPlaylist(foldername, playlist, settings):
     return antiDot(fixLongName(foldername))
 
 def settingsRegexPlaylistFile(foldername, queueItem, settings):
-    foldername = foldername.replace("%title%", fixName(queueItem['title'], settings['illegalCharacterReplacer']))
-    foldername = foldername.replace("%artist%", fixName(queueItem['artist'], settings['illegalCharacterReplacer']))
-    foldername = foldername.replace("%size%", str(queueItem['size']))
-    foldername = foldername.replace("%type%", fixName(queueItem['type'], settings['illegalCharacterReplacer']))
-    foldername = foldername.replace("%id%", fixName(queueItem['id'], settings['illegalCharacterReplacer']))
-    foldername = foldername.replace("%bitrate%", bitrateLabels[int(queueItem['bitrate'])])
+    foldername = foldername.replace("%title%", fixName(queueItem.title, settings['illegalCharacterReplacer']))
+    foldername = foldername.replace("%artist%", fixName(queueItem.artist, settings['illegalCharacterReplacer']))
+    foldername = foldername.replace("%size%", str(queueItem.size))
+    foldername = foldername.replace("%type%", fixName(queueItem.type, settings['illegalCharacterReplacer']))
+    foldername = foldername.replace("%id%", fixName(queueItem.id, settings['illegalCharacterReplacer']))
+    foldername = foldername.replace("%bitrate%", bitrateLabels[int(queueItem.bitrate)])
     foldername = foldername.replace('\\', pathSep).replace('/', pathSep).replace(pathSep, settings['illegalCharacterReplacer'])
     return antiDot(fixLongName(foldername))

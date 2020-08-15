@@ -6,43 +6,45 @@ from os import mkdir
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from deemix.utils.localpaths import getConfigFolder
-from deemix.app.queueitem import QIConvertable
+from deemix.app.queueitem import QIConvertable, QICollection
 
+emptyPlaylist = {
+    'collaborative': False,
+    'description': "",
+    'external_urls': {'spotify': None},
+    'followers': {'total': 0, 'href': None},
+    'id': None,
+    'images': [],
+    'name': "Something went wrong",
+    'owner': {
+        'display_name': "Error",
+        'id': None
+    },
+    'public': True,
+    'tracks' : [],
+    'type': 'playlist',
+    'uri': None
+}
 
 class SpotifyHelper:
     def __init__(self, configFolder=None):
         self.credentials = {}
         self.spotifyEnabled = False
         self.sp = None
-        if not configFolder:
-            self.configFolder = getConfigFolder()
-        else:
-            self.configFolder = configFolder
-        self.emptyPlaylist = {
-            'collaborative': False,
-            'description': "",
-            'external_urls': {'spotify': None},
-            'followers': {'total': 0, 'href': None},
-            'id': None,
-            'images': [],
-            'name': "Something went wrong",
-            'owner': {
-                'display_name': "Error",
-                'id': None
-            },
-            'public': True,
-            'tracks' : [],
-            'type': 'playlist',
-            'uri': None
-        }
-        self.initCredentials()
+        self.configFolder = configFolder
 
-    def initCredentials(self):
+        # Make sure config folder exsists
+        if not self.configFolder:
+            self.configFolder = getConfigFolder()
         if not path.isdir(self.configFolder):
             mkdir(self.configFolder)
+
+        # Make sure authCredentials exsits
         if not path.isfile(path.join(self.configFolder, 'authCredentials.json')):
             with open(path.join(self.configFolder, 'authCredentials.json'), 'w') as f:
                 json.dump({'clientId': "", 'clientSecret': ""}, f, indent=2)
+
+        # Load spotify id and secret and check if they are usable
         with open(path.join(self.configFolder, 'authCredentials.json'), 'r') as credentialsFile:
             self.credentials = json.load(credentialsFile)
         self.checkCredentials()
@@ -52,7 +54,9 @@ class SpotifyHelper:
             spotifyEnabled = False
         else:
             try:
-                self.createSpotifyConnection()
+                client_credentials_manager = SpotifyClientCredentials(client_id=self.credentials['clientId'],
+                                                                      client_secret=self.credentials['clientSecret'])
+                self.sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
                 self.sp.user_playlists('spotify')
                 self.spotifyEnabled = True
             except Exception as e:
@@ -63,18 +67,19 @@ class SpotifyHelper:
         return self.credentials
 
     def setCredentials(self, spotifyCredentials):
+        # Remove extra spaces, just to be sure
         spotifyCredentials['clientId'] = spotifyCredentials['clientId'].strip()
         spotifyCredentials['clientSecret'] = spotifyCredentials['clientSecret'].strip()
+
+        # Save them to disk
         with open(path.join(self.configFolder, 'authCredentials.json'), 'w') as f:
             json.dump(spotifyCredentials, f, indent=2)
+
+        # Check if they are usable
         self.credentials = spotifyCredentials
         self.checkCredentials()
 
-    def createSpotifyConnection(self):
-        client_credentials_manager = SpotifyClientCredentials(client_id=self.credentials['clientId'],
-                                                              client_secret=self.credentials['clientSecret'])
-        self.sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
-
+    # Converts spotify API playlist structure to deezer's playlist structure
     def _convert_playlist_structure(self, spotify_obj):
         if len(spotify_obj['images']):
             url = spotify_obj['images'][0]['url']
@@ -115,6 +120,7 @@ class SpotifyHelper:
             deezer_obj['picture_xl'] = "https://e-cdns-images.dzcdn.net/images/cover/d41d8cd98f00b204e9800998ecf8427e/1000x1000-000000-80-0-0.jpg"
         return deezer_obj
 
+    # Returns deezer song_id from spotify track_id or track dict
     def get_trackid_spotify(self, dz, track_id, fallbackSearch, spotifyTrack=None):
         if not self.spotifyEnabled:
             raise spotifyFeaturesNotEnabled
@@ -148,6 +154,7 @@ class SpotifyHelper:
                 json.dump(cache, spotifyCache)
         return dz_track
 
+    # Returns deezer album_id from spotify album_id
     def get_albumid_spotify(self, dz, album_id):
         if not self.spotifyEnabled:
             raise spotifyFeaturesNotEnabled
@@ -175,33 +182,24 @@ class SpotifyHelper:
             json.dump(cache, spotifyCache)
         return dz_album
 
-    def adapt_spotify_playlist(self, dz, playlist_id, settings):
+
+    def generate_playlist_queueitem(self, dz, playlist_id, settings):
         if not self.spotifyEnabled:
             raise spotifyFeaturesNotEnabled
         spotify_playlist = self.sp.playlist(playlist_id)
-        result = {
-            'title': spotify_playlist['name'],
-            'artist': spotify_playlist['owner']['display_name'],
-            'size': spotify_playlist['tracks']['total'],
-            'downloaded': 0,
-            'failed': 0,
-            'progress': 0,
-            'errors': [],
-            'type': 'spotify_playlist',
-            'settings': settings or {},
-            'id': playlist_id
-        }
+
         if len(spotify_playlist['images']):
-            result['cover'] = spotify_playlist['images'][0]['url']
+            cover = spotify_playlist['images'][0]['url']
         else:
-            result[
-                'cover'] = "https://e-cdns-images.dzcdn.net/images/cover/d41d8cd98f00b204e9800998ecf8427e/75x75-000000-80-0-0.jpg"
+            cover = "https://e-cdns-images.dzcdn.net/images/cover/d41d8cd98f00b204e9800998ecf8427e/75x75-000000-80-0-0.jpg"
+
         playlistAPI = self._convert_playlist_structure(spotify_playlist)
         playlistAPI['various_artist'] = dz.get_artist(5080)
+
+        extra = {}
+        extra['unconverted'] = []
+
         tracklistTmp = spotify_playlist['tracks']['items']
-        result['collection'] = []
-        result['_EXTRA'] = {}
-        result['_EXTRA']['unconverted'] = []
         while spotify_playlist['tracks']['next']:
             spotify_playlist['tracks'] = self.sp.next(spotify_playlist['tracks'])
             tracklistTmp += spotify_playlist['tracks']['items']
@@ -209,13 +207,23 @@ class SpotifyHelper:
             if item['track']:
                 if item['track']['explicit']:
                     playlistAPI['explicit'] = True
-                result['_EXTRA']['unconverted'].append(item['track'])
-        totalSize = len(result['_EXTRA']['unconverted'])
-        result['size'] = totalSize
+                extra['unconverted'].append(item['track'])
+
+        totalSize = len(extra['unconverted'])
         if not 'explicit' in playlistAPI:
             playlistAPI['explicit'] = False
-        result['_EXTRA']['playlistAPI'] = playlistAPI
-        return result
+        extra['playlistAPI'] = playlistAPI
+        return QICollection(
+            playlist_id,
+            0,
+            spotify_playlist['name'],
+            spotify_playlist['owner']['display_name'],
+            cover,
+            totalSize,
+            'spotify_playlist',
+            settings,
+            extra,
+        )
 
     def convert_spotify_playlist(self, dz, item, settings, interface=None):
         convertPercentage = 0
@@ -226,8 +234,9 @@ class SpotifyHelper:
         else:
             cache = {'tracks': {}, 'albums': {}}
         if interface:
-            interface.send("startConversion", item['uuid'])
-        for pos, track in enumerate(item['_EXTRA']['unconverted'], start=1):
+            interface.send("startConversion", item.uuid)
+        collection = []
+        for pos, track in enumerate(item.extra['unconverted'], start=1):
             if str(track['id']) in cache['tracks']:
                 trackID = cache['tracks'][str(track['id'])]
             else:
@@ -248,20 +257,31 @@ class SpotifyHelper:
                 }
             else:
                 deezerTrack = dz.get_track_gw(trackID)
-            deezerTrack['_EXTRA_PLAYLIST'] = item['_EXTRA']['playlistAPI']
+            deezerTrack['_EXTRA_PLAYLIST'] = item.extra['playlistAPI']
             deezerTrack['POSITION'] = pos
-            deezerTrack['SIZE'] = item['size']
+            deezerTrack['SIZE'] = item.size
             deezerTrack['FILENAME_TEMPLATE'] = settings['playlistTracknameTemplate']
-            item['collection'].append(deezerTrack)
+            collection.append(deezerTrack)
 
-            convertPercentage = (pos / item['size']) * 100
+            convertPercentage = (pos / item.size) * 100
             print(convertPercentage)
             if round(convertPercentage) != lastPercentage and round(convertPercentage) % 2 == 0:
                 lastPercentage = round(convertPercentage)
                 if interface:
-                    interface.send("updateQueue", {'uuid': item['uuid'], 'conversion': lastPercentage})
+                    interface.send("updateQueue", {'uuid': item.uuid, 'conversion': lastPercentage})
 
-        del item['_EXTRA']
+        item = QICollection(
+            item.id,
+            item.bitrate,
+            item.title,
+            item.artist,
+            item.cover,
+            item.size,
+            item.type,
+            item.settings,
+            collection,
+        )
+        
         with open(path.join(self.configFolder, 'spotifyCache.json'), 'w') as spotifyCache:
             json.dump(cache, spotifyCache)
         if interface:

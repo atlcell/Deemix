@@ -101,7 +101,7 @@ class QueueManager:
                 trackAPI['FILENAME_TEMPLATE'] = settings['albumTracknameTemplate']
                 collection.append(trackAPI)
 
-            return return QICollection(
+            return QICollection(
                 id,
                 bitrate,
                 albumAPI['title'],
@@ -128,7 +128,7 @@ class QueueManager:
                     return QueueError(url, message)
             if not playlistAPI['public'] and playlistAPI['creator']['id'] != str(dz.user['id']):
                 logger.warn("You can't download others private playlists.")
-                return return QueueError(url, "You can't download others private playlists.", "notYourPrivatePlaylist")
+                return QueueError(url, "You can't download others private playlists.", "notYourPrivatePlaylist")
 
             playlistTracksAPI = dz.get_playlist_tracks_gw(id)
             playlistAPI['various_artist'] = dz.get_artist(5080)
@@ -146,7 +146,7 @@ class QueueManager:
             if not 'explicit' in playlistAPI:
                 playlistAPI['explicit'] = False
 
-            return return QICollection(
+            return QICollection(
                 id,
                 bitrate,
                 playlistAPI['title'],
@@ -163,7 +163,7 @@ class QueueManager:
                 artistAPI = dz.get_artist(id)
             except APIError as e:
                 e = json.loads(str(e))
-                return return QueueError(url, f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
+                return QueueError(url, f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
 
             if interface:
                 interface.send("startAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
@@ -183,7 +183,7 @@ class QueueManager:
                 artistAPI = dz.get_artist(id)
             except APIError as e:
                 e = json.loads(str(e))
-                return return QueueError(url, f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
+                return QueueError(url, f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
 
             if interface:
                 interface.send("startAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
@@ -205,7 +205,7 @@ class QueueManager:
                 artistAPI = dz.get_artist(id)
             except APIError as e:
                 e = json.loads(str(e))
-                return return QueueError(url, f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
+                return QueueError(url, f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
 
             playlistAPI = {
                 'id': str(artistAPI['id'])+"_top_track",
@@ -252,7 +252,7 @@ class QueueManager:
             if not 'explicit' in playlistAPI:
                 playlistAPI['explicit'] = False
 
-            return return QICollection(
+            return QICollection(
                 id,
                 bitrate,
                 playlistAPI['title'],
@@ -302,9 +302,8 @@ class QueueManager:
                 return QueueError(url, "Spotify Features is not setted up correctly.", "spotifyDisabled")
 
             try:
-                playlist = sp.adapt_spotify_playlist(dz, id, settings)
+                playlist = sp.generate_playlist_queueitem(dz, id, settings)
                 playlist['bitrate'] = bitrate
-                playlist['uuid'] = f"{playlist['type']}_{id}_{bitrate}"
                 return playlist
             except SpotifyException as e:
                 return QueueError(url, "Wrong URL: "+e.msg[e.msg.find('\n')+2:])
