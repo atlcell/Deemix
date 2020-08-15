@@ -418,7 +418,7 @@ class DownloadJob:
                 def downloadMusic(track, trackAPI_gw):
                     try:
                         with open(writepath, 'wb') as stream:
-                            self.streamTrack(stream, track, trackAPI_gw)
+                            self.streamTrack(stream, track)
                     except DownloadCancelled:
                         remove(writepath)
                         raise DownloadCancelled
@@ -476,7 +476,7 @@ class DownloadJob:
                     except FLACNoHeaderError:
                         remove(writepath)
                         logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not available in FLAC, falling back if necessary")
-                        self.removeTrackPercentage(trackAPI, queueItem, interface)
+                        self.removeTrackPercentage()
                         track.filesizes['FILESIZE_FLAC'] = "0"
                         return self.download(trackAPI_gw, track)
                 if track.searched:
@@ -528,14 +528,14 @@ class DownloadJob:
 
         return error_num # fallback is enabled and loop went through all formats
 
-    def streamTrack(self, stream, track, trackAPI):
+    def streamTrack(self, stream, track):
         if self.queueItem.cancel: raise DownloadCancelled
 
         try:
             request = get(track.downloadUrl, headers=self.dz.http_headers, stream=True, timeout=30)
         except ConnectionError:
             sleep(2)
-            return self.streamTrack(stream, track, trackAPI)
+            return self.streamTrack(stream, track)
         request.raise_for_status()
         blowfish_key = str.encode(self.dz._get_blowfish_key(str(track.id)))
         complete = int(request.headers["Content-Length"])
@@ -548,11 +548,11 @@ class DownloadJob:
                 chunk = Blowfish.new(blowfish_key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07").decrypt(chunk)
             stream.write(chunk)
             chunkLength += len(chunk)
-            if 'SINGLE_TRACK' in trackAPI:
+            if isinstance(self.queueItem, QISingle):
                 percentage = (chunkLength / complete) * 100
                 self.downloadPercentage = percentage
             else:
-                chunkProgres = (len(chunk) / complete) / trackAPI['SIZE'] * 100
+                chunkProgres = (len(chunk) / complete) / self.queueItem.size * 100
                 self.downloadPercentage += chunkProgres
             self.updatePercentage()
             i += 1
