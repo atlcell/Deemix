@@ -423,7 +423,7 @@ class DownloadJob:
                     except DownloadCancelled:
                         remove(writepath)
                         raise DownloadCancelled
-                    except HTTPError, DownloadEmpty:
+                    except (HTTPError, DownloadEmpty):
                         remove(writepath)
                         if track.fallbackId != "0":
                             logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not available, using fallback id")
