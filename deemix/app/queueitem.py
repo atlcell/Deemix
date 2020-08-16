@@ -1,16 +1,22 @@
 #!/usr/bin/env python3
 
 class QueueItem:
-    def __init__(self, id=None, bitrate=None, title=None, artist=None, cover=None, size=None, type=None, settings=None, queueItemList=None):
-        if queueItemList:
-            self.title = queueItemList['title']
-            self.artist = queueItemList['artist']
-            self.cover = queueItemList['cover']
-            self.size = queueItemList['size']
-            self.type = queueItemList['type']
-            self.id = queueItemList['id']
-            self.bitrate = queueItemList['bitrate']
-            self.settings = queueItemList['settings']
+    def __init__(self, id=None, bitrate=None, title=None, artist=None, cover=None, size=None, type=None, settings=None, queueItemDict=None):
+        if queueItemDict:
+            self.title = queueItemDict['title']
+            self.artist = queueItemDict['artist']
+            self.cover = queueItemDict['cover']
+            self.size = queueItemDict['size']
+            self.type = queueItemDict['type']
+            self.id = queueItemDict['id']
+            self.bitrate = queueItemDict['bitrate']
+            self.downloaded = queueItemDict['downloaded']
+            self.failed = queueItemDict['failed']
+            self.errors = queueItemDict['errors']
+            self.progress = queueItemDict['progress']
+            self.settings = None
+            if 'settings' in queueItemDict:
+                self.settings = queueItemDict['settings']
         else:
             self.title = title
             self.artist = artist
@@ -20,10 +26,10 @@ class QueueItem:
             self.id = id
             self.bitrate = bitrate
             self.settings = settings
-        self.downloaded = 0
-        self.failed = 0
-        self.errors = []
-        self.progress = 0
+            self.downloaded = 0
+            self.failed = 0
+            self.errors = []
+            self.progress = 0
         self.uuid = f"{self.type}_{self.id}_{self.bitrate}"
         self.cancel = False
 
@@ -53,17 +59,17 @@ class QueueItem:
 
     def getSlimmedItem(self):
         light = self.toDict()
-        propertiesToDelete = ['single', 'collection', '_EXTRA']
+        propertiesToDelete = ['single', 'collection', '_EXTRA', 'settings']
         for property in propertiesToDelete:
             if property in light:
                 del light[property]
         return light
 
 class QISingle(QueueItem):
-    def __init__(self, id=None, bitrate=None, title=None, artist=None, cover=None, type=None, settings=None, single=None, queueItemList=None):
-        if queueItemList:
-            super().__init__(queueItemList=queueItemList)
-            self.single = queueItemList['single']
+    def __init__(self, id=None, bitrate=None, title=None, artist=None, cover=None, type=None, settings=None, single=None, queueItemDict=None):
+        if queueItemDict:
+            super().__init__(queueItemDict=queueItemDict)
+            self.single = queueItemDict['single']
         else:
             super().__init__(id, bitrate, title, artist, cover, 1, type, settings)
             self.single = single
@@ -74,10 +80,10 @@ class QISingle(QueueItem):
         return queueItem
 
 class QICollection(QueueItem):
-    def __init__(self, id=None, bitrate=None, title=None, artist=None, cover=None, size=None, type=None, settings=None, collection=None, queueItemList=None):
-        if queueItemList:
-            super().__init__(queueItemList=queueItemList)
-            self.collection = queueItemList['collection']
+    def __init__(self, id=None, bitrate=None, title=None, artist=None, cover=None, size=None, type=None, settings=None, collection=None, queueItemDict=None):
+        if queueItemDict:
+            super().__init__(queueItemDict=queueItemDict)
+            self.collection = queueItemDict['collection']
         else:
             super().__init__(id, bitrate, title, artist, cover, size, type, settings)
             self.collection = collection
@@ -88,10 +94,10 @@ class QICollection(QueueItem):
         return queueItem
 
 class QIConvertable(QICollection):
-    def __init__(self, id=None, bitrate=None, title=None, artist=None, cover=None, size=None, type=None, settings=None, extra=None, queueItemList=None):
-        if queueItemList:
-            super().__init__(queueItemList=queueItemList)
-            self.extra = queueItemList['_EXTRA']
+    def __init__(self, id=None, bitrate=None, title=None, artist=None, cover=None, size=None, type=None, settings=None, extra=None, queueItemDict=None):
+        if queueItemDict:
+            super().__init__(queueItemDict=queueItemDict)
+            self.extra = queueItemDict['_EXTRA']
         else:
             super().__init__(id, bitrate, title, artist, cover, size, type, settings, [])
             self.extra = extra

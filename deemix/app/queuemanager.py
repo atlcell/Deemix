@@ -5,7 +5,9 @@ from deemix.api.deezer import APIError
 from spotipy.exceptions import SpotifyException
 from deemix.app.queueitem import QISingle, QICollection
 import logging
+import os.path as path
 import json
+from os import remove
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('deemix')
@@ -387,7 +389,7 @@ class QueueManager:
             if interface:
                 interface.send("startDownload", self.currentItem)
             logger.info(f"[{self.currentItem}] Started downloading.")
-            DownloadJob(dz, sp, self.queueList[self.currentItem]).start()
+            DownloadJob(dz, sp, self.queueList[self.currentItem], interface).start()
             self.afterDownload(dz, sp, interface)
 
     def afterDownload(self, dz, sp, interface):
@@ -401,14 +403,64 @@ class QueueManager:
 
 
     def getQueue(self):
-        return (self.queue, self.queueComplete, self.queueList, self.currentItem)
+        return (self.queue, self.queueComplete, self.slimQueueList(), self.currentItem)
 
-    # TODO: Convert dicts to QueueItem Objects when restoring
-    def restoreQueue(self, queue, queueComplete, queueList, dz, sp, interface):
-        self.queueComplete = queueComplete
-        self.queueList = queueList
+    def saveQueue(self, configFolder):
+        if len(self.queueList) > 0:
+            if self.currentItem != "":
+                self.queue.insert(0, self.currentItem)
+            with open(path.join(configFolder, 'queue.json'), 'w') as f:
+                json.dump({
+                    'queue': self.queue,
+                    'queueComplete': self.queueComplete,
+                    'queueList': self.exportQueueList()
+                }, f)
+
+    def exportQueueList(self):
+        queueList = {}
+        for uuid in self.queueList:
+            if uuid in self.queue:
+                queueList[uuid] = self.queueList[uuid].getResettedItem()
+            else:
+                queueList[uuid] = self.queueList[uuid].toDict()
+                print(self.queueList[uuid].progress)
+        return queueList
+
+    def slimQueueList(self):
+        queueList = {}
+        for uuid in self.queueList:
+            queueList[uuid] = self.queueList[uuid].getSlimmedItem()
+        return queueList
+
+    def loadQueue(self, dz, sp, configFolder, settings, interface=None):
+        if path.isfile(path.join(configFolder, 'queue.json')) and not len(self.queue):
+            if interface:
+                interface.send('restoringQueue')
+            with open(path.join(configFolder, 'queue.json'), 'r') as f:
+                qd = json.load(f)
+            remove(path.join(configFolder, 'queue.json'))
+            self.restoreQueue(qd['queue'], qd['queueComplete'], qd['queueList'], settings, dz, sp, interface)
+            if interface:
+                interface.send('init_downloadQueue', {
+                    'queue': self.queue,
+                    'queueComplete': self.queueComplete,
+                    'queueList': self.slimQueueList(),
+                    'restored': True
+                })
+            self.nextItem(dz, sp, interface)
+
+    def restoreQueue(self, queue, queueComplete, queueList, settings, dz, sp, interface=None):
         self.queue = queue
-        nextItem(dz, sp, interface)
+        self.queueComplete = queueComplete
+        self.queueList = {}
+        for uuid in queueList:
+            if 'single' in queueList[uuid]:
+                self.queueList[uuid] = QISingle(queueItemDict = queueList[uuid])
+            if 'collection' in queueList[uuid]:
+                self.queueList[uuid] = QICollection(queueItemDict = queueList[uuid])
+            if '_EXTRA' in queueList[uuid]:
+                self.queueList[uuid] = QIConvertable(queueItemDict = queueList[uuid])
+            self.queueList[uuid].settings = settings
 
     def removeFromQueue(self, uuid, interface=None):
         if uuid == self.currentItem:

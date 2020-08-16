@@ -107,13 +107,13 @@ class DownloadJob:
         if isinstance(self.queueItem, QISingle):
             result = self.downloadWrapper(self.queueItem.single)
             if result:
-                singleAfterDownload(result)
+                self.singleAfterDownload(result)
         elif isinstance(self.queueItem, QICollection):
             tracks = [None] * len(self.queueItem.collection)
             with ThreadPoolExecutor(self.settings['queueConcurrency']) as executor:
                 for pos, track in enumerate(self.queueItem.collection, start=0):
                     tracks[pos] = executor.submit(self.downloadWrapper, track)
-            download_path = collectionAfterDownload(tracks)
+            self.collectionAfterDownload(tracks)
         if self.interface:
             if self.queueItem.cancel:
                 self.interface.send('currentItemCancelled', self.queueItem.uuid)
@@ -486,7 +486,7 @@ class DownloadJob:
             logger.info(f"[{track.mainArtist['name']} - {track.title}] Track download completed")
             self.queueItem.downloaded += 1
             if self.interface:
-                self.interface.send("updateQueue", {'uuid': queueItem.uuid, 'downloaded': True, 'downloadPath': writepath})
+                self.interface.send("updateQueue", {'uuid': self.queueItem.uuid, 'downloaded': True, 'downloadPath': writepath})
             return result
 
     def getPreferredBitrate(self, track):
