@@ -492,7 +492,7 @@ class QueueManager:
 
     def removeFinishedDownloads(self, interface=None):
         for uuid in self.queueComplete:
-            del self.queueList[self.uuid]
+            del self.queueList[uuid]
         self.queueComplete = []
         if interface:
             interface.send("removedFinishedDownloads")
