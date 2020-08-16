@@ -3,11 +3,12 @@ from deemix.app.downloadjob import DownloadJob
 from deemix.utils.misc import getIDFromLink, getTypeFromLink, getBitrateInt
 from deemix.api.deezer import APIError
 from spotipy.exceptions import SpotifyException
-from deemix.app.queueitem import QISingle, QICollection
+from deemix.app.queueitem import QISingle, QICollection, QIConvertable
 import logging
 import os.path as path
 import json
 from os import remove
+from time import sleep
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('deemix')
@@ -304,9 +305,7 @@ class QueueManager:
                 return QueueError(url, "Spotify Features is not setted up correctly.", "spotifyDisabled")
 
             try:
-                playlist = sp.generate_playlist_queueitem(dz, id, settings)
-                playlist.bitrate = bitrate
-                return playlist
+                return sp.generate_playlist_queueitem(dz, id, bitrate, settings)
             except SpotifyException as e:
                 return QueueError(url, "Wrong URL: "+e.msg[e.msg.find('\n')+2:])
 
@@ -423,7 +422,6 @@ class QueueManager:
                 queueList[uuid] = self.queueList[uuid].getResettedItem()
             else:
                 queueList[uuid] = self.queueList[uuid].toDict()
-                print(self.queueList[uuid].progress)
         return queueList
 
     def slimQueueList(self):
@@ -432,14 +430,14 @@ class QueueManager:
             queueList[uuid] = self.queueList[uuid].getSlimmedItem()
         return queueList
 
-    def loadQueue(self, dz, sp, configFolder, settings, interface=None):
+    def loadQueue(self, configFolder, settings, interface=None):
         if path.isfile(path.join(configFolder, 'queue.json')) and not len(self.queue):
             if interface:
                 interface.send('restoringQueue')
             with open(path.join(configFolder, 'queue.json'), 'r') as f:
                 qd = json.load(f)
             remove(path.join(configFolder, 'queue.json'))
-            self.restoreQueue(qd['queue'], qd['queueComplete'], qd['queueList'], settings, dz, sp, interface)
+            self.restoreQueue(qd['queue'], qd['queueComplete'], qd['queueList'], settings)
             if interface:
                 interface.send('init_downloadQueue', {
                     'queue': self.queue,
@@ -447,9 +445,8 @@ class QueueManager:
                     'queueList': self.slimQueueList(),
                     'restored': True
                 })
-            self.nextItem(dz, sp, interface)
 
-    def restoreQueue(self, queue, queueComplete, queueList, settings, dz, sp, interface=None):
+    def restoreQueue(self, queue, queueComplete, queueList, settings):
         self.queue = queue
         self.queueComplete = queueComplete
         self.queueList = {}

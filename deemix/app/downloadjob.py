@@ -92,7 +92,7 @@ class DownloadJob:
         self.dz = dz
         self.sp = sp
         self.interface = interface
-        if isinstance(queueItem, QIConvertable):
+        if isinstance(queueItem, QIConvertable) and queueItem.extra:
             self.sp.convert_spotify_playlist(self.dz, queueItem, interface=self.interface)
         self.queueItem = queueItem
         self.settings = queueItem.settings
@@ -609,7 +609,7 @@ class DownloadJob:
         if 'error' in result:
             self.completeTrackPercentage()
             self.queueItem.failed += 1
-            self.queueItem.errors.append(result['error']['message'])
+            self.queueItem.errors.append(result['error'])
             if self.interface:
                 error = result['error']
                 self.interface.send("updateQueue", {

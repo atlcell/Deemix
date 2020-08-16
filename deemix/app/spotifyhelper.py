@@ -183,7 +183,7 @@ class SpotifyHelper:
         return dz_album
 
 
-    def generate_playlist_queueitem(self, dz, playlist_id, settings):
+    def generate_playlist_queueitem(self, dz, playlist_id, bitrate, settings):
         if not self.spotifyEnabled:
             raise spotifyFeaturesNotEnabled
         spotify_playlist = self.sp.playlist(playlist_id)
@@ -215,7 +215,7 @@ class SpotifyHelper:
         extra['playlistAPI'] = playlistAPI
         return QIConvertable(
             playlist_id,
-            0,
+            bitrate,
             spotify_playlist['name'],
             spotify_playlist['owner']['display_name'],
             cover,
@@ -264,7 +264,7 @@ class SpotifyHelper:
             collection.append(deezerTrack)
 
             convertPercentage = (pos / queueItem.size) * 100
-            if round(convertPercentage) != lastPercentage and round(convertPercentage) % 2 == 0:
+            if round(convertPercentage) != lastPercentage and round(convertPercentage) % 5 == 0:
                 lastPercentage = round(convertPercentage)
                 if interface:
                     interface.send("updateQueue", {'uuid': queueItem.uuid, 'conversion': lastPercentage})
