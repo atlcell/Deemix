@@ -34,6 +34,30 @@ def changeCase(str, type):
         return str
 
 
+def removeFeatures(title):
+    clean = title
+    if "(feat." in clean.lower():
+        pos = clean.lower().find("(feat.")
+        tempTrack = clean[:pos]
+        if ")" in clean:
+            tempTrack += clean[clean.find(")", pos + 1) + 1:]
+        clean = tempTrack.strip()
+    return clean
+
+
+def andCommaConcat(lst):
+    tot = len(lst)
+    result = ""
+    for i, art in enumerate(lst):
+        result += art
+        if tot != i + 1:
+            if tot - 1 == i + 1:
+                result += " & "
+            else:
+                result += ", "
+    return result
+
+
 def getIDFromLink(link, type):
     if '?' in link:
         link = link[:link.find('?')]
@@ -94,12 +118,3 @@ def uniqueArray(arr):
             if iPrinc!=iRest and namePrinc.lower() in nRest.lower():
                 del arr[iRest]
     return arr
-
-
-def isValidLink(text):
-    if text.lower().startswith("http"):
-        if "deezer.com" in text.lower() or "open.spotify.com" in text.lower():
-            return True
-    elif text.lower().startswith("spotify:"):
-        return True
-    return False

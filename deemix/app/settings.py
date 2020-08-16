@@ -3,8 +3,6 @@ import json
 import os.path as path
 from os import makedirs, listdir, remove
 from deemix import __version__ as deemixVersion
-import random
-import string
 import logging
 import datetime
 import platform
@@ -14,93 +12,151 @@ logger = logging.getLogger('deemix')
 
 import deemix.utils.localpaths as localpaths
 
-settings = {}
-defaultSettings = {}
-configDir = ""
+class Settings:
+    def __init__(self, configFolder=None):
+        self.settings = {}
+        self.configFolder = configFolder
+        if not self.configFolder:
+            self.configFolder = localpaths.getConfigFolder()
+        self.defaultSettings = {
+          "downloadLocation": path.join(localpaths.getHomeFolder(), 'deemix Music'),
+          "tracknameTemplate": "%artist% - %title%",
+          "albumTracknameTemplate": "%tracknumber% - %title%",
+          "playlistTracknameTemplate": "%position% - %artist% - %title%",
+          "createPlaylistFolder": True,
+          "playlistNameTemplate": "%playlist%",
+          "createArtistFolder": False,
+          "artistNameTemplate": "%artist%",
+          "createAlbumFolder": True,
+          "albumNameTemplate": "%artist% - %album%",
+          "createCDFolder": True,
+          "createStructurePlaylist": False,
+          "createSingleFolder": False,
+          "padTracks": True,
+          "paddingSize": "0",
+          "illegalCharacterReplacer": "_",
+          "queueConcurrency": 3,
+          "maxBitrate": "3",
+          "fallbackBitrate": True,
+          "fallbackSearch": False,
+          "logErrors": True,
+          "logSearched": False,
+          "saveDownloadQueue": False,
+          "overwriteFile": "n",
+          "createM3U8File": False,
+          "playlistFilenameTemplate": "playlist",
+          "syncedLyrics": False,
+          "embeddedArtworkSize": 800,
+          "localArtworkSize": 1400,
+          "localArtworkFormat": "jpg",
+          "saveArtwork": True,
+          "coverImageTemplate": "cover",
+          "saveArtworkArtist": False,
+          "artistImageTemplate": "folder",
+          "jpegImageQuality": 80,
+          "dateFormat": "Y-M-D",
+          "albumVariousArtists": True,
+          "removeAlbumVersion": False,
+          "removeDuplicateArtists": False,
+          "featuredToTitle": "0",
+          "titleCasing": "nothing",
+          "artistCasing": "nothing",
+          "executeCommand": "",
+          "tags": {
+            "title": True,
+            "artist": True,
+            "album": True,
+            "cover": True,
+            "trackNumber": True,
+            "trackTotal": False,
+            "discNumber": True,
+            "discTotal": False,
+            "albumArtist": True,
+            "genre": True,
+            "year": True,
+            "date": True,
+            "explicit": False,
+            "isrc": True,
+            "length": True,
+            "barcode": True,
+            "bpm": True,
+            "replayGain": False,
+            "label": True,
+            "lyrics": False,
+            "copyright": False,
+            "composer": False,
+            "involvedPeople": False,
+            "savePlaylistAsCompilation": False,
+            "useNullSeparator": False,
+            "saveID3v1": True,
+            "multiArtistSeparator": "default",
+            "singleAlbumArtist": False
+          }
+        }
 
-def initSettings(localFolder = False, configFolder = None):
-    global settings
-    global defaultSettings
-    global configDir
-    currentFolder = path.abspath(path.dirname(__file__))
-    if not configFolder:
-        configFolder = localpaths.getConfigFolder()
-    configDir = configFolder
-    makedirs(configFolder, exist_ok=True)
-    with open(path.join(currentFolder, 'default.json'), 'r') as d:
-        defaultSettings = json.load(d)
-        defaultSettings['downloadLocation'] = path.join(localpaths.getHomeFolder(), 'deemix Music')
-    if not path.isfile(path.join(configFolder, 'config.json')):
-        with open(path.join(configFolder, 'config.json'), 'w') as f:
-            json.dump(defaultSettings, f, indent=2)
-    with open(path.join(configFolder, 'config.json'), 'r') as configFile:
-        settings = json.load(configFile)
-    settingsCheck()
+        # Create config folder if it doesn't exsist
+        makedirs(self.configFolder, exist_ok=True)
 
-    if localFolder:
-        settings['downloadLocation'] = randomString(12)
-        logger.info("Using a local download folder: "+settings['downloadLocation'])
-    elif settings['downloadLocation'] == "":
-        settings['downloadLocation'] = path.join(localpaths.getHomeFolder(), 'deemix Music')
-        saveSettings(settings)
-    makedirs(settings['downloadLocation'], exist_ok=True)
+        # Create config file if it doesn't exsist
+        if not path.isfile(path.join(self.configFolder, 'config.json')):
+            with open(path.join(self.configFolder, 'config.json'), 'w') as f:
+                json.dump(self.defaultSettings, f, indent=2)
 
-    # logfiles
-    # logfile name
-    logspath = path.join(configFolder, 'logs')
-    now = datetime.datetime.now()
-    logfile = now.strftime("%Y-%m-%d_%H%M%S")+".log"
-    makedirs(logspath, exist_ok=True)
-    # add handler for logfile
-    fh = logging.FileHandler(path.join(logspath, logfile))
-    fh.setLevel(logging.DEBUG)
-    fh.setFormatter(logging.Formatter('%(asctime)s - [%(levelname)s] %(message)s'))
-    logger.addHandler(fh)
-    logger.info(f"{platform.platform(True, True)} - Python {platform.python_version()}, deemix {deemixVersion}")
-    #delete old logfiles
-    logslist = listdir(logspath)
-    logslist.sort()
-    if len(logslist)>5:
-        for i in range(len(logslist)-5):
-            remove(path.join(logspath, logslist[i]))
+        # Read config file
+        with open(path.join(self.configFolder, 'config.json'), 'r') as configFile:
+            self.settings = json.load(configFile)
 
-    return settings
+        self.settingsCheck()
 
+        # Make sure the download path exsits
+        makedirs(self.settings['downloadLocation'], exist_ok=True)
 
-def getSettings():
-    global settings
-    return settings
+        # LOGFILES
 
+        # Create logfile name and path
+        logspath = path.join(self.configFolder, 'logs')
+        now = datetime.datetime.now()
+        logfile = now.strftime("%Y-%m-%d_%H%M%S")+".log"
+        makedirs(logspath, exist_ok=True)
 
-def getDefaultSettings():
-    global defaultSettings
-    return defaultSettings
+        # Add handler for logging
+        fh = logging.FileHandler(path.join(logspath, logfile))
+        fh.setLevel(logging.DEBUG)
+        fh.setFormatter(logging.Formatter('%(asctime)s - [%(levelname)s] %(message)s'))
+        logger.addHandler(fh)
+        logger.info(f"{platform.platform(True, True)} - Python {platform.python_version()}, deemix {deemixVersion}")
 
+        # Only keep last 5 logfiles (to preserve disk space)
+        logslist = listdir(logspath)
+        logslist.sort()
+        if len(logslist)>5:
+            for i in range(len(logslist)-5):
+                remove(path.join(logspath, logslist[i]))
 
-def saveSettings(newSettings):
-    global settings
-    settings = newSettings
-    with open(path.join(configDir, 'config.json'), 'w') as configFile:
-        json.dump(settings, configFile, indent=2)
-    return True
+    # Saves the settings
+    def saveSettings(self, newSettings=None):
+        if newSettings:
+            self.settings = newSettings
+        with open(path.join(self.configFolder, 'config.json'), 'w') as configFile:
+            json.dump(self.settings, configFile, indent=2)
 
-
-def settingsCheck():
-    global settings
-    global defaultSettings
-    changes = 0
-    for x in defaultSettings:
-        if not x in settings or type(settings[x]) != type(defaultSettings[x]):
-            settings[x] = defaultSettings[x]
+    # Checks if the default settings have changed
+    def settingsCheck(self):
+        changes = 0
+        for x in self.defaultSettings:
+            if not x in self.settings or type(self.settings[x]) != type(self.defaultSettings[x]):
+                self.settings[x] = self.defaultSettings[x]
+                changes += 1
+        for x in self.defaultSettings['tags']:
+            if not x in self.settings['tags'] or type(self.settings['tags'][x]) != type(self.defaultSettings['tags'][x]):
+                self.settings['tags'][x] = self.defaultSettings['tags'][x]
+                changes += 1
+        if self.settings['downloadLocation'] == "":
+            self.settings['downloadLocation'] = path.join(localpaths.getHomeFolder(), 'deemix Music')
             changes += 1
-    for x in defaultSettings['tags']:
-        if not x in settings['tags'] or type(settings['tags'][x]) != type(defaultSettings['tags'][x]):
-            settings['tags'][x] = defaultSettings['tags'][x]
-            changes += 1
-    if changes > 0:
-        saveSettings(settings)
-
-
-def randomString(stringLength=8):
-    letters = string.ascii_lowercase
-    return ''.join(random.choice(letters) for i in range(stringLength))
+        for template in ['tracknameTemplate', 'albumTracknameTemplate', 'playlistTracknameTemplate', 'playlistNameTemplate', 'artistNameTemplate', 'albumNameTemplate', 'playlistFilenameTemplate', 'coverImageTemplate', 'artistImageTemplate']:
+            if self.settings[template] == "":
+                self.settings[template] = self.defaultSettings[template]
+                changes += 1
+        if changes > 0:
+            saveSettings()
