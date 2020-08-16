@@ -367,7 +367,7 @@ class DownloadJob:
 
         # Save lyrics in lrc file
         if self.settings['syncedLyrics'] and track.lyrics['sync']:
-            if not os.path.isfile(os.path.join(filepath, filename + '.lrc')) or settings['overwriteFile'] in ['y', 't']:
+            if not os.path.isfile(os.path.join(filepath, filename + '.lrc')) or self.settings['overwriteFile'] in ['y', 't']:
                 with open(os.path.join(filepath, filename + '.lrc'), 'wb') as f:
                     f.write(track.lyrics['sync'].encode('utf-8'))
 
