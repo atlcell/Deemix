@@ -28,7 +28,7 @@ setup(
     install_requires=["click", "pycryptodomex", "mutagen", "requests", "spotipy>=2.11.0"],
     entry_points={
         "console_scripts": [
-            "deemix=deemix.__main__:main",
+            "deemix=deemix.__main__:download",
         ]
     },
 )
