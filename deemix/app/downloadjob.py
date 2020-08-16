@@ -189,7 +189,7 @@ class DownloadJob:
                 downloadImage(image['url'], os.path.join(self.extrasPath, self.playlistPath)+f".{image['ext']}", self.settings['overwriteFile'])
         # Create M3U8 File
         if self.settings['createM3U8File']:
-            filename = settingsRegexPlaylistFile(self.settings['playlistFilenameTemplate'], queueItem, self.settings) or "playlist"
+            filename = settingsRegexPlaylistFile(self.settings['playlistFilenameTemplate'], self.queueItem, self.settings) or "playlist"
             with open(os.path.join(self.extrasPath, filename+'.m3u8'), 'wb') as f:
                 for line in playlist:
                     f.write((line + "\n").encode('utf-8'))
