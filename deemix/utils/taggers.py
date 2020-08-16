@@ -60,7 +60,7 @@ def tagID3(stream, track, save):
         tag.add(TXXX(desc="ITUNESADVISORY", text="1" if track.explicit else "0"))
     if save['replayGain']:
         tag.add(TXXX(desc="REPLAYGAIN_TRACK_GAIN", text=track.replayGain))
-    if 'unsync' in track.lyrics and save['lyrics']:
+    if track.lyrics['unsync'] and save['lyrics']:
         tag.add(USLT(text=track.lyrics['unsync']))
 
     involved_people = []
@@ -143,7 +143,7 @@ def tagFLAC(stream, track, save):
         tag["ITUNESADVISORY"] = "1" if track.explicit else "0"
     if save['replayGain']:
         tag["REPLAYGAIN_TRACK_GAIN"] = track.replayGain
-    if 'unsync' in track.lyrics and save['lyrics']:
+    if track.lyrics['unsync'] and save['lyrics']:
         tag["LYRICS"] = track.lyrics['unsync']
 
     for role in track.contributors:
