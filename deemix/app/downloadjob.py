@@ -483,7 +483,7 @@ class DownloadJob:
                 if track.searched:
                     result['searched'] = f"{track.mainArtist['name']} - {track.title}"
 
-            logger.info(f"[{track.mainArtist['name']} - {track.title}] Track download completed")
+            logger.info(f"[{track.mainArtist['name']} - {track.title}] Track download completed\n{writepath}")
             self.queueItem.downloaded += 1
             if self.interface:
                 self.interface.send("updateQueue", {'uuid': self.queueItem.uuid, 'downloaded': True, 'downloadPath': writepath})
