@@ -99,7 +99,7 @@ class DownloadJob:
         self.bitrate = queueItem.bitrate
         self.downloadPercentage = 0
         self.lastPercentage = 0
-        self.extrasPath = self.settings['downloadLocation']
+        self.extrasPath = None
         self.playlistPath = None
         self.playlistURLs = []
 
@@ -123,6 +123,8 @@ class DownloadJob:
         return self.extrasPath
 
     def singleAfterDownload(self, result):
+        if not self.extrasPath:
+            self.extrasPath = self.settings['downloadLocation']
         # Save Album Cover
         if self.settings['saveArtwork'] and 'albumPath' in result:
             for image in result['albumURLs']:
@@ -145,6 +147,8 @@ class DownloadJob:
             execute(self.settings['executeCommand'].replace("%folder%", self.extrasPath).replace("%filename%", result['filename']))
 
     def collectionAfterDownload(self, tracks):
+        if not self.extrasPath:
+            self.extrasPath = self.settings['downloadLocation']
         playlist = [None] * len(tracks)
         errors = ""
         searched = ""
