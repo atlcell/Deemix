@@ -345,6 +345,7 @@ class QueueManager:
 
         if type(queueItem) is list:
             ogLen = len(self.queue)
+            slimmedItems = []
             for x in queueItem:
                 if isinstance(x, QueueError):
                     logger.error(f"[{x.link}] {x.message}")
@@ -355,8 +356,11 @@ class QueueManager:
                 self.queue.append(x.uuid)
                 self.queueList[x.uuid] = x
                 logger.info(f"[{x.uuid}] Added to queue.")
-            if ogLen <= len(self.queue):
+                slimmedItems.append(x.getSlimmedItem())
+            if len(self.queue) <= ogLen:
                 return False
+            if interface:
+                interface.send("addedToQueue", slimmedItems)
         else:
             if isinstance(queueItem, QueueError):
                 logger.error(f"[{x.link}] {x.message}")
