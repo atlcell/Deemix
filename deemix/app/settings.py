@@ -159,4 +159,4 @@ class Settings:
                 self.settings[template] = self.defaultSettings[template]
                 changes += 1
         if changes > 0:
-            saveSettings()
+            self.saveSettings()
