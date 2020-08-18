@@ -139,7 +139,7 @@ class QueueManager:
             totalSize = len(playlistTracksAPI)
             collection = []
             for pos, trackAPI in enumerate(playlistTracksAPI, start=1):
-                if 'EXPLICIT_TRACK_CONTENT' in trackAPI and 'EXPLICIT_LYRICS_STATUS' in trackAPI['EXPLICIT_TRACK_CONTENT'] and trackAPI['EXPLICIT_TRACK_CONTENT']['EXPLICIT_LYRICS_STATUS'] in [1,4]:
+                if 'EXPLICIT_TRACK_CONTENT' in trackAPI and trackAPI['EXPLICIT_TRACK_CONTENT'].get('EXPLICIT_LYRICS_STATUS') in [1,4]:
                     playlistAPI['explicit'] = True
                 trackAPI['_EXTRA_PLAYLIST'] = playlistAPI
                 trackAPI['POSITION'] = pos
@@ -245,7 +245,7 @@ class QueueManager:
             totalSize = len(artistTopTracksAPI_gw)
             collection = []
             for pos, trackAPI in enumerate(artistTopTracksAPI_gw, start=1):
-                if 'EXPLICIT_TRACK_CONTENT' in trackAPI and 'EXPLICIT_LYRICS_STATUS' in trackAPI['EXPLICIT_TRACK_CONTENT'] and trackAPI['EXPLICIT_TRACK_CONTENT']['EXPLICIT_LYRICS_STATUS'] in [1,4]:
+                if 'EXPLICIT_TRACK_CONTENT' in trackAPI and trackAPI['EXPLICIT_TRACK_CONTENT'].get('EXPLICIT_LYRICS_STATUS') in [1,4]:
                     playlistAPI['explicit'] = True
                 trackAPI['_EXTRA_PLAYLIST'] = playlistAPI
                 trackAPI['POSITION'] = pos
@@ -277,7 +277,7 @@ class QueueManager:
             except SpotifyException as e:
                 return QueueError(url, "Wrong URL: "+e.msg[e.msg.find('\n')+2:])
 
-            if track_id != 0:
+            if track_id != "0":
                 return self.generateQueueItem(dz, sp, f'https://www.deezer.com/track/{track_id}', settings, bitrate)
             else:
                 logger.warn("Track not found on deezer!")
@@ -293,7 +293,7 @@ class QueueManager:
             except SpotifyException as e:
                 return QueueError(url, "Wrong URL: "+e.msg[e.msg.find('\n')+2:])
 
-            if album_id != 0:
+            if album_id != "0":
                 return self.generateQueueItem(dz, sp, f'https://www.deezer.com/album/{album_id}', settings, bitrate)
             else:
                 logger.warn("Album not found on deezer!")

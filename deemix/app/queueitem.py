@@ -14,9 +14,7 @@ class QueueItem:
             self.failed = queueItemDict['failed']
             self.errors = queueItemDict['errors']
             self.progress = queueItemDict['progress']
-            self.settings = None
-            if 'settings' in queueItemDict:
-                self.settings = queueItemDict['settings']
+            self.settings = queueItemDict.get('settings')
         else:
             self.title = title
             self.artist = artist

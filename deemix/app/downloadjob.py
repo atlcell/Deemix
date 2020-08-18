@@ -161,7 +161,7 @@ class DownloadJob:
             # Log errors to file
             if 'error' in result:
                 if not 'data' in result['error']:
-                    result['error']['data'] = {'id': 0, 'title': 'Unknown', 'artist': 'Unknown'}
+                    result['error']['data'] = {'id': "0", 'title': 'Unknown', 'artist': 'Unknown'}
                 errors += f"{result['error']['data']['id']} | {result['error']['data']['artist']} - {result['error']['data']['title']} | {result['error']['message']}\r\n"
             # Log searched to file
             if 'searched' in result:
@@ -228,7 +228,7 @@ class DownloadJob:
             elif not track.searched and self.settings['fallbackSearch']:
                 logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not yet encoded, searching for alternative")
                 searchedId = self.dz.get_track_from_metadata(track.mainArtist['name'], track.title, track.album['title'])
-                if searchedId != 0:
+                if searchedId != "0":
                     newTrack = self.dz.get_track_gw(searchedId)
                     track.parseEssentialData(self.dz, newTrack)
                     track.searched = True
@@ -248,7 +248,7 @@ class DownloadJob:
             elif not track.searched and self.settings['fallbackSearch']:
                 logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not found at desired bitrate, searching for alternative")
                 searchedId = self.dz.get_track_from_metadata(track.mainArtist['name'], track.title, track.album['title'])
-                if searchedId != 0:
+                if searchedId != "0":
                     newTrack = self.dz.get_track_gw(searchedId)
                     track.parseEssentialData(self.dz, newTrack)
                     track.searched = True
@@ -437,7 +437,7 @@ class DownloadJob:
                         elif not track.searched and self.settings['fallbackSearch']:
                             logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not available, searching for alternative")
                             searchedId = self.dz.get_track_from_metadata(track.mainArtist['name'], track.title, track.album['title'])
-                            if searchedId != 0:
+                            if searchedId != "0":
                                 newTrack = self.dz.get_track_gw(searchedId)
                                 track.parseEssentialData(self.dz, newTrack)
                                 track.searched = True

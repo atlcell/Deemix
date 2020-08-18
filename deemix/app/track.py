@@ -12,12 +12,10 @@ class Track:
         self.parseEssentialData(dz, trackAPI_gw)
 
         self.title = trackAPI_gw['SNG_TITLE'].strip()
-        if 'VERSION' in trackAPI_gw and trackAPI_gw['VERSION'] and not trackAPI_gw['VERSION'] in trackAPI_gw['SNG_TITLE']:
+        if trackAPI_gw.get('VERSION') and not trackAPI_gw['VERSION'] in trackAPI_gw['SNG_TITLE']:
             self.title += " " + trackAPI_gw['VERSION'].strip()
 
-        self.position = None
-        if 'POSITION' in trackAPI_gw:
-            self.position = trackAPI_gw['POSITION']
+        self.position = trackAPI_gw.get('POSITION')
 
         self.localTrack = int(self.id) < 0
         if self.localTrack:
@@ -103,10 +101,8 @@ class Track:
         self.album = {
             'id': "0",
             'title': trackAPI_gw['ALB_TITLE'],
-            'pic': ""
         }
-        if 'ALB_PICTURE' in trackAPI_gw:
-            self.album['pic'] = trackAPI_gw['ALB_PICTURE']
+        self.album['pic'] = trackAPI_gw.get('ALB_PICTURE')
         self.mainArtist = {
             'id': "0",
             'name': trackAPI_gw['ART_NAME'],
@@ -144,15 +140,9 @@ class Track:
         self.trackNumber = "0"
 
     def parseData(self, dz, settings, trackAPI_gw, trackAPI, albumAPI_gw, albumAPI):
-        self.discNumber = None
-        if 'DISK_NUMBER' in trackAPI_gw:
-            self.discNumber = trackAPI_gw['DISK_NUMBER']
-        self.explicit = None
-        if 'EXPLICIT_LYRICS' in trackAPI_gw:
-            self.explicit = trackAPI_gw['EXPLICIT_LYRICS']
-        self.copyright = None
-        if 'COPYRIGHT' in trackAPI_gw:
-            self.copyright = trackAPI_gw['COPYRIGHT']
+        self.discNumber = trackAPI_gw.get('DISK_NUMBER')
+        self.explicit = trackAPI_gw.get('EXPLICIT_LYRICS')
+        self.copyright = trackAPI_gw.get('COPYRIGHT')
         self.replayGain = ""
         if 'GAIN' in trackAPI_gw:
             self.replayGain = "{0:.2f} dB".format((float(trackAPI_gw['GAIN']) + 18.4) * -1)
@@ -161,18 +151,15 @@ class Track:
         self.contributors = trackAPI_gw['SNG_CONTRIBUTORS']
 
         self.lyrics = {
-            'id': None,
+            'id': trackAPI_gw.get('LYRICS_ID'),
             'unsync': None,
             'sync': None
         }
-        if 'LYRICS_ID' in trackAPI_gw:
-            self.lyrics['id'] = trackAPI_gw['LYRICS_ID']
         if not "LYRICS" in trackAPI_gw and int(self.lyrics['id']) != 0:
             logger.info(f"[{trackAPI_gw['ART_NAME']} - {self.title}] Getting lyrics")
             trackAPI_gw["LYRICS"] = dz.get_lyrics_gw(self.id)
         if int(self.lyrics['id']) != 0:
-            if "LYRICS_TEXT" in trackAPI_gw["LYRICS"]:
-                self.lyrics['unsync'] = trackAPI_gw["LYRICS"]["LYRICS_TEXT"]
+            self.lyrics['unsync'] = trackAPI_gw["LYRICS"].get("LYRICS_TEXT")
             if "LYRICS_SYNC_JSON" in trackAPI_gw["LYRICS"]:
                 self.lyrics['sync'] = ""
                 lastTimestamp = ""
@@ -187,10 +174,8 @@ class Track:
         self.mainArtist = {
             'id': trackAPI_gw['ART_ID'],
             'name': trackAPI_gw['ART_NAME'],
-            'pic': None
+            'pic': trackAPI_gw.get('ART_PICTURE')
         }
-        if 'ART_PICTURE' in trackAPI_gw:
-            self.mainArtist['pic'] = trackAPI_gw['ART_PICTURE']
 
         self.date = None
         if 'PHYSICAL_RELEASE_DATE' in trackAPI_gw:
@@ -203,15 +188,13 @@ class Track:
         self.album = {
             'id': trackAPI_gw['ALB_ID'],
             'title': trackAPI_gw['ALB_TITLE'],
-            'pic': None,
+            'pic': trackAPI_gw.get('ALB_PICTURE'),
             'barcode': "Unknown",
             'label': "Unknown",
             'explicit': False,
             'date': None,
             'genre': []
         }
-        if 'ALB_PICTURE' in trackAPI_gw:
-            self.album['pic'] = trackAPI_gw['ALB_PICTURE']
         try:
             # Try the public API first (as it has more data)
             if not albumAPI:
@@ -242,24 +225,17 @@ class Track:
             self.album['trackTotal'] = albumAPI['nb_tracks']
             self.album['recordType'] = albumAPI['record_type']
 
-            if 'upc' in albumAPI:
-                self.album['barcode'] = albumAPI['upc']
-            if 'label' in albumAPI:
-                self.album['label'] = albumAPI['label']
-            if 'explicit_lyrics' in albumAPI:
-                self.album['explicit'] = albumAPI['explicit_lyrics']
+            self.album['barcode'] = albumAPI.get('upc') or self.album['barcode']
+            self.album['label'] = albumAPI.get('label') or self.album['label']
+            self.album['explicit'] = bool(albumAPI.get('explicit_lyrics'))
             if 'release_date' in albumAPI:
                 self.album['date'] = {
                     'day': albumAPI["release_date"][8:10],
                     'month': albumAPI["release_date"][5:7],
                     'year': albumAPI["release_date"][0:4]
                 }
-            self.album['discTotal'] = None
-            if 'nb_disk' in albumAPI:
-                self.album['discTotal'] = albumAPI['nb_disk']
-            self.copyright = None
-            if 'copyright' in albumAPI:
-                self.copyright = albumAPI['copyright']
+            self.album['discTotal'] = albumAPI.get('nb_disk')
+            self.copyright = albumAPI.get('copyright')
 
             if not self.album['pic']:
                 self.album['pic'] = albumAPI['cover_small'][albumAPI['cover_small'].find('cover/') + 6:-24]
@@ -284,8 +260,7 @@ class Track:
             self.album['trackTotal'] = albumAPI_gw['NUMBER_TRACK']
             self.album['discTotal'] = albumAPI_gw['NUMBER_DISK']
             self.album['recordType'] = "Album"
-            if 'LABEL_NAME' in albumAPI_gw:
-                self.album['label'] = albumAPI_gw['LABEL_NAME']
+            self.album['label'] = albumAPI_gw.get('LABEL_NAME') or self.album['label']
             if 'EXPLICIT_ALBUM_CONTENT' in albumAPI_gw and 'EXPLICIT_LYRICS_STATUS' in albumAPI_gw['EXPLICIT_ALBUM_CONTENT']:
                 self.album['explicit'] = albumAPI_gw['EXPLICIT_ALBUM_CONTENT']['EXPLICIT_LYRICS_STATUS'] in [1,4]
             if not self.album['pic']:
