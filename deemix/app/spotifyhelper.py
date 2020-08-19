@@ -237,6 +237,8 @@ class SpotifyHelper:
             interface.send("startConversion", queueItem.uuid)
         collection = []
         for pos, track in enumerate(queueItem.extra['unconverted'], start=1):
+            if queueItem.cancel:
+                return
             if str(track['id']) in cache['tracks']:
                 trackID = cache['tracks'][str(track['id'])]
             else:

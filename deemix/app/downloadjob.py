@@ -104,16 +104,17 @@ class DownloadJob:
         self.playlistURLs = []
 
     def start(self):
-        if isinstance(self.queueItem, QISingle):
-            result = self.downloadWrapper(self.queueItem.single)
-            if result:
-                self.singleAfterDownload(result)
-        elif isinstance(self.queueItem, QICollection):
-            tracks = [None] * len(self.queueItem.collection)
-            with ThreadPoolExecutor(self.settings['queueConcurrency']) as executor:
-                for pos, track in enumerate(self.queueItem.collection, start=0):
-                    tracks[pos] = executor.submit(self.downloadWrapper, track)
-            self.collectionAfterDownload(tracks)
+        if not self.queueItem.cancel:
+            if isinstance(self.queueItem, QISingle):
+                result = self.downloadWrapper(self.queueItem.single)
+                if result:
+                    self.singleAfterDownload(result)
+            elif isinstance(self.queueItem, QICollection):
+                tracks = [None] * len(self.queueItem.collection)
+                with ThreadPoolExecutor(self.settings['queueConcurrency']) as executor:
+                    for pos, track in enumerate(self.queueItem.collection, start=0):
+                        tracks[pos] = executor.submit(self.downloadWrapper, track)
+                self.collectionAfterDownload(tracks)
         if self.interface:
             if self.queueItem.cancel:
                 self.interface.send('currentItemCancelled', self.queueItem.uuid)
