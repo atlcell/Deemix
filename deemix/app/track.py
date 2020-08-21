@@ -41,10 +41,14 @@ class Track:
         if "_EXTRA_PLAYLIST" in trackAPI_gw:
             self.playlist = {}
             if 'dzcdn.net' in trackAPI_gw["_EXTRA_PLAYLIST"]['picture_small']:
-                self.playlist['picUrl'] = trackAPI_gw["_EXTRA_PLAYLIST"]['picture_small'][:-24] + "/{}x{}-{}".format(
+                self.playlist['pic'] = trackAPI_gw["_EXTRA_PLAYLIST"]['picture_small'][:-24]
+                self.playlist['picUrl'] = "{}/{}x{}-{}".format(
+                    self.playlist['pic'],
                     settings['embeddedArtworkSize'], settings['embeddedArtworkSize'],
-                    f'000000-{settings["jpegImageQuality"]}-0-0.jpg')
+                    'none-100-0-0.png' if settings['embeddedArtworkPNG'] else f'000000-{settings["jpegImageQuality"]}-0-0.jpg'
+                )
             else:
+                self.playlist['pic'] = None
                 self.playlist['picUrl'] = trackAPI_gw["_EXTRA_PLAYLIST"]['picture_xl']
             self.playlist['title'] = trackAPI_gw["_EXTRA_PLAYLIST"]['title']
             self.playlist['mainArtist'] = {

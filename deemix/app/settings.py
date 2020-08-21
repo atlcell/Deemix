@@ -47,6 +47,7 @@ class Settings:
           "playlistFilenameTemplate": "playlist",
           "syncedLyrics": False,
           "embeddedArtworkSize": 800,
+          "embeddedArtworkPNG": False,
           "localArtworkSize": 1400,
           "localArtworkFormat": "jpg",
           "saveArtwork": True,
