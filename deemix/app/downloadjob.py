@@ -392,6 +392,13 @@ class DownloadJob:
                     f.write(track.lyrics['sync'].encode('utf-8'))
 
         trackAlreadyDownloaded = os.path.isfile(writepath)
+        if not trackAlreadyDownloaded and self.settings['overwriteFile'] == 'e':
+            exts = ['.mp3', '.flac', '.opus', '.m4a']
+            baseFilename = os.path.join(filepath, filename)
+            for ext in exts:
+                trackAlreadyDownloaded = os.path.isfile(baseFilename+ext)
+                if trackAlreadyDownloaded:
+                    break
         if trackAlreadyDownloaded and self.settings['overwriteFile'] == 'b':
             baseFilename = os.path.join(filepath, filename)
             i = 1
