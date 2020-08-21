@@ -120,7 +120,7 @@ class Settings:
         makedirs(logspath, exist_ok=True)
 
         # Add handler for logging
-        fh = logging.FileHandler(path.join(logspath, logfile))
+        fh = logging.FileHandler(path.join(logspath, logfile), 'w', 'utf-8')
         fh.setLevel(logging.DEBUG)
         fh.setFormatter(logging.Formatter('%(asctime)s - [%(levelname)s] %(message)s'))
         logger.addHandler(fh)
