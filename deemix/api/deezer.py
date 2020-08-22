@@ -59,6 +59,7 @@ class Deezer:
         for key, value in response.items():
             if key.startswith("FILESIZE_"):
                 filesizes[key] = value
+                filesizes[key+"_TESTED"] = False
         return filesizes
 
     def gw_api_call(self, method, args=None):

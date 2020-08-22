@@ -506,6 +506,7 @@ class DownloadJob:
                         logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not available in FLAC, falling back if necessary")
                         self.removeTrackPercentage()
                         track.filesizes['FILESIZE_FLAC'] = "0"
+                        track.filesizes['FILESIZE_FLAC_TESTED'] = True
                         return self.download(trackAPI_gw, track)
                 if track.searched:
                     result['searched'] = f"{track.mainArtist['name']} - {track.title}"
@@ -546,13 +547,20 @@ class DownloadJob:
 
         for format_num, format in formats.items():
             if format_num <= int(self.bitrate):
-                if f"FILESIZE_{format}" in track.filesizes and int(track.filesizes[f"FILESIZE_{format}"]) != 0:
-                    return format_num
+                if f"FILESIZE_{format}" in track.filesizes:
+                    if int(track.filesizes[f"FILESIZE_{format}"]) != 0:
+                        return format_num
+                    elif not track.filesizes[f"FILESIZE_{format}_TESTED"]:
+                        request = get(self.dz.get_track_stream_url(track.id, track.MD5, track.mediaVersion, format_num), stream=True)
+                        try:
+                            request.raise_for_status()
+                            return format_num
+                        except HTTPError: # if the format is not available, Deezer returns a 403 error
+                            pass
+                if fallback:
+                    continue
                 else:
-                    if fallback:
-                        continue
-                    else:
-                        return error_num
+                    return error_num
 
         return error_num # fallback is enabled and loop went through all formats
 
