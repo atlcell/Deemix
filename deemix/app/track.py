@@ -145,7 +145,7 @@ class Track:
 
     def parseData(self, dz, settings, trackAPI_gw, trackAPI, albumAPI_gw, albumAPI):
         self.discNumber = trackAPI_gw.get('DISK_NUMBER')
-        self.explicit = trackAPI_gw.get('EXPLICIT_LYRICS')
+        self.explicit = bool(int(trackAPI_gw.get('EXPLICIT_LYRICS') or "0"))
         self.copyright = trackAPI_gw.get('COPYRIGHT')
         self.replayGain = ""
         if 'GAIN' in trackAPI_gw:
