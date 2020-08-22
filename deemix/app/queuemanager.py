@@ -363,7 +363,7 @@ class QueueManager:
                 interface.send("addedToQueue", slimmedItems)
         else:
             if isinstance(queueItem, QueueError):
-                logger.error(f"[{x.link}] {x.message}")
+                logger.error(f"[{queueItem.link}] {queueItem.message}")
                 if interface:
                     interface.send("queueError", queueItem.toDict())
                 return False
