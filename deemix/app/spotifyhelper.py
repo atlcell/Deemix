@@ -244,7 +244,7 @@ class SpotifyHelper:
             else:
                 trackID = self.get_trackid_spotify(dz, "0", queueItem.settings['fallbackSearch'], track)
                 cache['tracks'][str(track['id'])] = trackID
-            if trackID == "0":
+            if str(trackID) == "0":
                 deezerTrack = {
                     'SNG_ID': "0",
                     'SNG_TITLE': track['name'],
