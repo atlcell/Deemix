@@ -75,10 +75,7 @@ class Track:
             }
             self.playlist['discTotal'] = "1"
 
-        self.mainArtistsString = andCommaConcat(self.artist['Main'])
-        self.featArtistsString = None
-        if 'Featured' in self.artist:
-            self.featArtistsString = "feat. "+andCommaConcat(self.artist['Featured'])
+        self.generateMainFeatStrings()
 
         # Bits useful for later
         self.searched = False
@@ -331,3 +328,9 @@ class Track:
         if self.featArtistsString and not "(feat." in self.title.lower():
             return self.title + " ({})".format(self.featArtistsString)
         return self.title
+
+    def generateMainFeatStrings(self):
+        self.mainArtistsString = andCommaConcat(self.artist['Main'])
+        self.featArtistsString = None
+        if 'Featured' in self.artist:
+            self.featArtistsString = "feat. "+andCommaConcat(self.artist['Featured'])

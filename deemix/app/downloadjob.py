@@ -302,6 +302,18 @@ class DownloadJob:
             if "Album Version" in track.title:
                 track.title = re.sub(r' ?\(Album Version\)', "", track.title).strip()
 
+        # Change Title and Artists casing if needed
+        if self.settings['titleCasing'] != "nothing":
+            track.title = changeCase(track.title, self.settings['titleCasing'])
+        if self.settings['artistCasing'] != "nothing":
+            track.mainArtist['name'] = changeCase(track.mainArtist['name'], self.settings['artistCasing'])
+            for i, artist in enumerate(track.artists):
+                track.artists[i] = changeCase(artist, self.settings['artistCasing'])
+            for type in track.artist:
+                for i, artist in enumerate(track.artist[type]):
+                    track.artist[type][i] = changeCase(artist, self.settings['artistCasing'])
+            track.generateMainFeatStrings()
+
         # Generate artist tag if needed
         if self.settings['tags']['multiArtistSeparator'] != "default":
             if self.settings['tags']['multiArtistSeparator'] == "andFeat":
@@ -312,14 +324,6 @@ class DownloadJob:
                 track.artistsString = self.settings['tags']['multiArtistSeparator'].join(track.artists)
         else:
             track.artistsString = ", ".join(track.artists)
-
-        # Change Title and Artists casing if needed
-        if self.settings['titleCasing'] != "nothing":
-            track.title = changeCase(track.title, self.settings['titleCasing'])
-        if self.settings['artistCasing'] != "nothing":
-            track.artistsString = changeCase(track.artistsString, self.settings['artistCasing'])
-            for i, artist in enumerate(track.artists):
-                track.artists[i] = changeCase(artist, self.settings['artistCasing'])
 
         # Generate filename and filepath from metadata
         filename = generateFilename(track, trackAPI_gw, self.settings)
