@@ -29,8 +29,6 @@ class Deezer:
         self.selectedAccount = 0
         self.session = requests.Session()
         self.logged_in = False
-        self.session.post("https://www.deezer.com/", headers=self.http_headers)
-        self.guest_sid = self.session.cookies.get('sid')
 
     def get_token(self):
         token_data = self.gw_api_call('deezer.getUserData')
@@ -38,6 +36,8 @@ class Deezer:
 
     def get_track_filesizes(self, sng_id):
         try:
+            self.session.post("https://www.deezer.com/", headers=self.http_headers)
+            self.guest_sid = self.session.cookies.get('sid')
             site = requests.post(
                 "https://api.deezer.com/1.0/gateway.php",
                 params={
@@ -51,6 +51,7 @@ class Deezer:
                 json={'sng_id': sng_id},
                 headers=self.http_headers
             )
+            self.session.cookies.clear(".deezer.com", "/", "sid")
         except:
             time.sleep(2)
             return self.get_track_filesizes(sng_id)
@@ -163,7 +164,6 @@ class Deezer:
             rest={'HttpOnly': True}
         )
         self.session.cookies.set_cookie(cookie_obj)
-        self.session.cookies.clear(".deezer.com", "/", "sid")
         user_data = self.gw_api_call("deezer.getUserData")
         if user_data["results"]["USER"]["USER_ID"] == 0:
             self.logged_in = False
