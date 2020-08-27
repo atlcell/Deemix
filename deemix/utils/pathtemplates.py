@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import re
 from os.path import sep as pathSep
+from unicodedata import normalize
 
 bitrateLabels = {
     15: "360 HQ",
@@ -17,6 +18,7 @@ bitrateLabels = {
 def fixName(txt, char='_'):
     txt = str(txt)
     txt = re.sub(r'[\0\/\\:*?"<>|]', char, txt)
+    txt = normalize("NFC", txt)
     return txt
 
 def fixEndOfData(bString):
