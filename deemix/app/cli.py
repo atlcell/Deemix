@@ -15,7 +15,7 @@ class cli(deemix):
         super().__init__(configFolder)
         if local:
             self.set.settings['downloadLocation'] = randomString(12)
-            print("Using a local download folder: "+settings['downloadLocation'])
+            print("Using a local download folder: "+self.set.settings['downloadLocation'])
 
     def downloadLink(self, url, bitrate=None):
         for link in url:
