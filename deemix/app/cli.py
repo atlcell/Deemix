@@ -11,8 +11,11 @@ def randomString(stringLength=8):
     return ''.join(random.choice(letters) for i in range(stringLength))
 
 class cli(deemix):
-    def __init__(self, local, configFolder=None):
+    def __init__(self, local, path, configFolder=None):
         super().__init__(configFolder)
+        if path:
+            self.set.settings['downloadLocation'] = str(path)
+            print("Using folder: "+self.set.settings['downloadLocation'])
         if local:
             self.set.settings['downloadLocation'] = randomString(12)
             print("Using a local download folder: "+self.set.settings['downloadLocation'])
