@@ -7,9 +7,10 @@ from os.path import isfile
 @click.command()
 @click.option('-b', '--bitrate', default=None, help='Overwrites the default bitrate selected')
 @click.option('-l', '--local', is_flag=True, help='Downloads in a local folder insted of using the default')
+@click.option('-p', '--path', type=str, help='Downloads in the given folder')
 @click.argument('url', nargs=-1, required=True)
-def download(bitrate, local, url):
-    app = cli(local)
+def download(bitrate, local, url, path):
+    app = cli(local, path)
     app.login()
     url = list(url)
     if isfile(url[0]):
