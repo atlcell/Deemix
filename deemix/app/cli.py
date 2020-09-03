@@ -1,24 +1,16 @@
 #!/usr/bin/env python3
 import os.path as path
-import string
-import random
-from os import mkdir
+from os import makedirs
 
 from deemix.app import deemix
 
-def randomString(stringLength=8):
-    letters = string.ascii_lowercase
-    return ''.join(random.choice(letters) for i in range(stringLength))
-
 class cli(deemix):
-    def __init__(self, local, path, configFolder=None):
+    def __init__(self, path, configFolder=None):
         super().__init__(configFolder)
         if path:
             self.set.settings['downloadLocation'] = str(path)
+            makedirs(path, exist_ok=True)
             print("Using folder: "+self.set.settings['downloadLocation'])
-        if local:
-            self.set.settings['downloadLocation'] = randomString(12)
-            print("Using a local download folder: "+self.set.settings['downloadLocation'])
 
     def downloadLink(self, url, bitrate=None):
         for link in url:
@@ -38,7 +30,7 @@ class cli(deemix):
     def login(self):
         configFolder = self.set.configFolder
         if not path.isdir(configFolder):
-            mkdir(configFolder)
+            makedirs(configFolder, exist_ok=True)
         if path.isfile(path.join(configFolder, '.arl')):
             with open(path.join(configFolder, '.arl'), 'r') as f:
                 arl = f.readline().rstrip("\n")
