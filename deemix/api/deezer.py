@@ -637,8 +637,8 @@ class Deezer:
             if len(resp['data']) > 0:
                 return resp['data'][0]['id']
         else:
-            return 0
-        return 0
+            return "0"
+        return "0"
 
 def clean_search_query(term):
     term = str(term)
