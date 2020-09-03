@@ -303,7 +303,7 @@ class Deezer:
             tracks_array.append(track)
         return tracks_array
 
-    def get_artist_discography_gw(self, art_id, nb=10):
+    def get_artist_discography_gw(self, art_id, nb=100):
         start = 0
         releases = []
         RELEASE_TYPE = ["single", "album", "compile", "ep"]
