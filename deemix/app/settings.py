@@ -155,7 +155,7 @@ class Settings:
         if self.settings['downloadLocation'] == "":
             self.settings['downloadLocation'] = path.join(localpaths.getHomeFolder(), 'deemix Music')
             changes += 1
-        for template in ['tracknameTemplate', 'albumTracknameTemplate', 'playlistTracknameTemplate', 'playlistNameTemplate', 'artistNameTemplate', 'albumNameTemplate', 'playlistFilenameTemplate', 'coverImageTemplate', 'artistImageTemplate']:
+        for template in ['tracknameTemplate', 'albumTracknameTemplate', 'playlistTracknameTemplate', 'playlistNameTemplate', 'artistNameTemplate', 'albumNameTemplate', 'playlistFilenameTemplate', 'coverImageTemplate', 'artistImageTemplate', 'paddingSize']:
             if self.settings[template] == "":
                 self.settings[template] = self.defaultSettings[template]
                 changes += 1
