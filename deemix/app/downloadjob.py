@@ -3,7 +3,7 @@ import os.path
 import re
 
 from requests import get
-from requests.exceptions import HTTPError, ConnectionError
+from requests import exceptions as request_exception
 
 from concurrent.futures import ThreadPoolExecutor
 from os import makedirs, remove, system as execute
@@ -57,7 +57,7 @@ def downloadImage(url, path, overwrite="n"):
             with open(path, 'wb') as f:
                 f.write(image.content)
             return path
-        except HTTPError:
+        except request_exception.HTTPError:
             if 'cdns-images.dzcdn.net' in url:
                 urlBase = url[:url.rfind("/")+1]
                 pictureUrl = url[len(urlBase):]
@@ -454,7 +454,7 @@ class DownloadJob:
                     except DownloadCancelled:
                         remove(writepath)
                         raise DownloadCancelled
-                    except (HTTPError, DownloadEmpty):
+                    except (request_exception.HTTPError, DownloadEmpty):
                         remove(writepath)
                         if track.fallbackId != "0":
                             logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not available, using fallback id")
@@ -473,12 +473,13 @@ class DownloadJob:
                                 raise DownloadFailed("notAvailableNoAlternative")
                         else:
                             raise DownloadFailed("notAvailable")
-                    except ConnectionError as e:
-                        logger.exception(str(e))
+                    except (request_exception.ConnectionError, request_exception.ChunkedEncodingError) as e:
+                        remove(writepath)
                         logger.warn(f"[{track.mainArtist['name']} - {track.title}] Error while downloading the track, trying again in 5s...")
                         sleep(5)
                         return downloadMusic(track, trackAPI_gw)
                     except Exception as e:
+                        remove(writepath)
                         logger.exception(str(e))
                         logger.warn(f"[{track.mainArtist['name']} - {track.title}] Error while downloading the track, you should report this to the developers")
                         raise e
@@ -559,7 +560,7 @@ class DownloadJob:
                         try:
                             request.raise_for_status()
                             return format_num
-                        except HTTPError: # if the format is not available, Deezer returns a 403 error
+                        except request_exception.HTTPError: # if the format is not available, Deezer returns a 403 error
                             pass
                 if fallback:
                     continue
@@ -573,7 +574,7 @@ class DownloadJob:
 
         try:
             request = get(track.downloadUrl, headers=self.dz.http_headers, stream=True, timeout=30)
-        except ConnectionError:
+        except request_exception.ConnectionError:
             sleep(2)
             return self.streamTrack(stream, track)
         request.raise_for_status()
