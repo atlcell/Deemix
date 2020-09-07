@@ -9,6 +9,7 @@ import os.path as path
 import json
 from os import remove
 from time import sleep
+from urllib.request import urlopen
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('deemix')
@@ -23,6 +24,8 @@ class QueueManager:
     def generateQueueItem(self, dz, sp, url, settings, bitrate=None, albumAPI=None, interface=None):
         forcedBitrate = getBitrateInt(bitrate)
         bitrate = forcedBitrate if forcedBitrate else settings['maxBitrate']
+        if 'deezer.page.link' in url:
+            url = urlopen(url).url
         type = getTypeFromLink(url)
         id = getIDFromLink(url, type)
 
