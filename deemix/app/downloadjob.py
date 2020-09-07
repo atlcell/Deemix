@@ -318,7 +318,7 @@ class DownloadJob:
         if self.settings['tags']['multiArtistSeparator'] != "default":
             if self.settings['tags']['multiArtistSeparator'] == "andFeat":
                 track.artistsString = track.mainArtistsString
-                if track.featArtistsString and self.settings['featuredToTitle'] != "2":
+                if track.featArtistsString and str(self.settings['featuredToTitle']) != "2":
                     track.artistsString += " " + track.featArtistsString
             else:
                 track.artistsString = self.settings['tags']['multiArtistSeparator'].join(track.artists)
