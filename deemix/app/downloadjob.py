@@ -66,10 +66,13 @@ def downloadImage(url, path, overwrite="n"):
                     logger.warn("Couldn't download "+str(pictureSize)+"x"+str(pictureSize)+" image, falling back to 1200x1200")
                     sleep(1)
                     return  downloadImage(urlBase+pictureUrl.replace(str(pictureSize)+"x"+str(pictureSize), '1200x1200'), path, overwrite)
-            logger.error("Couldn't download Image: "+url)
-        except:
-            sleep(1)
+            logger.error("Image not found: "+url)
+        except (request_exception.ConnectionError, request_exception.ChunkedEncodingError) as e:
+            logger.error("Couldn't download Image, retrying in 5 seconds...: "url+"\n")
+            sleep(5)
             return downloadImage(url, path, overwrite)
+        except Exception as e:
+            logger.exception(f"Error while downloading an image, you should report this to the developers: {str(e)}")
         if os.path.isfile(path): remove(path)
         return None
     else:
@@ -480,8 +483,7 @@ class DownloadJob:
                         return downloadMusic(track, trackAPI_gw)
                     except Exception as e:
                         remove(writepath)
-                        logger.exception(str(e))
-                        logger.warn(f"[{track.mainArtist['name']} - {track.title}] Error while downloading the track, you should report this to the developers")
+                        logger.exception(f"[{track.mainArtist['name']} - {track.title}] Error while downloading the track, you should report this to the developers: {str(e)}")
                         raise e
                     return True
 
