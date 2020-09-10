@@ -68,7 +68,7 @@ def downloadImage(url, path, overwrite="n"):
                     return  downloadImage(urlBase+pictureUrl.replace(str(pictureSize)+"x"+str(pictureSize), '1200x1200'), path, overwrite)
             logger.error("Image not found: "+url)
         except (request_exception.ConnectionError, request_exception.ChunkedEncodingError) as e:
-            logger.error("Couldn't download Image, retrying in 5 seconds...: "url+"\n")
+            logger.error("Couldn't download Image, retrying in 5 seconds...: "+url+"\n")
             sleep(5)
             return downloadImage(url, path, overwrite)
         except Exception as e:
