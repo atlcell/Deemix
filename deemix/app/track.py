@@ -154,7 +154,8 @@ class Track:
         self.lyrics = {
             'id': trackAPI_gw.get('LYRICS_ID'),
             'unsync': None,
-            'sync': None
+            'sync': None,
+            'syncID3': None
         }
         if not "LYRICS" in trackAPI_gw and int(self.lyrics['id']) != 0:
             logger.info(f"[{trackAPI_gw['ART_NAME']} - {self.title}] Getting lyrics")
@@ -163,14 +164,19 @@ class Track:
             self.lyrics['unsync'] = trackAPI_gw["LYRICS"].get("LYRICS_TEXT")
             if "LYRICS_SYNC_JSON" in trackAPI_gw["LYRICS"]:
                 self.lyrics['sync'] = ""
+                self.lyrics['syncID3'] = []
                 lastTimestamp = ""
+                lastMilliseconds = 0
                 for i in range(len(trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"])):
                     if "lrc_timestamp" in trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]:
                         self.lyrics['sync'] += trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["lrc_timestamp"]
                         lastTimestamp = trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["lrc_timestamp"]
                     else:
                         self.lyrics['sync'] += lastTimestamp
+                    if "milliseconds" in trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]:
+                        lastMilliseconds = int(trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["milliseconds"])
                     self.lyrics['sync'] += trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["line"] + "\r\n"
+                    self.lyrics['syncID3'].append((trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["line"], lastMilliseconds))
 
         self.mainArtist = {
             'id': trackAPI_gw['ART_ID'],

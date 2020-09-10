@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from mutagen.flac import FLAC, Picture
 from mutagen.id3 import ID3, ID3NoHeaderError, TXXX, TIT2, TPE1, TALB, TPE2, TRCK, TPOS, TCON, TYER, TDAT, TLEN, TBPM, \
-    TPUB, TSRC, USLT, APIC, IPLS, TCOM, TCOP, TCMP
+    TPUB, TSRC, USLT, SYLT, APIC, IPLS, TCOM, TCOP, TCMP
 
 # Adds tags to a MP3 file
 def tagID3(stream, track, save):
@@ -62,6 +62,8 @@ def tagID3(stream, track, save):
         tag.add(TXXX(desc="REPLAYGAIN_TRACK_GAIN", text=track.replayGain))
     if track.lyrics['unsync'] and save['lyrics']:
         tag.add(USLT(text=track.lyrics['unsync']))
+    if track.lyrics['syncID3'] and save['syncedLyrics']:
+        tag.add(SYLT(3, format=2, type=1, text=track.lyrics['syncID3']))
 
     involved_people = []
     for role in track.contributors:

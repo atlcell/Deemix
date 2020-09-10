@@ -84,6 +84,7 @@ class Settings:
             "replayGain": False,
             "label": True,
             "lyrics": False,
+            "syncedLyrics": False,
             "copyright": False,
             "composer": False,
             "involvedPeople": False,
