@@ -10,7 +10,7 @@ from os import makedirs, remove, system as execute
 from tempfile import gettempdir
 from time import sleep
 
-from deemix.app.queueitem import QIConvertable, QISingle, QICollection
+from deemix.app.queueitem import QISingle, QICollection
 from deemix.app.track import Track
 from deemix.utils.misc import changeCase
 from deemix.utils.pathtemplates import generateFilename, generateFilepath, settingsRegexAlbum, settingsRegexArtist, settingsRegexPlaylistFile
@@ -91,12 +91,9 @@ def formatDate(date, template):
     return template
 
 class DownloadJob:
-    def __init__(self, dz, sp, queueItem, interface=None):
+    def __init__(self, dz, queueItem, interface=None):
         self.dz = dz
-        self.sp = sp
         self.interface = interface
-        if isinstance(queueItem, QIConvertable) and queueItem.extra:
-            self.sp.convert_spotify_playlist(self.dz, queueItem, interface=self.interface)
         self.queueItem = queueItem
         self.settings = queueItem.settings
         self.bitrate = queueItem.bitrate

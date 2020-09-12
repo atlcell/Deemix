@@ -142,7 +142,7 @@ class Track:
 
     def parseData(self, dz, settings, trackAPI_gw, trackAPI, albumAPI_gw, albumAPI):
         self.discNumber = trackAPI_gw.get('DISK_NUMBER')
-        self.explicit = bool(int(trackAPI_gw.get('EXPLICIT_LYRICS') or "0"))
+        self.explicit = bool(int(trackAPI_gw.get('EXPLICIT_LYRICS', "0")))
         self.copyright = trackAPI_gw.get('COPYRIGHT')
         self.replayGain = ""
         if 'GAIN' in trackAPI_gw:
@@ -152,7 +152,7 @@ class Track:
         self.contributors = trackAPI_gw['SNG_CONTRIBUTORS']
 
         self.lyrics = {
-            'id': trackAPI_gw.get('LYRICS_ID'),
+            'id': trackAPI_gw.get('LYRICS_ID', "0"),
             'unsync': None,
             'sync': None,
             'syncID3': None
@@ -232,16 +232,16 @@ class Track:
             self.album['trackTotal'] = albumAPI['nb_tracks']
             self.album['recordType'] = albumAPI['record_type']
 
-            self.album['barcode'] = albumAPI.get('upc') or self.album['barcode']
-            self.album['label'] = albumAPI.get('label') or self.album['label']
-            self.album['explicit'] = bool(albumAPI.get('explicit_lyrics'))
+            self.album['barcode'] = albumAPI.get('upc', self.album['barcode'])
+            self.album['label'] = albumAPI.get('label', self.album['label'])
+            self.album['explicit'] = bool(albumAPI.get('explicit_lyrics', False))
             if 'release_date' in albumAPI:
                 self.album['date'] = {
                     'day': albumAPI["release_date"][8:10],
                     'month': albumAPI["release_date"][5:7],
                     'year': albumAPI["release_date"][0:4]
                 }
-            self.album['discTotal'] = albumAPI.get('nb_disk')
+            self.album['discTotal'] = albumAPI.get('nb_disk', "1")
             self.copyright = albumAPI.get('copyright')
 
             if not self.album['pic']:
@@ -267,7 +267,7 @@ class Track:
             self.album['trackTotal'] = albumAPI_gw['NUMBER_TRACK']
             self.album['discTotal'] = albumAPI_gw['NUMBER_DISK']
             self.album['recordType'] = "Album"
-            self.album['label'] = albumAPI_gw.get('LABEL_NAME') or self.album['label']
+            self.album['label'] = albumAPI_gw.get('LABEL_NAME', self.album['label'])
             if 'EXPLICIT_ALBUM_CONTENT' in albumAPI_gw and 'EXPLICIT_LYRICS_STATUS' in albumAPI_gw['EXPLICIT_ALBUM_CONTENT']:
                 self.album['explicit'] = albumAPI_gw['EXPLICIT_ALBUM_CONTENT']['EXPLICIT_LYRICS_STATUS'] in [1,4]
             if not self.album['pic']:

@@ -6,7 +6,7 @@ from os import mkdir
 import spotipy
 from spotipy.oauth2 import SpotifyClientCredentials
 from deemix.utils.localpaths import getConfigFolder
-from deemix.app.queueitem import QIConvertable, QICollection
+from deemix.app.queueitem import QIConvertable
 
 emptyPlaylist = {
     'collaborative': False,

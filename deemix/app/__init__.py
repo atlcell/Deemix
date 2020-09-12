@@ -9,4 +9,4 @@ class deemix:
         self.set = Settings(configFolder)
         self.dz = Deezer()
         self.sp = SpotifyHelper(configFolder)
-        self.qm = QueueManager()
+        self.qm = QueueManager(self.sp)

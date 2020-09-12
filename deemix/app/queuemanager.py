@@ -15,13 +15,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('deemix')
 
 class QueueManager:
-    def __init__(self):
+    def __init__(self, spotifyHelper=None):
         self.queue = []
         self.queueList = {}
         self.queueComplete = []
         self.currentItem = ""
+        self.sp = spotifyHelper
 
-    def generateQueueItem(self, dz, sp, url, settings, bitrate=None, albumAPI=None, interface=None):
+    def generateQueueItem(self, dz, url, settings, bitrate=None, albumAPI=None, interface=None):
         forcedBitrate = getBitrateInt(bitrate)
         bitrate = forcedBitrate if forcedBitrate else settings['maxBitrate']
         if 'deezer.page.link' in url:
@@ -270,15 +271,17 @@ class QueueManager:
                 collection,
             )
 
-        elif type == "spotifytrack":
-            if not sp.spotifyEnabled:
+        elif type == "spotifytrack" and self.sp:
+            if not self.sp.spotifyEnabled:
                 logger.warn("Spotify Features is not setted up correctly.")
                 return QueueError(url, "Spotify Features is not setted up correctly.", "spotifyDisabled")
 
             try:
-                track_id = sp.get_trackid_spotify(dz, id, settings['fallbackSearch'])
+                track_id = self.sp.get_trackid_spotify(dz, id, settings['fallbackSearch'])
             except SpotifyException as e:
                 return QueueError(url, "Wrong URL: "+e.msg[e.msg.find('\n')+2:])
+            except Exception as e:
+                return QueueError(url, "Something went wrong: "+str(e))
 
             if track_id != "0":
                 return self.generateQueueItem(dz, sp, f'https://www.deezer.com/track/{track_id}', settings, bitrate)
@@ -286,15 +289,17 @@ class QueueManager:
                 logger.warn("Track not found on deezer!")
                 return QueueError(url, "Track not found on deezer!", "trackNotOnDeezer")
 
-        elif type == "spotifyalbum":
-            if not sp.spotifyEnabled:
+        elif type == "spotifyalbum" and self.sp:
+            if not self.sp.spotifyEnabled:
                 logger.warn("Spotify Features is not setted up correctly.")
                 return QueueError(url, "Spotify Features is not setted up correctly.", "spotifyDisabled")
 
             try:
-                album_id = sp.get_albumid_spotify(dz, id)
+                album_id = self.sp.get_albumid_spotify(dz, id)
             except SpotifyException as e:
                 return QueueError(url, "Wrong URL: "+e.msg[e.msg.find('\n')+2:])
+            except Exception as e:
+                return QueueError(url, "Something went wrong: "+str(e))
 
             if album_id != "0":
                 return self.generateQueueItem(dz, sp, f'https://www.deezer.com/album/{album_id}', settings, bitrate)
@@ -302,21 +307,23 @@ class QueueManager:
                 logger.warn("Album not found on deezer!")
                 return QueueError(url, "Album not found on deezer!", "albumNotOnDeezer")
 
-        elif type == "spotifyplaylist":
-            if not sp.spotifyEnabled:
+        elif type == "spotifyplaylist" and self.sp:
+            if not self.sp.spotifyEnabled:
                 logger.warn("Spotify Features is not setted up correctly.")
                 return QueueError(url, "Spotify Features is not setted up correctly.", "spotifyDisabled")
 
             try:
-                return sp.generate_playlist_queueitem(dz, id, bitrate, settings)
+                return self.sp.generate_playlist_queueitem(dz, id, bitrate, settings)
             except SpotifyException as e:
                 return QueueError(url, "Wrong URL: "+e.msg[e.msg.find('\n')+2:])
+            except Exception as e:
+                return QueueError(url, "Something went wrong: "+str(e))
 
         else:
             logger.warn("URL not supported yet")
             return QueueError(url, "URL not supported yet", "unsupportedURL")
 
-    def addToQueue(self, dz, sp, url, settings, bitrate=None, interface=None):
+    def addToQueue(self, dz, url, settings, bitrate=None, interface=None):
         if not dz.logged_in:
             if interface:
                 interface.send("loginNeededToDownload")
@@ -327,7 +334,7 @@ class QueueManager:
             if link == "":
                 return False
             logger.info("Generating queue item for: "+link)
-            return self.generateQueueItem(dz, sp, link, settings, bitrate, interface=interface)
+            return self.generateQueueItem(dz, link, settings, bitrate, interface=interface)
 
         if type(url) is list:
             queueItem = []
@@ -381,10 +388,10 @@ class QueueManager:
             self.queue.append(queueItem.uuid)
             self.queueList[queueItem.uuid] = queueItem
 
-        self.nextItem(dz, sp, interface)
+        self.nextItem(dz, interface)
         return True
 
-    def nextItem(self, dz, sp, interface=None):
+    def nextItem(self, dz, interface=None):
         if self.currentItem != "":
             return None
         else:
@@ -392,20 +399,24 @@ class QueueManager:
                 self.currentItem = self.queue.pop(0)
             else:
                 return None
+            if isinstance(self.queueList[self.currentItem], QIConvertable) and self.queueList[self.currentItem].extra:
+                logger.info(f"[{self.currentItem}] Converting tracks to deezer.")
+                self.sp.convert_spotify_playlist(dz, self.queueList[self.currentItem], interface=interface)
+                logger.info(f"[{self.currentItem}] Tracks converted.")
             if interface:
                 interface.send("startDownload", self.currentItem)
             logger.info(f"[{self.currentItem}] Started downloading.")
-            DownloadJob(dz, sp, self.queueList[self.currentItem], interface).start()
-            self.afterDownload(dz, sp, interface)
+            DownloadJob(dz, self.queueList[self.currentItem], interface).start()
+            self.afterDownload(dz, interface)
 
-    def afterDownload(self, dz, sp, interface):
+    def afterDownload(self, dz, interface):
         if self.queueList[self.currentItem].cancel:
             del self.queueList[self.currentItem]
         else:
             self.queueComplete.append(self.currentItem)
         logger.info(f"[{self.currentItem}] Finished downloading.")
         self.currentItem = ""
-        self.nextItem(dz, sp, interface)
+        self.nextItem(dz, interface)
 
 
     def getQueue(self):
