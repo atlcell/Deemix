@@ -88,7 +88,7 @@ class QueueManager:
             albumAPI['nb_disk'] = albumAPI_gw['NUMBER_DISK']
             albumAPI['copyright'] = albumAPI_gw['COPYRIGHT']
             if albumAPI['nb_tracks'] == 1:
-                return self.generateQueueItem(dz, sp, f"https://www.deezer.com/track/{albumAPI['tracks']['data'][0]['id']}",
+                return self.generateQueueItem(dz, f"https://www.deezer.com/track/{albumAPI['tracks']['data'][0]['id']}",
                                          settings, bitrate, albumAPI)
             tracksArray = dz.get_album_tracks_gw(id)
             if albumAPI['nb_tracks'] == 255:
@@ -178,7 +178,7 @@ class QueueManager:
             artistAPITracks = dz.get_artist_albums(id)
             albumList = []
             for album in artistAPITracks['data']:
-                albumList.append(self.generateQueueItem(dz, sp, album['link'], settings, bitrate))
+                albumList.append(self.generateQueueItem(dz, album['link'], settings, bitrate))
 
             if interface:
                 interface.send("finishAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
@@ -200,7 +200,7 @@ class QueueManager:
             for type in artistDiscographyAPI:
                 if type != 'all':
                     for album in artistDiscographyAPI[type]:
-                        albumList.append(self.generateQueueItem(dz, sp, album['link'], settings, bitrate))
+                        albumList.append(self.generateQueueItem(dz, album['link'], settings, bitrate))
 
             if interface:
                 interface.send("finishAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
@@ -284,7 +284,7 @@ class QueueManager:
                 return QueueError(url, "Something went wrong: "+str(e))
 
             if track_id != "0":
-                return self.generateQueueItem(dz, sp, f'https://www.deezer.com/track/{track_id}', settings, bitrate)
+                return self.generateQueueItem(dz, f'https://www.deezer.com/track/{track_id}', settings, bitrate)
             else:
                 logger.warn("Track not found on deezer!")
                 return QueueError(url, "Track not found on deezer!", "trackNotOnDeezer")
@@ -302,7 +302,7 @@ class QueueManager:
                 return QueueError(url, "Something went wrong: "+str(e))
 
             if album_id != "0":
-                return self.generateQueueItem(dz, sp, f'https://www.deezer.com/album/{album_id}', settings, bitrate)
+                return self.generateQueueItem(dz, f'https://www.deezer.com/album/{album_id}', settings, bitrate)
             else:
                 logger.warn("Album not found on deezer!")
                 return QueueError(url, "Album not found on deezer!", "albumNotOnDeezer")
