@@ -517,6 +517,7 @@ class DownloadJob:
 
             logger.info(f"[{track.mainArtist['name']} - {track.title}] Track download completed\n{writepath}")
             self.queueItem.downloaded += 1
+            self.queueItem.files.append(writepath)
             if self.interface:
                 self.interface.send("updateQueue", {'uuid': self.queueItem.uuid, 'downloaded': True, 'downloadPath': writepath})
             return result

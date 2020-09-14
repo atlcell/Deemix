@@ -10,6 +10,7 @@ class QueueItem:
             self.type = queueItemDict['type']
             self.id = queueItemDict['id']
             self.bitrate = queueItemDict['bitrate']
+            self.files = queueItemDict['files']
             self.downloaded = queueItemDict['downloaded']
             self.failed = queueItemDict['failed']
             self.errors = queueItemDict['errors']
@@ -23,6 +24,7 @@ class QueueItem:
             self.type = type
             self.id = id
             self.bitrate = bitrate
+            self.files = []
             self.settings = settings
             self.downloaded = 0
             self.failed = 0
@@ -37,6 +39,7 @@ class QueueItem:
             'artist': self.artist,
             'cover': self.cover,
             'size': self.size,
+            'files': self.files,
             'downloaded': self.downloaded,
             'failed': self.failed,
             'errors': self.errors,
