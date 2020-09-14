@@ -322,7 +322,7 @@ class QueueManager:
             logger.warn("URL not supported yet")
             return QueueError(url, "URL not supported yet", "unsupportedURL")
 
-    def addToQueue(self, dz, url, settings, bitrate=None, interface=None):
+    def addToQueue(self, dz, url, settings, bitrate=None, interface=None, ack=None):
         if not dz.logged_in:
             if interface:
                 interface.send("loginNeededToDownload")
@@ -333,7 +333,9 @@ class QueueManager:
             if link == "":
                 return False
             logger.info("Generating queue item for: "+link)
-            return self.generateQueueItem(dz, link, settings, bitrate, interface=interface)
+            item = self.generateQueueItem(dz, link, settings, bitrate, interface=interface)
+            item.ack = ack;
+            return item
 
         if type(url) is list:
             queueItem = []
