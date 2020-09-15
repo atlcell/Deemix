@@ -37,9 +37,9 @@ class QueueManager:
         elif type == "track":
             if id.startswith("isrc"):
                 try:
-                    isrcTest = dz.get_track(id)
-                    if 'id' in isrcTest and 'title' in isrcTest:
-                        id = isrcTest['id']
+                    trackAPI = dz.get_track(id)
+                    if 'id' in trackAPI and 'title' in trackAPI:
+                        id = trackAPI['id']
                     else:
                         return QueueError(url, "Track ISRC is not available on deezer", "ISRCnotOnDeezer")
                 except APIError as e:
