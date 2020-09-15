@@ -32,6 +32,7 @@ class QueueItem:
             self.progress = 0
         self.uuid = f"{self.type}_{self.id}_{self.bitrate}"
         self.cancel = False
+        self.ack = None
 
     def toDict(self):
         return {
@@ -47,7 +48,8 @@ class QueueItem:
             'type': self.type,
             'id': self.id,
             'bitrate': self.bitrate,
-            'uuid': self.uuid
+            'uuid': self.uuid,
+            'ack': self.ack
         }
 
     def getResettedItem(self):
