@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
+import eventlet
 import os.path
 import re
 
-from requests import get
-from requests import exceptions as request_exception
+requests = eventlet.import_patched('requests')
+get = requests.get
+request_exception = requests.exceptions
 
-from concurrent.futures import ThreadPoolExecutor
 from os import makedirs, remove, system as execute
 from tempfile import gettempdir
-from time import sleep
 
 from deemix.app.queueitem import QISingle, QICollection
 from deemix.app.track import Track
@@ -64,12 +64,12 @@ def downloadImage(url, path, overwrite="n"):
                 pictureSize = int(pictureUrl[:pictureUrl.find("x")])
                 if pictureSize > 1200:
                     logger.warn("Couldn't download "+str(pictureSize)+"x"+str(pictureSize)+" image, falling back to 1200x1200")
-                    sleep(1)
+                    eventlet.sleep(1)
                     return  downloadImage(urlBase+pictureUrl.replace(str(pictureSize)+"x"+str(pictureSize), '1200x1200'), path, overwrite)
             logger.error("Image not found: "+url)
         except (request_exception.ConnectionError, request_exception.ChunkedEncodingError) as e:
             logger.error("Couldn't download Image, retrying in 5 seconds...: "+url+"\n")
-            sleep(5)
+            eventlet.sleep(5)
             return downloadImage(url, path, overwrite)
         except Exception as e:
             logger.exception(f"Error while downloading an image, you should report this to the developers: {str(e)}")
@@ -111,9 +111,9 @@ class DownloadJob:
                     self.singleAfterDownload(result)
             elif isinstance(self.queueItem, QICollection):
                 tracks = [None] * len(self.queueItem.collection)
-                with ThreadPoolExecutor(self.settings['queueConcurrency']) as executor:
-                    for pos, track in enumerate(self.queueItem.collection, start=0):
-                        tracks[pos] = executor.submit(self.downloadWrapper, track)
+                pool = eventlet.GreenPool(size=self.settings['queueConcurrency'])
+                for pos, track in enumerate(self.queueItem.collection, start=0):
+                    tracks[pos] = pool.spawn(self.downloadWrapper, track)
                 self.collectionAfterDownload(tracks)
         if self.interface:
             if self.queueItem.cancel:
@@ -155,7 +155,7 @@ class DownloadJob:
         searched = ""
 
         for index in range(len(tracks)):
-            result = tracks[index].result()
+            result = tracks[index].wait()
             # Check if queue is cancelled
             if not result:
                 return None
@@ -476,7 +476,7 @@ class DownloadJob:
                     except (request_exception.ConnectionError, request_exception.ChunkedEncodingError) as e:
                         remove(writepath)
                         logger.warn(f"[{track.mainArtist['name']} - {track.title}] Error while downloading the track, trying again in 5s...")
-                        sleep(5)
+                        eventlet.sleep(5)
                         return downloadMusic(track, trackAPI_gw)
                     except Exception as e:
                         remove(writepath)
@@ -575,9 +575,10 @@ class DownloadJob:
         try:
             request = get(track.downloadUrl, headers=self.dz.http_headers, stream=True, timeout=30)
         except request_exception.ConnectionError:
-            sleep(2)
+            eventlet.sleep(2)
             return self.streamTrack(stream, track)
         request.raise_for_status()
+        eventlet.sleep(0)
         blowfish_key = str.encode(self.dz._get_blowfish_key(str(track.id)))
         complete = int(request.headers["Content-Length"])
         if complete == 0:
@@ -599,6 +600,7 @@ class DownloadJob:
                 self.downloadPercentage += chunkProgres
             self.updatePercentage()
             i += 1
+            eventlet.sleep(0)
 
     def updatePercentage(self):
         if round(self.downloadPercentage) != self.lastPercentage and round(self.downloadPercentage) % 2 == 0:
