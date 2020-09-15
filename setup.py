@@ -7,7 +7,7 @@ README = (HERE / "README.md").read_text()
 
 setup(
     name="deemix",
-    version="1.3.4",
+    version="1.3.5",
     description="A barebone deezer downloader library",
     long_description=README,
     long_description_content_type="text/markdown",
@@ -25,7 +25,7 @@ setup(
     python_requires='>=3.6',
     packages=find_packages(exclude=("tests",)),
     include_package_data=True,
-    install_requires=["click", "pycryptodomex", "mutagen", "requests", "spotipy>=2.11.0"],
+    install_requires=["click", "pycryptodomex", "mutagen", "requests", "spotipy>=2.11.0", "eventlet"],
     entry_points={
         "console_scripts": [
             "deemix=deemix.__main__:download",
