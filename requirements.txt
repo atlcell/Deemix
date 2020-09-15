@@ -3,3 +3,4 @@ pycryptodomex
 mutagen
 requests
 spotipy>=2.11.0
+eventlet

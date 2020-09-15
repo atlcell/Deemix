@@ -8,7 +8,6 @@ import logging
 import os.path as path
 import json
 from os import remove
-from time import sleep
 from urllib.request import urlopen
 
 logging.basicConfig(level=logging.INFO)

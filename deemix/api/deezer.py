@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
+import eventlet
 import binascii
 import time
 
-import requests
+requests = eventlet.import_patched('requests')
 from Cryptodome.Cipher import Blowfish, AES
 from Cryptodome.Hash import MD5
 from Cryptodome.Util.Padding import pad
@@ -52,7 +53,7 @@ class Deezer:
                 headers=self.http_headers
             )
         except:
-            time.sleep(2)
+            eventlet.sleep(2)
             return self.get_track_filesizes(sng_id)
         response = site.json()["results"]
         filesizes = {}
@@ -80,7 +81,7 @@ class Deezer:
             )
             result_json = result.json()
         except:
-            time.sleep(2)
+            eventlet.sleep(2)
             return self.gw_api_call(method, args)
         if len(result_json['error']):
             raise APIError(json.dumps(result_json['error']))
@@ -98,11 +99,11 @@ class Deezer:
             )
             result_json = result.json()
         except:
-            time.sleep(2)
+            eventlet.sleep(2)
             return self.api_call(method, args)
         if 'error' in result_json.keys():
             if 'code' in result_json['error'] and result_json['error']['code'] == 4:
-                time.sleep(5)
+                eventlet.sleep(5)
                 return self.api_call(method, args)
             raise APIError(json.dumps(result_json['error']))
         return result_json
@@ -583,9 +584,10 @@ class Deezer:
         try:
             request = requests.get(url, headers=self.http_headers, stream=True, timeout=30)
         except:
-            time.sleep(2)
+            eventlet.sleep(2)
             return self.stream_track(track_id, url, stream)
         request.raise_for_status()
+        eventlet.sleep(0)
         blowfish_key = str.encode(self._get_blowfish_key(str(track_id)))
         i = 0
         for chunk in request.iter_content(2048):
@@ -594,6 +596,7 @@ class Deezer:
                     chunk)
             stream.write(chunk)
             i += 1
+            eventlet.sleep(0)
 
     def _md5(self, data):
         h = MD5.new()
