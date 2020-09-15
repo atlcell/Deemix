@@ -21,7 +21,7 @@ class QueueManager:
         self.currentItem = ""
         self.sp = spotifyHelper
 
-    def generateQueueItem(self, dz, url, settings, bitrate=None, albumAPI=None, interface=None):
+    def generateQueueItem(self, dz, url, settings, bitrate=None, albumAPI=None, trackAPI=None, interface=None):
         forcedBitrate = getBitrateInt(bitrate)
         bitrate = forcedBitrate if forcedBitrate else settings['maxBitrate']
         if 'deezer.page.link' in url:
@@ -37,16 +37,16 @@ class QueueManager:
         elif type == "track":
             if id.startswith("isrc"):
                 try:
-                    trackAPI = dz.get_track(id)
-                    if 'id' in trackAPI and 'title' in trackAPI:
-                        id = trackAPI['id']
+                    isrcTest = dz.get_track(id)
+                    if 'id' in isrcTest and 'title' in isrcTest:
+                        id = isrcTest['id']
                     else:
                         return QueueError(url, "Track ISRC is not available on deezer", "ISRCnotOnDeezer")
                 except APIError as e:
                     e = json.loads(str(e))
                     return QueueError(url, f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
             try:
-                trackAPI = dz.get_track_gw(id)
+                trackAPI_gw = dz.get_track_gw(id)
             except APIError as e:
                 e = json.loads(str(e))
                 message = "Wrong URL"
@@ -54,25 +54,27 @@ class QueueManager:
                     message += f": {e['DATA_ERROR']}"
                 return QueueError(url, message)
             if albumAPI:
-                trackAPI['_EXTRA_ALBUM'] = albumAPI
+                trackAPI_gw['_EXTRA_ALBUM'] = albumAPI
+            if trackAPI:
+                trackAPI_gw['_EXTRA_TRACK'] = trackAPI
             if settings['createSingleFolder']:
-                trackAPI['FILENAME_TEMPLATE'] = settings['albumTracknameTemplate']
+                trackAPI_gw['FILENAME_TEMPLATE'] = settings['albumTracknameTemplate']
             else:
-                trackAPI['FILENAME_TEMPLATE'] = settings['tracknameTemplate']
-            trackAPI['SINGLE_TRACK'] = True
+                trackAPI_gw['FILENAME_TEMPLATE'] = settings['tracknameTemplate']
+            trackAPI_gw['SINGLE_TRACK'] = True
 
-            title = trackAPI['SNG_TITLE']
-            if 'VERSION' in trackAPI and trackAPI['VERSION']:
-                title += " " + trackAPI['VERSION']
+            title = trackAPI_gw['SNG_TITLE']
+            if 'VERSION' in trackAPI_gw and trackAPI_gw['VERSION']:
+                title += " " + trackAPI_gw['VERSION']
             return QISingle(
                 id,
                 bitrate,
                 title,
-                trackAPI['ART_NAME'],
-                f"https://e-cdns-images.dzcdn.net/images/cover/{trackAPI['ALB_PICTURE']}/75x75-000000-80-0-0.jpg",
+                trackAPI_gw['ART_NAME'],
+                f"https://e-cdns-images.dzcdn.net/images/cover/{trackAPI_gw['ALB_PICTURE']}/75x75-000000-80-0-0.jpg",
                 'track',
                 settings,
-                trackAPI,
+                trackAPI_gw,
             )
 
         elif type == "album":
@@ -88,7 +90,7 @@ class QueueManager:
             albumAPI['copyright'] = albumAPI_gw['COPYRIGHT']
             if albumAPI['nb_tracks'] == 1:
                 return self.generateQueueItem(dz, f"https://www.deezer.com/track/{albumAPI['tracks']['data'][0]['id']}",
-                                         settings, bitrate, albumAPI)
+                                         settings, bitrate, albumAPI=albumAPI, interface=interface)
             tracksArray = dz.get_album_tracks_gw(id)
             if albumAPI['nb_tracks'] == 255:
                 albumAPI['nb_tracks'] = len(tracksArray)
@@ -177,7 +179,7 @@ class QueueManager:
             artistAPITracks = dz.get_artist_albums(id)
             albumList = []
             for album in artistAPITracks['data']:
-                albumList.append(self.generateQueueItem(dz, album['link'], settings, bitrate))
+                albumList.append(self.generateQueueItem(dz, album['link'], settings, bitrate, interface=interface))
 
             if interface:
                 interface.send("finishAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
@@ -199,7 +201,7 @@ class QueueManager:
             for type in artistDiscographyAPI:
                 if type != 'all':
                     for album in artistDiscographyAPI[type]:
-                        albumList.append(self.generateQueueItem(dz, album['link'], settings, bitrate))
+                        albumList.append(self.generateQueueItem(dz, album['link'], settings, bitrate, interface=interface))
 
             if interface:
                 interface.send("finishAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
@@ -276,14 +278,14 @@ class QueueManager:
                 return QueueError(url, "Spotify Features is not setted up correctly.", "spotifyDisabled")
 
             try:
-                track_id = self.sp.get_trackid_spotify(dz, id, settings['fallbackSearch'])
+                (track_id, trackAPI, _) = self.sp.get_trackid_spotify(dz, id, settings['fallbackSearch'])
             except SpotifyException as e:
                 return QueueError(url, "Wrong URL: "+e.msg[e.msg.find('\n')+2:])
             except Exception as e:
                 return QueueError(url, "Something went wrong: "+str(e))
 
             if track_id != "0":
-                return self.generateQueueItem(dz, f'https://www.deezer.com/track/{track_id}', settings, bitrate)
+                return self.generateQueueItem(dz, f'https://www.deezer.com/track/{track_id}', settings, bitrate, trackAPI=trackAPI, interface=interface)
             else:
                 logger.warn("Track not found on deezer!")
                 return QueueError(url, "Track not found on deezer!", "trackNotOnDeezer")
@@ -301,7 +303,7 @@ class QueueManager:
                 return QueueError(url, "Something went wrong: "+str(e))
 
             if album_id != "0":
-                return self.generateQueueItem(dz, f'https://www.deezer.com/album/{album_id}', settings, bitrate)
+                return self.generateQueueItem(dz, f'https://www.deezer.com/album/{album_id}', settings, bitrate, interface=interface)
             else:
                 logger.warn("Album not found on deezer!")
                 return QueueError(url, "Album not found on deezer!", "albumNotOnDeezer")

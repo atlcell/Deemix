@@ -132,27 +132,31 @@ class SpotifyHelper:
             else:
                 cache = {'tracks': {}, 'albums': {}}
             if str(track_id) in cache['tracks']:
-                return cache['tracks'][str(track_id)]
+                dz_track = dz.get_track_by_ISRC(cache['tracks'][str(track_id)]['isrc'])
+                return (cache['tracks'][str(track_id)]['id'], dz_track, cache['tracks'][str(track_id)]['isrc'])
             singleTrack = True
             spotify_track = self.sp.track(track_id)
         else:
             spotify_track = spotifyTrack
-        dz_track = "0"
+        dz_id = "0"
+        dz_track = None
+        isrc = None
         if 'external_ids' in spotify_track and 'isrc' in spotify_track['external_ids']:
             try:
                 dz_track = dz.get_track_by_ISRC(spotify_track['external_ids']['isrc'])
-                dz_track = dz_track['id'] if 'id' in dz_track and 'title' in dz_track else "0"
+                dz_id = dz_track['id'] if 'id' in dz_track and 'title' in dz_track else "0"
+                isrc = spotify_track['external_ids']['isrc']
             except:
-                dz_track = dz.get_track_from_metadata(spotify_track['artists'][0]['name'], spotify_track['name'],
+                dz_id = dz.get_track_from_metadata(spotify_track['artists'][0]['name'], spotify_track['name'],
                                                       spotify_track['album']['name']) if fallbackSearch else "0"
         elif fallbackSearch:
-            dz_track = dz.get_track_from_metadata(spotify_track['artists'][0]['name'], spotify_track['name'],
+            dz_id = dz.get_track_from_metadata(spotify_track['artists'][0]['name'], spotify_track['name'],
                                                   spotify_track['album']['name'])
         if singleTrack:
-            cache['tracks'][str(track_id)] = dz_track
+            cache['tracks'][str(track_id)] = {'id': dz_id, 'isrc': isrc}
             with open(path.join(self.configFolder, 'spotifyCache.json'), 'w') as spotifyCache:
                 json.dump(cache, spotifyCache)
-        return dz_track
+        return (dz_id, dz_track, isrc)
 
     # Returns deezer album_id from spotify album_id
     def get_albumid_spotify(self, dz, album_id):
@@ -164,20 +168,22 @@ class SpotifyHelper:
         else:
             cache = {'tracks': {}, 'albums': {}}
         if str(album_id) in cache['albums']:
-            return cache['albums'][str(album_id)]
+            return cache['albums'][str(album_id)]['id']
         spotify_album = self.sp.album(album_id)
         dz_album = "0"
+        upc = None
         if 'external_ids' in spotify_album and 'upc' in spotify_album['external_ids']:
             try:
                 dz_album = dz.get_album_by_UPC(spotify_album['external_ids']['upc'])
                 dz_album = dz_album['id'] if 'id' in dz_album else "0"
+                upc = spotify_album['external_ids']['upc']
             except:
                 try:
                     dz_album = dz.get_album_by_UPC(int(spotify_album['external_ids']['upc']))
                     dz_album = dz_album['id'] if 'id' in dz_album else "0"
                 except:
                     dz_album = "0"
-        cache['albums'][str(album_id)] = dz_album
+        cache['albums'][str(album_id)] = {'id': dz_album, 'upc': upc}
         with open(path.join(self.configFolder, 'spotifyCache.json'), 'w') as spotifyCache:
             json.dump(cache, spotifyCache)
         return dz_album
@@ -240,10 +246,14 @@ class SpotifyHelper:
             if queueItem.cancel:
                 return
             if str(track['id']) in cache['tracks']:
-                trackID = cache['tracks'][str(track['id'])]
+                trackID = cache['tracks'][str(track['id'])]['id']
+                trackAPI = dz.get_track_by_ISRC(cache['tracks'][str(track['id'])]['isrc'])
             else:
-                trackID = self.get_trackid_spotify(dz, "0", queueItem.settings['fallbackSearch'], track)
-                cache['tracks'][str(track['id'])] = trackID
+                (trackID, trackAPI, isrc)  = self.get_trackid_spotify(dz, "0", queueItem.settings['fallbackSearch'], track)
+                cache['tracks'][str(track['id'])] = {
+                    'id': trackID,
+                    'isrc': isrc
+                }
             if str(trackID) == "0":
                 deezerTrack = {
                     'SNG_ID': "0",
@@ -260,6 +270,8 @@ class SpotifyHelper:
             else:
                 deezerTrack = dz.get_track_gw(trackID)
             deezerTrack['_EXTRA_PLAYLIST'] = queueItem.extra['playlistAPI']
+            if trackAPI:
+                deezerTrack['_EXTRA_TRACK'] = trackAPI
             deezerTrack['POSITION'] = pos
             deezerTrack['SIZE'] = queueItem.size
             deezerTrack['FILENAME_TEMPLATE'] = queueItem.settings['playlistTracknameTemplate']
