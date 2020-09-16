@@ -8,7 +8,8 @@ import logging
 import os.path as path
 import json
 from os import remove
-from urllib.request import urlopen
+import eventlet
+urlopen = eventlet.import_patched('urllib.request').urlopen
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('deemix')
