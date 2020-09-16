@@ -460,10 +460,10 @@ class DownloadJob:
                         with open(writepath, 'wb') as stream:
                             self.streamTrack(stream, track)
                     except DownloadCancelled:
-                        remove(writepath)
+                        if os.path.isfile(writepath): remove(writepath)
                         raise DownloadCancelled
                     except (request_exception.HTTPError, DownloadEmpty):
-                        remove(writepath)
+                        if os.path.isfile(writepath): remove(writepath)
                         if track.fallbackId != "0":
                             logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not available, using fallback id")
                             newTrack = self.dz.get_track_gw(track.fallbackId)
@@ -482,7 +482,7 @@ class DownloadJob:
                         else:
                             raise DownloadFailed("notAvailable")
                     except (request_exception.ConnectionError, request_exception.ChunkedEncodingError) as e:
-                        remove(writepath)
+                        if os.path.isfile(writepath): remove(writepath)
                         logger.warn(f"[{track.mainArtist['name']} - {track.title}] Error while downloading the track, trying again in 5s...")
                         eventlet.sleep(5)
                         return downloadMusic(track, trackAPI_gw)
@@ -490,11 +490,11 @@ class DownloadJob:
                         if e.errno == errno.ENOSPC:
                             raise DownloadFailed("noSpaceLeft")
                         else:
-                            remove(writepath)
+                            if os.path.isfile(writepath): remove(writepath)
                             logger.exception(f"[{track.mainArtist['name']} - {track.title}] Error while downloading the track, you should report this to the developers: {str(e)}")
                             raise e
                     except Exception as e:
-                        remove(writepath)
+                        if os.path.isfile(writepath): remove(writepath)
                         logger.exception(f"[{track.mainArtist['name']} - {track.title}] Error while downloading the track, you should report this to the developers: {str(e)}")
                         raise e
                     return True
@@ -521,7 +521,7 @@ class DownloadJob:
                     try:
                         tagFLAC(writepath, track, self.settings['tags'])
                     except FLACNoHeaderError:
-                        remove(writepath)
+                        if os.path.isfile(writepath): remove(writepath)
                         logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not available in FLAC, falling back if necessary")
                         self.removeTrackPercentage()
                         track.filesizes['FILESIZE_FLAC'] = "0"
