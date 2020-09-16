@@ -31,6 +31,9 @@ class Deezer:
         self.session = requests.Session()
         self.logged_in = False
 
+        self.session.mount('http://', requests.adapters.HTTPAdapter(pool_maxsize=100))
+        self.session.mount('https://', requests.adapters.HTTPAdapter(pool_maxsize=100))
+
     def get_token(self):
         token_data = self.gw_api_call('deezer.getUserData')
         return token_data["results"]["checkForm"]
@@ -587,7 +590,6 @@ class Deezer:
             eventlet.sleep(2)
             return self.stream_track(track_id, url, stream)
         request.raise_for_status()
-        eventlet.sleep(0)
         blowfish_key = str.encode(self._get_blowfish_key(str(track_id)))
         i = 0
         for chunk in request.iter_content(2048):
@@ -596,7 +598,6 @@ class Deezer:
                     chunk)
             stream.write(chunk)
             i += 1
-            eventlet.sleep(0)
 
     def _md5(self, data):
         h = MD5.new()
