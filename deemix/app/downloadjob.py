@@ -2,6 +2,7 @@
 import eventlet
 import os.path
 import re
+import errno
 
 requests = eventlet.import_patched('requests')
 get = requests.get
@@ -47,7 +48,8 @@ errorMessages = {
     'wrongBitrateNoAlternative': "Track not found at desired bitrate and no alternative found!",
     'no360RA': "Track is not available in Reality Audio 360.",
     'notAvailable': "Track not available on deezer's servers!",
-    'notAvailableNoAlternative': "Track not available on deezer's servers and no alternative found!"
+    'notAvailableNoAlternative': "Track not available on deezer's servers and no alternative found!",
+    'noSpaceLeft': "No space left on target drive, clean up some space for the tracks"
 }
 def downloadImage(url, path, overwrite="n"):
     if not os.path.isfile(path) or overwrite in ['y', 't', 'b']:
@@ -71,6 +73,11 @@ def downloadImage(url, path, overwrite="n"):
             logger.error("Couldn't download Image, retrying in 5 seconds...: "+url+"\n")
             eventlet.sleep(5)
             return downloadImage(url, path, overwrite)
+        except OSError as e:
+            if e.errno == errno.ENOSPC:
+                raise DownloadFailed("noSpaceLeft")
+            else:
+                logger.exception(f"Error while downloading an image, you should report this to the developers: {str(e)}")
         except Exception as e:
             logger.exception(f"Error while downloading an image, you should report this to the developers: {str(e)}")
         if os.path.isfile(path): remove(path)
@@ -478,6 +485,13 @@ class DownloadJob:
                         logger.warn(f"[{track.mainArtist['name']} - {track.title}] Error while downloading the track, trying again in 5s...")
                         eventlet.sleep(5)
                         return downloadMusic(track, trackAPI_gw)
+                    except OSError as e:
+                        if e.errno == errno.ENOSPC:
+                            raise DownloadFailed("noSpaceLeft")
+                        else:
+                            remove(writepath)
+                            logger.exception(f"[{track.mainArtist['name']} - {track.title}] Error while downloading the track, you should report this to the developers: {str(e)}")
+                            raise e
                     except Exception as e:
                         remove(writepath)
                         logger.exception(f"[{track.mainArtist['name']} - {track.title}] Error while downloading the track, you should report this to the developers: {str(e)}")
