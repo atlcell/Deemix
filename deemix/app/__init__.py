@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import eventlet
+eventlet.import_patched('requests.__init__')
 from deemix.api.deezer import Deezer
 from deemix.app.settings import Settings
 from deemix.app.queuemanager import QueueManager
