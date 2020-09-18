@@ -135,7 +135,8 @@ class SpotifyHelper:
             else:
                 cache = {'tracks': {}, 'albums': {}}
             if str(track_id) in cache['tracks']:
-                dz_track = dz.get_track_by_ISRC(cache['tracks'][str(track_id)]['isrc'])
+                if cache['tracks'][str(track_id)]['isrc']:
+                    dz_track = dz.get_track_by_ISRC(cache['tracks'][str(track_id)]['isrc'])
                 return (cache['tracks'][str(track_id)]['id'], dz_track, cache['tracks'][str(track_id)]['isrc'])
             singleTrack = True
             spotify_track = self.sp.track(track_id)
@@ -250,7 +251,9 @@ class SpotifyHelper:
                 return
             if str(track['id']) in cache['tracks']:
                 trackID = cache['tracks'][str(track['id'])]['id']
-                trackAPI = dz.get_track_by_ISRC(cache['tracks'][str(track['id'])]['isrc'])
+                trackAPI = None
+                if cache['tracks'][str(track['id'])]['isrc']:
+                    trackAPI = dz.get_track_by_ISRC(cache['tracks'][str(track['id'])]['isrc'])
             else:
                 (trackID, trackAPI, isrc)  = self.get_trackid_spotify(dz, "0", queueItem.settings['fallbackSearch'], track)
                 cache['tracks'][str(track['id'])] = {
