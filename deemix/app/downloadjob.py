@@ -122,6 +122,7 @@ class DownloadJob:
                 pool = eventlet.GreenPool(size=self.settings['queueConcurrency'])
                 for pos, track in enumerate(self.queueItem.collection, start=0):
                     tracks[pos] = pool.spawn(self.downloadWrapper, track)
+                pool.waitall()
                 self.collectionAfterDownload(tracks)
         if self.interface:
             if self.queueItem.cancel:
@@ -425,117 +426,116 @@ class DownloadJob:
         if extrasPath:
             if not self.extrasPath:
                 self.extrasPath = extrasPath
-            result['extrasPath'] = extrasPath
 
             # Data for m3u file
             result['filename'] = writepath[len(extrasPath):]
 
-            # Save playlist cover
-            if track.playlist:
-                if not len(self.playlistURLs):
-                    if track.playlist['pic']:
-                        for format in self.settings['localArtworkFormat'].split(","):
-                            if format in ["png","jpg"]:
-                                url = "{}/{}x{}-{}".format(
-                                    track.playlist['pic'],
-                                    self.settings['localArtworkSize'], self.settings['localArtworkSize'],
-                                    'none-100-0-0.png' if format == "png" else f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg'
-                                )
-                                self.playlistURLs.append({'url': url, 'ext': format})
-                    else:
-                        self.playlistURLs.append({'url': track.playlist['picUrl'], 'ext': 'jpg'})
-                if not self.playlistPath:
-                    track.playlist['id'] = "pl_" + str(trackAPI_gw['_EXTRA_PLAYLIST']['id'])
-                    track.playlist['genre'] = ["Compilation", ]
-                    track.playlist['bitrate'] = selectedFormat
-                    track.playlist['dateString'] = formatDate(track.playlist['date'], self.settings['dateFormat'])
-                    self.playlistPath = f"{settingsRegexAlbum(self.settings['coverImageTemplate'], track.playlist, self.settings, trackAPI_gw['_EXTRA_PLAYLIST'])}"
+        # Save playlist cover
+        if track.playlist:
+            if not len(self.playlistURLs):
+                if track.playlist['pic']:
+                    for format in self.settings['localArtworkFormat'].split(","):
+                        if format in ["png","jpg"]:
+                            url = "{}/{}x{}-{}".format(
+                                track.playlist['pic'],
+                                self.settings['localArtworkSize'], self.settings['localArtworkSize'],
+                                'none-100-0-0.png' if format == "png" else f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg'
+                            )
+                            self.playlistURLs.append({'url': url, 'ext': format})
+                else:
+                    self.playlistURLs.append({'url': track.playlist['picUrl'], 'ext': 'jpg'})
+            if not self.playlistPath:
+                track.playlist['id'] = "pl_" + str(trackAPI_gw['_EXTRA_PLAYLIST']['id'])
+                track.playlist['genre'] = ["Compilation", ]
+                track.playlist['bitrate'] = selectedFormat
+                track.playlist['dateString'] = formatDate(track.playlist['date'], self.settings['dateFormat'])
+                self.playlistPath = f"{settingsRegexAlbum(self.settings['coverImageTemplate'], track.playlist, self.settings, trackAPI_gw['_EXTRA_PLAYLIST'])}"
 
-            if not trackAlreadyDownloaded or self.settings['overwriteFile'] == 'y':
-                logger.info(f"[{track.mainArtist['name']} - {track.title}] Downloading the track")
-                track.downloadUrl = self.dz.get_track_stream_url(track.id, track.MD5, track.mediaVersion, track.selectedFormat)
+        if not trackAlreadyDownloaded or self.settings['overwriteFile'] == 'y':
+            logger.info(f"[{track.mainArtist['name']} - {track.title}] Downloading the track")
+            track.downloadUrl = self.dz.get_track_stream_url(track.id, track.MD5, track.mediaVersion, track.selectedFormat)
 
-                def downloadMusic(track, trackAPI_gw):
-                    try:
-                        with open(writepath, 'wb') as stream:
-                            self.streamTrack(stream, track)
-                    except DownloadCancelled:
-                        if os.path.isfile(writepath): remove(writepath)
-                        raise DownloadCancelled
-                    except (request_exception.HTTPError, DownloadEmpty):
-                        if os.path.isfile(writepath): remove(writepath)
-                        if track.fallbackId != "0":
-                            logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not available, using fallback id")
-                            newTrack = self.dz.get_track_gw(track.fallbackId)
+            def downloadMusic(track, trackAPI_gw):
+                try:
+                    with open(writepath, 'wb') as stream:
+                        self.streamTrack(stream, track)
+                except DownloadCancelled:
+                    if os.path.isfile(writepath): remove(writepath)
+                    raise DownloadCancelled
+                except (request_exception.HTTPError, DownloadEmpty):
+                    if os.path.isfile(writepath): remove(writepath)
+                    if track.fallbackId != "0":
+                        logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not available, using fallback id")
+                        newTrack = self.dz.get_track_gw(track.fallbackId)
+                        track.parseEssentialData(self.dz, newTrack)
+                        return False
+                    elif not track.searched and self.settings['fallbackSearch']:
+                        logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not available, searching for alternative")
+                        searchedId = self.dz.get_track_from_metadata(track.mainArtist['name'], track.title, track.album['title'])
+                        if searchedId != "0":
+                            newTrack = self.dz.get_track_gw(searchedId)
                             track.parseEssentialData(self.dz, newTrack)
+                            track.searched = True
                             return False
-                        elif not track.searched and self.settings['fallbackSearch']:
-                            logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not available, searching for alternative")
-                            searchedId = self.dz.get_track_from_metadata(track.mainArtist['name'], track.title, track.album['title'])
-                            if searchedId != "0":
-                                newTrack = self.dz.get_track_gw(searchedId)
-                                track.parseEssentialData(self.dz, newTrack)
-                                track.searched = True
-                                return False
-                            else:
-                                raise DownloadFailed("notAvailableNoAlternative")
                         else:
-                            raise DownloadFailed("notAvailable")
-                    except (request_exception.ConnectionError, request_exception.ChunkedEncodingError) as e:
-                        if os.path.isfile(writepath): remove(writepath)
-                        logger.warn(f"[{track.mainArtist['name']} - {track.title}] Error while downloading the track, trying again in 5s...")
-                        eventlet.sleep(5)
-                        return downloadMusic(track, trackAPI_gw)
-                    except OSError as e:
-                        if e.errno == errno.ENOSPC:
-                            raise DownloadFailed("noSpaceLeft")
-                        else:
-                            if os.path.isfile(writepath): remove(writepath)
-                            logger.exception(f"[{track.mainArtist['name']} - {track.title}] Error while downloading the track, you should report this to the developers: {str(e)}")
-                            raise e
-                    except Exception as e:
+                            raise DownloadFailed("notAvailableNoAlternative")
+                    else:
+                        raise DownloadFailed("notAvailable")
+                except (request_exception.ConnectionError, request_exception.ChunkedEncodingError) as e:
+                    if os.path.isfile(writepath): remove(writepath)
+                    logger.warn(f"[{track.mainArtist['name']} - {track.title}] Error while downloading the track, trying again in 5s...")
+                    eventlet.sleep(5)
+                    return downloadMusic(track, trackAPI_gw)
+                except OSError as e:
+                    if e.errno == errno.ENOSPC:
+                        raise DownloadFailed("noSpaceLeft")
+                    else:
                         if os.path.isfile(writepath): remove(writepath)
                         logger.exception(f"[{track.mainArtist['name']} - {track.title}] Error while downloading the track, you should report this to the developers: {str(e)}")
                         raise e
-                    return True
-
-                try:
-                    trackDownloaded = downloadMusic(track, trackAPI_gw)
-                except DownloadFailed as e:
-                    raise e
                 except Exception as e:
+                    if os.path.isfile(writepath): remove(writepath)
+                    logger.exception(f"[{track.mainArtist['name']} - {track.title}] Error while downloading the track, you should report this to the developers: {str(e)}")
                     raise e
+                return True
 
-                if not trackDownloaded:
+            try:
+                trackDownloaded = downloadMusic(track, trackAPI_gw)
+            except DownloadFailed as e:
+                raise e
+            except Exception as e:
+                raise e
+
+            if not trackDownloaded:
+                return self.download(trackAPI_gw, track)
+        else:
+            logger.info(f"[{track.mainArtist['name']} - {track.title}] Skipping track as it's already downloaded")
+            self.completeTrackPercentage()
+
+        # Adding tags
+        if (not trackAlreadyDownloaded or self.settings['overwriteFile'] in ['t', 'y']) and not track.localTrack:
+            logger.info(f"[{track.mainArtist['name']} - {track.title}] Applying tags to the track")
+            if track.selectedFormat in [3, 1, 8]:
+                tagID3(writepath, track, self.settings['tags'])
+            elif track.selectedFormat == 9:
+                try:
+                    tagFLAC(writepath, track, self.settings['tags'])
+                except FLACNoHeaderError:
+                    if os.path.isfile(writepath): remove(writepath)
+                    logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not available in FLAC, falling back if necessary")
+                    self.removeTrackPercentage()
+                    track.filesizes['FILESIZE_FLAC'] = "0"
+                    track.filesizes['FILESIZE_FLAC_TESTED'] = True
                     return self.download(trackAPI_gw, track)
-            else:
-                logger.info(f"[{track.mainArtist['name']} - {track.title}] Skipping track as it's already downloaded")
-                self.completeTrackPercentage()
+            if track.searched:
+                result['searched'] = f"{track.mainArtist['name']} - {track.title}"
 
-            # Adding tags
-            if (not trackAlreadyDownloaded or self.settings['overwriteFile'] in ['t', 'y']) and not track.localTrack:
-                logger.info(f"[{track.mainArtist['name']} - {track.title}] Applying tags to the track")
-                if track.selectedFormat in [3, 1, 8]:
-                    tagID3(writepath, track, self.settings['tags'])
-                elif track.selectedFormat == 9:
-                    try:
-                        tagFLAC(writepath, track, self.settings['tags'])
-                    except FLACNoHeaderError:
-                        if os.path.isfile(writepath): remove(writepath)
-                        logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not available in FLAC, falling back if necessary")
-                        self.removeTrackPercentage()
-                        track.filesizes['FILESIZE_FLAC'] = "0"
-                        track.filesizes['FILESIZE_FLAC_TESTED'] = True
-                        return self.download(trackAPI_gw, track)
-                if track.searched:
-                    result['searched'] = f"{track.mainArtist['name']} - {track.title}"
-
-            logger.info(f"[{track.mainArtist['name']} - {track.title}] Track download completed\n{writepath}")
-            self.queueItem.downloaded += 1
-            self.queueItem.files.append(writepath)
-            if self.interface:
-                self.interface.send("updateQueue", {'uuid': self.queueItem.uuid, 'downloaded': True, 'downloadPath': writepath})
-            return result
+        logger.info(f"[{track.mainArtist['name']} - {track.title}] Track download completed\n{writepath}")
+        self.queueItem.downloaded += 1
+        self.queueItem.files.append(writepath)
+        if self.interface:
+            self.interface.send("updateQueue", {'uuid': self.queueItem.uuid, 'downloaded': True, 'downloadPath': writepath})
+        return result
 
     def getPreferredBitrate(self, track):
         if track.localTrack:
