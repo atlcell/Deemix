@@ -23,7 +23,6 @@ class Deezer:
         }
         self.album_pictures_host = "https://e-cdns-images.dzcdn.net/images/cover/"
         self.artist_pictures_host = "https://e-cdns-images.dzcdn.net/images/artist/"
-        self.email = ""
         self.user = {}
         self.family = False
         self.childs = []
@@ -153,7 +152,6 @@ class Deezer:
                 'picture': user_data["results"]["USER"]["USER_PICTURE"] if "USER_PICTURE" in user_data["results"][
                     "USER"] else ""
             }
-        self.email = email
         self.logged_in = True
         return True
 
@@ -515,6 +513,29 @@ class Deezer:
             }
             result.append(item)
         return result
+
+    def get_all_feedbacks_gw(self, checksums=None):
+        return self.gw_api_call('user.getAllFeedbacks', {'checksums': checksums})
+
+    def add_to_favorites(self, type, id):
+        if type == 'track':
+            return self.gw_api_call('favorite_song.add', {'SNG_ID': id})
+        elif type == 'album':
+            return self.gw_api_call('album.addFavorite', {'ALB_ID': id})
+        elif type == 'artist':
+            return self.gw_api_call('artist.addFavorite', {'ART_ID': id})
+        elif type == 'playlist':
+            return self.gw_api_call('playlist.addFavorite', {'PARENT_PLAYLIST_ID': id})
+
+    def remove_from_favorites(self, type, id):
+        if type == 'track':
+            return self.gw_api_call('favorite_song.remove', {'SNG_ID': id})
+        elif type == 'album':
+            return self.gw_api_call('album.deleteFavorite', {'ALB_ID': id})
+        elif type == 'artist':
+            return self.gw_api_call('artist.deleteFavorite', {'ART_ID': id})
+        elif type == 'playlist':
+            return self.gw_api_call('playlist.deleteFavorite', {'PLAYLIST_ID': id})
 
     def get_user_playlists(self, user_id):
         return self.api_call('user/' + str(user_id) + '/playlists', {'limit': -1})
