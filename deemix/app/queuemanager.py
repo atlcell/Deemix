@@ -3,7 +3,7 @@ from deemix.app.downloadjob import DownloadJob
 from deemix.utils.misc import getIDFromLink, getTypeFromLink, getBitrateInt
 from deemix.api.deezer import APIError
 from spotipy.exceptions import SpotifyException
-from deemix.app.queueitem import QISingle, QICollection, QIConvertable
+from deemix.app.queueitem import QueueItem, QISingle, QICollection, QIConvertable
 import logging
 import os.path as path
 import json
@@ -337,7 +337,12 @@ class QueueManager:
                 return False
             logger.info("Generating queue item for: "+link)
             item = self.generateQueueItem(dz, link, settings, bitrate, interface=interface)
-            item.ack = ack;
+            if type(item) is list:
+                for i in item:
+                    if isinstance(i, QueueItem):
+                        i.ack = ack
+            elif isinstance(item, QueueItem):
+                item.ack = ack
             return item
 
         if type(url) is list:
