@@ -27,6 +27,7 @@ yarn-error.log*
 
 # Private configs
 /config.py
+/test.py
 
 #build files
 /build

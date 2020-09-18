@@ -27,6 +27,15 @@ class Deezer:
         self.family = False
         self.childs = []
         self.selectedAccount = 0
+
+        self.favorites = {
+            'songs': [],
+            'albums': [],
+            'artists': [],
+            'playlists': []
+        }
+        self.checksums = None
+
         self.session = requests.Session()
         self.logged_in = False
 
@@ -514,28 +523,52 @@ class Deezer:
             result.append(item)
         return result
 
-    def get_all_feedbacks_gw(self, checksums=None):
-        return self.gw_api_call('user.getAllFeedbacks', {'checksums': checksums})
+    def refresh_user_favorites(self):
+        result = self.gw_api_call('user.getAllFeedbacks', {'checksums': self.checksums})['results']
+        checksums = self.checksums or {'DISLIKES': {}, 'FAVORITES': {}}
+        idsName = {
+            'SONGS': 'SNG_ID',
+            'ALBUMS': 'ALB_ID',
+            'ARTISTS': 'ART_ID',
+            'PLAYLISTS': 'PLAYLIST_ID'
+        }
+        for category in ['DISLIKES', 'FAVORITES']:
+            for section in result[category]:
+                if result[category][section] != "Not modified":
+                    checksums[section] = result[category][section]['checksum']
+                    if category == 'FAVORITES' and section.lower() in self.favorites:
+                        self.favorites[section.lower()] = []
+                        for release in result[category][section]['data']:
+                            self.favorites[section.lower()].append(release[idsName[section]])
+        self.checksums = checksums
 
     def add_to_favorites(self, type, id):
-        if type == 'track':
-            return self.gw_api_call('favorite_song.add', {'SNG_ID': id})
-        elif type == 'album':
-            return self.gw_api_call('album.addFavorite', {'ALB_ID': id})
-        elif type == 'artist':
-            return self.gw_api_call('artist.addFavorite', {'ART_ID': id})
-        elif type == 'playlist':
-            return self.gw_api_call('playlist.addFavorite', {'PARENT_PLAYLIST_ID': id})
+        if type == 'track' and str(id) not in self.favorites['songs']:
+            self.gw_api_call('favorite_song.add', {'SNG_ID': str(id)})
+            self.favorites['songs'].append(str(id))
+        elif type == 'album' and str(id) not in self.favorites['albums']:
+            self.gw_api_call('album.addFavorite', {'ALB_ID': str(id)})
+            self.favorites['albums'].append(str(id))
+        elif type == 'artist' and str(id) not in self.favorites['artists']:
+            self.gw_api_call('artist.addFavorite', {'ART_ID': str(id)})
+            self.favorites['artists'].append(str(id))
+        elif type == 'playlist' and str(id) not in self.favorites['playlists']:
+            self.gw_api_call('playlist.addFavorite', {'PARENT_PLAYLIST_ID': str(id)})
+            self.favorites['playlists'].append(str(id))
 
     def remove_from_favorites(self, type, id):
-        if type == 'track':
-            return self.gw_api_call('favorite_song.remove', {'SNG_ID': id})
-        elif type == 'album':
-            return self.gw_api_call('album.deleteFavorite', {'ALB_ID': id})
-        elif type == 'artist':
-            return self.gw_api_call('artist.deleteFavorite', {'ART_ID': id})
-        elif type == 'playlist':
-            return self.gw_api_call('playlist.deleteFavorite', {'PLAYLIST_ID': id})
+        if type == 'track' and str(id) in self.favorites['songs']:
+            self.gw_api_call('favorite_song.remove', {'SNG_ID': str(id)})
+            self.favorites['songs'].remove(str(id))
+        elif type == 'album' and str(id) in self.favorites['albums']:
+            self.gw_api_call('album.deleteFavorite', {'ALB_ID': str(id)})
+            self.favorites['albums'].remove(str(id))
+        elif type == 'artist' and str(id) in self.favorites['artists']:
+            self.gw_api_call('artist.deleteFavorite', {'ART_ID': str(id)})
+            self.favorites['artists'].remove(str(id))
+        elif type == 'playlist' and str(id) in self.favorites['playlists']:
+            self.gw_api_call('playlist.deleteFavorite', {'PLAYLIST_ID': str(id)})
+            self.favorites['playlists'].remove(str(id))
 
     def get_user_playlists(self, user_id):
         return self.api_call('user/' + str(user_id) + '/playlists', {'limit': -1})
