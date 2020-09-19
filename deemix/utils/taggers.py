@@ -130,7 +130,7 @@ def tagFLAC(stream, track, save):
     if save['date']:
         tag["DATE"] = track.dateString
     elif save['year']:
-        tag["YEAR"] = str(track.date['year'])
+        tag["DATE"] = str(track.date['year'])
     if save['length']:
         tag["LENGTH"] = str(track.duration)
     if save['bpm']:
