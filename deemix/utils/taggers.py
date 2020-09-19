@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from mutagen.flac import FLAC, Picture
 from mutagen.id3 import ID3, ID3NoHeaderError, TXXX, TIT2, TPE1, TALB, TPE2, TRCK, TPOS, TCON, TYER, TDAT, TLEN, TBPM, \
-    TPUB, TSRC, USLT, SYLT, APIC, IPLS, TCOM, TCOP, TCMP
+    TPUB, TSRC, USLT, SYLT, APIC, IPLS, TCOM, TCOP, TCMP, Encoding
 
 # Adds tags to a MP3 file
 def tagID3(stream, track, save):
@@ -63,7 +63,7 @@ def tagID3(stream, track, save):
     if track.lyrics['unsync'] and save['lyrics']:
         tag.add(USLT(text=track.lyrics['unsync']))
     if track.lyrics['syncID3'] and save['syncedLyrics']:
-        tag.add(SYLT(3, format=2, type=1, text=track.lyrics['syncID3']))
+        tag.add(SYLT(Encoding.UTF8, format=2, type=1, text=track.lyrics['syncID3']))
 
     involved_people = []
     for role in track.contributors:
@@ -83,7 +83,7 @@ def tagID3(stream, track, save):
     if save['cover'] and track.album['picPath']:
         with open(track.album['picPath'], 'rb') as f:
             tag.add(
-                APIC(0, 'image/jpeg' if track.album['picPath'].endswith('jpg') else 'image/png', 3, desc='cover', data=f.read()))
+                APIC(Encoding.UTF8 if save['coverDescriptionUTF8'] else Encoding.LATIN1, 'image/jpeg' if track.album['picPath'].endswith('jpg') else 'image/png', 3, desc='cover', data=f.read()))
 
     tag.save(stream, v1=2 if save['saveID3v1'] else 0, v2_version=3,
              v23_sep=None if save['useNullSeparator'] else '/')

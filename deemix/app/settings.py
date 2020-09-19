@@ -92,7 +92,8 @@ class Settings:
             "useNullSeparator": False,
             "saveID3v1": True,
             "multiArtistSeparator": "default",
-            "singleAlbumArtist": False
+            "singleAlbumArtist": False,
+            "coverDescriptionUTF8": False
           }
         }
 
