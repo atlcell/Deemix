@@ -63,10 +63,13 @@ class Deezer:
                 json={'sng_id': sng_id},
                 headers=self.http_headers
             )
+            result_json = site.json()
         except:
             eventlet.sleep(2)
             return self.get_track_filesizes(sng_id)
-        response = site.json()["results"]
+        if len(result_json['error']):
+            raise APIError(json.dumps(result_json['error']))
+        response = result_json.get("results")
         filesizes = {}
         for key, value in response.items():
             if key.startswith("FILESIZE_"):
