@@ -45,7 +45,7 @@ def tagID3(stream, track, save):
     if save['year']:
         tag.add(TYER(text=str(track.date['year'])))
     if save['date']:
-        tag.add(TDAT(text=str(track.date['month']) + str(track.date['day'])))
+        tag.add(TDAT(text=str(track.date['day']) + str(track.date['month'])))
     if save['length']:
         tag.add(TLEN(text=str(int(track.duration)*1000)))
     if save['bpm']:
