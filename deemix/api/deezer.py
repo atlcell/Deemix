@@ -19,7 +19,8 @@ class Deezer:
         self.api_url = "http://www.deezer.com/ajax/gw-light.php"
         self.legacy_api_url = "https://api.deezer.com/"
         self.http_headers = {
-            "User-Agent": USER_AGENT_HEADER
+            "User-Agent": USER_AGENT_HEADER,
+            "Accept-Language": None
         }
         self.album_pictures_host = "https://e-cdns-images.dzcdn.net/images/cover/"
         self.artist_pictures_host = "https://e-cdns-images.dzcdn.net/images/artist/"
@@ -41,6 +42,12 @@ class Deezer:
 
         self.session.mount('http://', requests.adapters.HTTPAdapter(pool_maxsize=100))
         self.session.mount('https://', requests.adapters.HTTPAdapter(pool_maxsize=100))
+
+    def set_accept_language(self, lang):
+        self.http_headers['Accept-Language'] = lang
+
+    def get_accept_language(self):
+        return self.http_headers['Accept-Language']
 
     def get_token(self):
         token_data = self.gw_api_call('deezer.getUserData')
