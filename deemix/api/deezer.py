@@ -629,6 +629,9 @@ class Deezer:
     def get_artist_albums(self, artist_id):
         return self.api_call('artist/' + str(artist_id) + '/albums', {'limit': -1})
 
+    def get_artist_related(self, artist_id):
+        return self.api_call('artist/' + str(artist_id) + '/related', {'limit': -1})
+
     def search(self, term, search_type, limit=30, index=0):
         return self.api_call('search/' + search_type, {'q': clean_search_query(term), 'limit': limit, 'index': index})
 
