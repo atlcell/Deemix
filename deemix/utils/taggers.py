@@ -76,7 +76,7 @@ def tagID3(stream, track, save):
 
     if save['copyright']:
         tag.add(TCOP(text=track.copyright))
-    if save['savePlaylistAsCompilation'] and track.playlist:
+    if save['savePlaylistAsCompilation'] and track.playlist or track.album['recordType'] == "compile":
         tag.add(TCMP(text="1"))
 
     if save['cover'] and track.album['picPath']:
@@ -156,7 +156,7 @@ def tagFLAC(stream, track, save):
 
     if save['copyright']:
         tag["COPYRIGHT"] = track.copyright
-    if save['savePlaylistAsCompilation'] and track.playlist:
+    if save['savePlaylistAsCompilation'] and track.playlist or track.album['recordType'] == "compile":
         tag["COMPILATION"] = "1"
 
     if save['cover'] and track.album['picPath']:

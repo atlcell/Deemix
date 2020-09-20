@@ -63,7 +63,7 @@ class Track:
                 self.playlist['artist'] = {"Main": []}
                 self.playlist['artists'] = []
             self.playlist['trackTotal'] = trackAPI_gw["_EXTRA_PLAYLIST"]['nb_tracks']
-            self.playlist['recordType'] = "Compilation"
+            self.playlist['recordType'] = "compile"
             self.playlist['barcode'] = ""
             self.playlist['label'] = ""
             self.playlist['explicit'] = trackAPI_gw['_EXTRA_PLAYLIST']['explicit']
@@ -128,7 +128,7 @@ class Track:
         self.album['genre'] = []
         self.album['label'] = "Unknown"
         self.album['mainArtist'] = self.mainArtist
-        self.album['recordType'] = "Album"
+        self.album['recordType'] = "album"
         self.album['trackTotal'] = "0"
         self.bpm = 0
         self.contributors = {}
@@ -265,7 +265,7 @@ class Track:
             self.album['mainArtist']['pic'] = artistAPI['picture_small'][artistAPI['picture_small'].find('artist/') + 7:-24]
             self.album['trackTotal'] = albumAPI_gw['NUMBER_TRACK']
             self.album['discTotal'] = albumAPI_gw['NUMBER_DISK']
-            self.album['recordType'] = "Album"
+            self.album['recordType'] = "album"
             self.album['label'] = albumAPI_gw.get('LABEL_NAME', self.album['label'])
             if 'EXPLICIT_ALBUM_CONTENT' in albumAPI_gw and 'EXPLICIT_LYRICS_STATUS' in albumAPI_gw['EXPLICIT_ALBUM_CONTENT']:
                 self.album['explicit'] = albumAPI_gw['EXPLICIT_ALBUM_CONTENT']['EXPLICIT_LYRICS_STATUS'] in [1,4]
