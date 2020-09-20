@@ -58,6 +58,7 @@ class Settings:
           "albumVariousArtists": True,
           "removeAlbumVersion": False,
           "removeDuplicateArtists": False,
+          "tagsLanguage": "",
           "featuredToTitle": "0",
           "titleCasing": "nothing",
           "artistCasing": "nothing",
@@ -136,8 +137,9 @@ class Settings:
                 remove(path.join(logspath, logslist[i]))
 
     # Saves the settings
-    def saveSettings(self, newSettings=None):
+    def saveSettings(self, newSettings=None, dz=None):
         if newSettings:
+            if dz and newSettings.get('tagsLanguage') != self.settings.get('tagsLanguage'): dz.set_accept_language(newSettings.get('tagsLanguage'))
             self.settings = newSettings
         with open(path.join(self.configFolder, 'config.json'), 'w') as configFile:
             json.dump(self.settings, configFile, indent=2)

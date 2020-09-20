@@ -7,5 +7,6 @@ class deemix:
     def __init__(self, configFolder=None):
         self.set = Settings(configFolder)
         self.dz = Deezer()
+        self.dz.set_accept_language(self.set.settings.get('tagsLanguage'))
         self.sp = SpotifyHelper(configFolder)
         self.qm = QueueManager(self.sp)
