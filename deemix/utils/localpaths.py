@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os.path as path
 import sys
 from os import getenv

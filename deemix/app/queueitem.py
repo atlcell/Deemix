@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 class QueueItem:
     def __init__(self, id=None, bitrate=None, title=None, artist=None, cover=None, size=None, type=None, settings=None, queueItemDict=None):
         if queueItemDict:

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import json
 import os.path as path
 from os import makedirs, listdir, remove

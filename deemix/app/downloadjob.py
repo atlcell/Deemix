@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import eventlet
 import os.path
 import re

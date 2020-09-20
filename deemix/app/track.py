@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import logging
 
 from deemix.api.deezer import APIError

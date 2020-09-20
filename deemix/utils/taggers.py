@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from mutagen.flac import FLAC, Picture
 from mutagen.id3 import ID3, ID3NoHeaderError, TXXX, TIT2, TPE1, TALB, TPE2, TRCK, TPOS, TCON, TYER, TDAT, TLEN, TBPM, \
     TPUB, TSRC, USLT, SYLT, APIC, IPLS, TCOM, TCOP, TCMP, Encoding

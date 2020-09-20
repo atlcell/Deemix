@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 from deemix.api.deezer import Deezer
 from deemix.app.settings import Settings
 from deemix.app.queuemanager import QueueManager
