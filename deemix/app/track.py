@@ -2,7 +2,7 @@
 import logging
 
 from deemix.api.deezer import APIError
-from deemix.utils.misc import removeFeatures, andCommaConcat, uniqueArray
+from deemix.utils import removeFeatures, andCommaConcat, uniqueArray
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('deemix')

@@ -14,7 +14,7 @@ from tempfile import gettempdir
 
 from deemix.app.queueitem import QISingle, QICollection
 from deemix.app.track import Track
-from deemix.utils.misc import changeCase
+from deemix.utils import changeCase
 from deemix.utils.pathtemplates import generateFilename, generateFilepath, settingsRegexAlbum, settingsRegexArtist, settingsRegexPlaylistFile
 from deemix.api.deezer import USER_AGENT_HEADER
 from deemix.utils.taggers import tagID3, tagFLAC

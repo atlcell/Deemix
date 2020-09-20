@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from deemix.app.downloadjob import DownloadJob
-from deemix.utils.misc import getIDFromLink, getTypeFromLink, getBitrateInt
+from deemix.utils import getIDFromLink, getTypeFromLink, getBitrateInt
 from deemix.api.deezer import APIError
 from spotipy.exceptions import SpotifyException
 from deemix.app.queueitem import QueueItem, QISingle, QICollection, QIConvertable
