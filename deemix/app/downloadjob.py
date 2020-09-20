@@ -241,6 +241,16 @@ class DownloadJob:
                     newTrack = self.dz.get_track_gw(searchedId)
                     track.parseEssentialData(self.dz, newTrack)
                     track.searched = True
+                    if self.interface:
+                        self.interface.send('queueUpdate', {
+                            'uuid': self.queueItem.uuid,
+                            'searchFallback': True,
+                            'data': {
+                                'id': track.id,
+                                'title': track.title,
+                                'artist': track.mainArtist['name']
+                            },
+                        })
                     return self.download(trackAPI_gw, track)
                 else:
                     raise DownloadFailed("notEncodedNoAlternative")
@@ -261,6 +271,16 @@ class DownloadJob:
                     newTrack = self.dz.get_track_gw(searchedId)
                     track.parseEssentialData(self.dz, newTrack)
                     track.searched = True
+                    if self.interface:
+                        self.interface.send('queueUpdate', {
+                            'uuid': self.queueItem.uuid,
+                            'searchFallback': True,
+                            'data': {
+                                'id': track.id,
+                                'title': track.title,
+                                'artist': track.mainArtist['name']
+                            },
+                        })
                     return self.download(trackAPI_gw, track)
                 else:
                     raise DownloadFailed("wrongBitrateNoAlternative")
@@ -475,6 +495,16 @@ class DownloadJob:
                             newTrack = self.dz.get_track_gw(searchedId)
                             track.parseEssentialData(self.dz, newTrack)
                             track.searched = True
+                            if self.interface:
+                                self.interface.send('queueUpdate', {
+                                    'uuid': self.queueItem.uuid,
+                                    'searchFallback': True,
+                                    'data': {
+                                        'id': track.id,
+                                        'title': track.title,
+                                        'artist': track.mainArtist['name']
+                                    },
+                                })
                             return False
                         else:
                             raise DownloadFailed("notAvailableNoAlternative")
@@ -541,6 +571,7 @@ class DownloadJob:
             return 0
 
         fallback = self.settings['fallbackBitrate']
+        falledBack = False
 
         formats_non_360 = {
             9: "FLAC",
@@ -577,6 +608,19 @@ class DownloadJob:
                         except request_exception.HTTPError: # if the format is not available, Deezer returns a 403 error
                             pass
                 if fallback:
+                    if not falledBack:
+                        falledBack = True
+                        logger.info(f"[{track.mainArtist['name']} - {track.title}] Fallback to lower bitrate")
+                        if self.interface:
+                            self.interface.send('queueUpdate', {
+                                'uuid': self.queueItem.uuid,
+                                'bitrateFallback': True,
+                                'data': {
+                                    'id': track.id,
+                                    'title': track.title,
+                                    'artist': track.mainArtist['name']
+                                },
+                            })
                     continue
                 else:
                     return error_num
