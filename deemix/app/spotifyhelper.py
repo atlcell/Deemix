@@ -1,7 +1,7 @@
 import eventlet
 import json
 import os.path as path
-from os import mkdir
+from os import mkdir, remove
 
 eventlet.import_patched('requests.adapters')
 
@@ -50,6 +50,21 @@ class SpotifyHelper:
         with open(path.join(self.configFolder, 'authCredentials.json'), 'r') as credentialsFile:
             self.credentials = json.load(credentialsFile)
         self.checkCredentials()
+        self.checkValidCache()
+
+    def checkValidCache(self):
+        if path.isfile(path.join(self.configFolder, 'spotifyCache.json')):
+            with open(path.join(self.configFolder, 'spotifyCache.json'), 'r') as spotifyCache:
+                try:
+                    cache = json.load(spotifyCache)
+                except Exception as e:
+                    print(str(e))
+                    remove(path.join(self.configFolder, 'spotifyCache.json'))
+                    return
+            # Remove old versions of cache
+            if len(cache['tracks'].values()) and isinstance(list(cache['tracks'].values())[0], int) or \
+               len(cache['albums'].values()) and isinstance(list(cache['albums'].values())[0], int):
+                remove(path.join(self.configFolder, 'spotifyCache.json'))
 
     def checkCredentials(self):
         if self.credentials['clientId'] == "" or self.credentials['clientSecret'] == "":
