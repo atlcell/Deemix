@@ -164,18 +164,20 @@ class Track:
             if "LYRICS_SYNC_JSON" in trackAPI_gw["LYRICS"]:
                 self.lyrics['sync'] = ""
                 self.lyrics['syncID3'] = []
-                lastTimestamp = ""
-                lastMilliseconds = 0
+                timestamp = ""
+                milliseconds = 0
                 for i in range(len(trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"])):
-                    if "lrc_timestamp" in trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]:
-                        self.lyrics['sync'] += trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["lrc_timestamp"]
-                        lastTimestamp = trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["lrc_timestamp"]
+                    if trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["line"] != "":
+                        timestamp = trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["lrc_timestamp"]
+                        milliseconds = int(trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["milliseconds"])
                     else:
-                        self.lyrics['sync'] += lastTimestamp
-                    if "milliseconds" in trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]:
-                        lastMilliseconds = int(trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["milliseconds"])
-                    self.lyrics['sync'] += trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["line"] + "\r\n"
-                    self.lyrics['syncID3'].append((trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["line"], lastMilliseconds))
+                        j=i+1
+                        while trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][j]["line"] == "":
+                            j=j+1
+                        timestamp = trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][j]["lrc_timestamp"]
+                        milliseconds = int(trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][j]["milliseconds"])
+                    self.lyrics['sync'] += timestamp + trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["line"] + "\r\n"
+                    self.lyrics['syncID3'].append((trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["line"], milliseconds))
 
         self.mainArtist = {
             'id': trackAPI_gw['ART_ID'],
