@@ -10,11 +10,9 @@ import os.path
 @click.option('-p', '--path', type=str, help='Downloads in the given folder')
 @click.argument('url', nargs=-1, required=True)
 def download(url, bitrate, portable, path):
-    localpath = os.path.realpath('.')
 
-    configFolder = None
-    if portable:
-        configFolder = os.path.join(localpath, 'config')
+    localpath = os.path.realpath('.')
+    configFolder = os.path.join(localpath, 'config') if portable else None
     if path is not None:
         if path == '': path = '.'
         path = os.path.realpath(path)
@@ -22,10 +20,12 @@ def download(url, bitrate, portable, path):
     app = cli(path, configFolder)
     app.login()
     url = list(url)
+
     if os.path.isfile(url[0]):
         filename = url[0]
         with open(filename) as f:
             url = f.readlines()
+    
     app.downloadLink(url, bitrate)
     click.echo("All done!")
 
