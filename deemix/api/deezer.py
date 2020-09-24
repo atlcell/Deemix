@@ -12,6 +12,32 @@ import json
 USER_AGENT_HEADER = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) " \
                     "Chrome/79.0.3945.130 Safari/537.36"
 
+class LyricsStatus():
+    """Explicit Content Lyrics"""
+
+    NOT_EXPLICIT = 0
+    """Not Explicit"""
+
+    EXPLICIT = 1
+    """Explicit"""
+
+    UNKNOWN = 2
+    """Unknown"""
+
+    EDITED = 3
+    """Edited"""
+
+    PARTIALLY_EXPLICIT = 4
+    """Partially Explicit (Album "lyrics" only)"""
+
+    PARTIALLY_UNKNOWN = 5
+    """Partially Unknown (Album "lyrics" only)"""
+
+    NO_ADVICE = 6
+    """No Advice Available"""
+
+    PARTIALLY_NO_ADVICE = 7
+    """Partially No Advice Available (Album "lyrics" only)"""
 
 class Deezer:
     def __init__(self):

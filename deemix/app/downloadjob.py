@@ -12,7 +12,7 @@ from os import makedirs, remove, system as execute
 from tempfile import gettempdir
 
 from deemix.app.queueitem import QISingle, QICollection
-from deemix.app.track import Track
+from deemix.app.track import Track, AlbumDoesntExsists
 from deemix.utils import changeCase
 from deemix.utils.pathtemplates import generateFilename, generateFilepath, settingsRegexAlbum, settingsRegexArtist, settingsRegexPlaylistFile
 from deemix.api.deezer import USER_AGENT_HEADER
@@ -49,7 +49,8 @@ errorMessages = {
     'no360RA': "Track is not available in Reality Audio 360.",
     'notAvailable': "Track not available on deezer's servers!",
     'notAvailableNoAlternative': "Track not available on deezer's servers and no alternative found!",
-    'noSpaceLeft': "No space left on target drive, clean up some space for the tracks"
+    'noSpaceLeft': "No space left on target drive, clean up some space for the tracks",
+    'albumDoesntExsists': "Track's album does not exsist, failed to gather info"
 }
 def downloadImage(url, path, overwrite="n"):
     if not os.path.isfile(path) or overwrite in ['y', 't', 'b']:
@@ -220,12 +221,15 @@ class DownloadJob:
         # Create Track object
         if not track:
             logger.info(f"[{trackAPI_gw['ART_NAME']} - {trackAPI_gw['SNG_TITLE']}] Getting the tags")
-            track = Track(self.dz,
-                          settings=self.settings,
-                          trackAPI_gw=trackAPI_gw,
-                          trackAPI=trackAPI_gw['_EXTRA_TRACK'] if '_EXTRA_TRACK' in trackAPI_gw else None,
-                          albumAPI=trackAPI_gw['_EXTRA_ALBUM'] if '_EXTRA_ALBUM' in trackAPI_gw else None
-                          )
+            try:
+                track = Track(self.dz,
+                              settings=self.settings,
+                              trackAPI_gw=trackAPI_gw,
+                              trackAPI=trackAPI_gw['_EXTRA_TRACK'] if '_EXTRA_TRACK' in trackAPI_gw else None,
+                              albumAPI=trackAPI_gw['_EXTRA_ALBUM'] if '_EXTRA_ALBUM' in trackAPI_gw else None
+                              )
+            except AlbumDoesntExsists:
+                raise DownloadError('albumDoesntExsists')
             if self.queueItem.cancel: raise DownloadCancelled
 
         if track.MD5 == '':

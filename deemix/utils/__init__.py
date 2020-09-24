@@ -1,6 +1,9 @@
 import re
 import string
 
+def generateReplayGainString(trackGain):
+    return "{0:.2f} dB".format((float(trackGain) + 18.4) * -1)
+
 def getBitrateInt(txt):
     txt = str(txt).lower()
     if txt in ['flac', 'lossless', '9']:

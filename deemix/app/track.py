@@ -1,10 +1,12 @@
 import logging
 
-from deemix.api.deezer import APIError
-from deemix.utils import removeFeatures, andCommaConcat, uniqueArray
+from deemix.api.deezer import APIError, LyricsStatus
+from deemix.utils import removeFeatures, andCommaConcat, uniqueArray, generateReplayGainString
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('deemix')
+
+VARIOUS_ARTISTS = 5080
 
 class Track:
     def __init__(self, dz, settings, trackAPI_gw, trackAPI=None, albumAPI_gw=None, albumAPI=None):
@@ -22,6 +24,7 @@ class Track:
         else:
             self.parseData(dz, settings, trackAPI_gw, trackAPI, albumAPI_gw, albumAPI)
 
+        # Make sure there is at least one artist
         if not 'Main' in self.artist:
             self.artist['Main'] = [self.mainArtist['name']]
 
@@ -38,41 +41,7 @@ class Track:
         # Add playlist data if track is in a playlist
         self.playlist = None
         if "_EXTRA_PLAYLIST" in trackAPI_gw:
-            self.playlist = {}
-            if 'dzcdn.net' in trackAPI_gw["_EXTRA_PLAYLIST"]['picture_small']:
-                self.playlist['pic'] = trackAPI_gw["_EXTRA_PLAYLIST"]['picture_small'][:-24]
-                self.playlist['picUrl'] = "{}/{}x{}-{}".format(
-                    self.playlist['pic'],
-                    settings['embeddedArtworkSize'], settings['embeddedArtworkSize'],
-                    'none-100-0-0.png' if settings['embeddedArtworkPNG'] else f'000000-{settings["jpegImageQuality"]}-0-0.jpg'
-                )
-            else:
-                self.playlist['pic'] = None
-                self.playlist['picUrl'] = trackAPI_gw["_EXTRA_PLAYLIST"]['picture_xl']
-            self.playlist['title'] = trackAPI_gw["_EXTRA_PLAYLIST"]['title']
-            self.playlist['mainArtist'] = {
-                'id': trackAPI_gw["_EXTRA_PLAYLIST"]['various_artist']['id'],
-                'name': trackAPI_gw["_EXTRA_PLAYLIST"]['various_artist']['name'],
-                'pic': trackAPI_gw["_EXTRA_PLAYLIST"]['various_artist']['picture_small'][
-                       trackAPI_gw["_EXTRA_PLAYLIST"]['various_artist']['picture_small'].find('artist/') + 7:-24]
-            }
-            if settings['albumVariousArtists']:
-                self.playlist['artist'] = {"Main": [trackAPI_gw["_EXTRA_PLAYLIST"]['various_artist']['name'], ]}
-                self.playlist['artists'] = [trackAPI_gw["_EXTRA_PLAYLIST"]['various_artist']['name'], ]
-            else:
-                self.playlist['artist'] = {"Main": []}
-                self.playlist['artists'] = []
-            self.playlist['trackTotal'] = trackAPI_gw["_EXTRA_PLAYLIST"]['nb_tracks']
-            self.playlist['recordType'] = "compile"
-            self.playlist['barcode'] = ""
-            self.playlist['label'] = ""
-            self.playlist['explicit'] = trackAPI_gw['_EXTRA_PLAYLIST']['explicit']
-            self.playlist['date'] = {
-                'day': trackAPI_gw["_EXTRA_PLAYLIST"]["creation_date"][8:10],
-                'month': trackAPI_gw["_EXTRA_PLAYLIST"]["creation_date"][5:7],
-                'year': trackAPI_gw["_EXTRA_PLAYLIST"]["creation_date"][0:4]
-            }
-            self.playlist['discTotal'] = "1"
+            self.parsePlaylistData()
 
         self.generateMainFeatStrings()
 
@@ -84,7 +53,6 @@ class Track:
         self.album['picPath'] = None
         self.album['bitrate'] = 0
         self.album['dateString'] = None
-
         self.artistsString = ""
 
     def parseEssentialData(self, dz, trackAPI_gw):
@@ -98,11 +66,13 @@ class Track:
         self.filesizes = dz.get_track_filesizes(self.id)
 
     def parseLocalTrackData(self, trackAPI_gw):
+        # Local tracks has only the trackAPI_gw page and
+        # contains only the tags provided by the file
         self.album = {
             'id': "0",
             'title': trackAPI_gw['ALB_TITLE'],
+            'pic': trackAPI_gw.get('ALB_PICTURE', "")
         }
-        self.album['pic'] = trackAPI_gw.get('ALB_PICTURE')
         self.mainArtist = {
             'id': "0",
             'name': trackAPI_gw['ART_NAME'],
@@ -117,7 +87,7 @@ class Track:
             'month': "00",
             'year': "XXXX"
         }
-        # All the missing data
+        # Defaulting all the missing data
         self.ISRC = ""
         self.album['artist'] = self.artist
         self.album['artists'] = self.artists
@@ -145,39 +115,40 @@ class Track:
         self.copyright = trackAPI_gw.get('COPYRIGHT')
         self.replayGain = ""
         if 'GAIN' in trackAPI_gw:
-            self.replayGain = "{0:.2f} dB".format((float(trackAPI_gw['GAIN']) + 18.4) * -1)
-        self.ISRC = trackAPI_gw['ISRC']
+            self.replayGain = generateReplayGainString(trackAPI_gw['GAIN'])
+        self.ISRC = trackAPI_gw.get('ISRC')
         self.trackNumber = trackAPI_gw['TRACK_NUMBER']
         self.contributors = trackAPI_gw['SNG_CONTRIBUTORS']
 
         self.lyrics = {
-            'id': trackAPI_gw.get('LYRICS_ID', "0"),
+            'id': int(trackAPI_gw.get('LYRICS_ID', "0")),
             'unsync': None,
             'sync': None,
             'syncID3': None
         }
-        if not "LYRICS" in trackAPI_gw and int(self.lyrics['id']) != 0:
+        if not "LYRICS" in trackAPI_gw and self.lyrics['id'] != 0:
             logger.info(f"[{trackAPI_gw['ART_NAME']} - {self.title}] Getting lyrics")
             trackAPI_gw["LYRICS"] = dz.get_lyrics_gw(self.id)
-        if int(self.lyrics['id']) != 0:
+        if self.lyrics['id'] != 0:
             self.lyrics['unsync'] = trackAPI_gw["LYRICS"].get("LYRICS_TEXT")
             if "LYRICS_SYNC_JSON" in trackAPI_gw["LYRICS"]:
+                syncLyricsJson = trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"]
                 self.lyrics['sync'] = ""
                 self.lyrics['syncID3'] = []
                 timestamp = ""
                 milliseconds = 0
-                for i in range(len(trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"])):
-                    if trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["line"] != "":
-                        timestamp = trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["lrc_timestamp"]
-                        milliseconds = int(trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["milliseconds"])
+                for line in range(len(syncLyricsJson)):
+                    if syncLyricsJson[line]["line"] != "":
+                        timestamp = syncLyricsJson[line]["lrc_timestamp"]
+                        milliseconds = int(syncLyricsJson[line]["milliseconds"])
                     else:
-                        j=i+1
-                        while trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][j]["line"] == "":
-                            j=j+1
-                        timestamp = trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][j]["lrc_timestamp"]
-                        milliseconds = int(trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][j]["milliseconds"])
-                    self.lyrics['sync'] += timestamp + trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["line"] + "\r\n"
-                    self.lyrics['syncID3'].append((trackAPI_gw["LYRICS"]["LYRICS_SYNC_JSON"][i]["line"], milliseconds))
+                        notEmptyLine = line + 1
+                        while syncLyricsJson[notEmptyLine]["line"] == "":
+                            notEmptyLine = notEmptyLine + 1
+                        timestamp = syncLyricsJson[notEmptyLine]["lrc_timestamp"]
+                        milliseconds = int(syncLyricsJson[notEmptyLine]["milliseconds"])
+                    self.lyrics['sync'] += timestamp + syncLyricsJson[line]["line"] + "\r\n"
+                    self.lyrics['syncID3'].append((syncLyricsJson[line]["line"], milliseconds))
 
         self.mainArtist = {
             'id': trackAPI_gw['ART_ID'],
@@ -203,28 +174,43 @@ class Track:
             'date': None,
             'genre': []
         }
-        try:
-            # Try the public API first (as it has more data)
-            if not albumAPI:
-                logger.info(f"[{self.mainArtist['name']} - {self.title}] Getting album infos")
+
+        # Try the public API first (as it has more data)
+        if not albumAPI:
+            logger.info(f"[{self.mainArtist['name']} - {self.title}] Getting album infos")
+            try:
                 albumAPI = dz.get_album(self.album['id'])
+            except APIError:
+                albumAPI = None
+
+        if albumAPI:
             self.album['title'] = albumAPI['title']
+
+            # Getting artist image ID
+            # ex: https://e-cdns-images.dzcdn.net/images/artist/f2bc007e9133c946ac3c3907ddc5d2ea/56x56-000000-80-0-0.jpg
+            artistPicture = albumAPI['artist']['picture_small']
+            artistPicture = artistPicture[artistPicture.find('artist/') + 7:-24]
             self.album['mainArtist'] = {
                 'id': albumAPI['artist']['id'],
                 'name': albumAPI['artist']['name'],
-                'pic': albumAPI['artist']['picture_small'][albumAPI['artist']['picture_small'].find('artist/') + 7:-24]
+                'pic': artistPicture
             }
 
             self.album['artist'] = {}
             self.album['artists'] = []
             for artist in albumAPI['contributors']:
-                if artist['id'] != 5080 or artist['id'] == 5080 and settings['albumVariousArtists']:
+                isVariousArtists = artist['id'] == VARIOUS_ARTISTS
+                isMainArtist = artist['role'] == "Main"
+
+                if not isVariousArtists or settings['albumVariousArtists'] and isVariousArtists:
                     if artist['name'] not in self.album['artists']:
                         self.album['artists'].append(artist['name'])
-                    if artist['role'] == "Main" or artist['role'] != "Main" and artist['name'] not in self.album['artist']['Main']:
+
+                    if isMainArtist or artist['name'] not in self.album['artist']['Main'] and not isMainArtist:
                         if not artist['role'] in self.album['artist']:
                             self.album['artist'][artist['role']] = []
                         self.album['artist'][artist['role']].append(artist['name'])
+
             if settings['removeDuplicateArtists']:
                 self.album['artists'] = uniqueArray(self.album['artists'])
                 for role in self.album['artist'].keys():
@@ -246,31 +232,46 @@ class Track:
             self.copyright = albumAPI.get('copyright')
 
             if not self.album['pic']:
+                # Getting album cover ID
+                # ex: https://e-cdns-images.dzcdn.net/images/cover/2e018122cb56986277102d2041a592c8/56x56-000000-80-0-0.jpg
                 self.album['pic'] = albumAPI['cover_small'][albumAPI['cover_small'].find('cover/') + 6:-24]
 
-            if 'genres' in albumAPI and 'data' in albumAPI['genres'] and len(albumAPI['genres']['data']) > 0:
+            if albumAPI.get('genres') and len(albumAPI['genres'].get('data', [])) > 0:
                 for genre in albumAPI['genres']['data']:
                     self.album['genre'].append(genre['name'])
-        except APIError:
+        else:
             if not albumAPI_gw:
                 logger.info(f"[{self.mainArtist['name']} - {self.title}] Getting more album infos")
-                albumAPI_gw = dz.get_album_gw(self.album['id'])
+                try:
+                    albumAPI_gw = dz.get_album_gw(self.album['id'])
+                except APIError:
+                    albumAPI_gw = None
+                    raise AlbumDoesntExsists
+
             self.album['title'] = albumAPI_gw['ALB_TITLE']
             self.album['mainArtist'] = {
                 'id': albumAPI_gw['ART_ID'],
                 'name': albumAPI_gw['ART_NAME'],
                 'pic': None
             }
+
+            # albumAPI_gw doesn't contain the artist cover
+            # Getting artist image ID
+            # ex: https://e-cdns-images.dzcdn.net/images/artist/f2bc007e9133c946ac3c3907ddc5d2ea/56x56-000000-80-0-0.jpg
             logger.info(f"[{self.mainArtist['name']} - {self.title}] Getting artist picture fallback")
             artistAPI = dz.get_artist(self.album['mainArtist']['id'])
-            self.album['artists'] = [albumAPI_gw['ART_NAME']]
             self.album['mainArtist']['pic'] = artistAPI['picture_small'][artistAPI['picture_small'].find('artist/') + 7:-24]
+
+            self.album['artists'] = [albumAPI_gw['ART_NAME']]
             self.album['trackTotal'] = albumAPI_gw['NUMBER_TRACK']
             self.album['discTotal'] = albumAPI_gw['NUMBER_DISK']
             self.album['recordType'] = "album"
             self.album['label'] = albumAPI_gw.get('LABEL_NAME', self.album['label'])
-            if 'EXPLICIT_ALBUM_CONTENT' in albumAPI_gw and 'EXPLICIT_LYRICS_STATUS' in albumAPI_gw['EXPLICIT_ALBUM_CONTENT']:
-                self.album['explicit'] = albumAPI_gw['EXPLICIT_ALBUM_CONTENT']['EXPLICIT_LYRICS_STATUS'] in [1,4]
+
+            if albumAPI_gw.get('EXPLICIT_ALBUM_CONTENT') and albumAPI_gw['EXPLICIT_ALBUM_CONTENT'].get('EXPLICIT_LYRICS_STATUS'):
+                explicitLyricsStatus = albumAPI_gw['EXPLICIT_ALBUM_CONTENT']['EXPLICIT_LYRICS_STATUS']
+                self.album['explicit'] = explicitLyricsStatus in [LyricsStatus.EXPLICIT, LyricsStatus.PARTIALLY_EXPLICIT]
+
             if not self.album['pic']:
                 self.album['pic'] = albumAPI_gw['ALB_PICTURE']
             if 'PHYSICAL_RELEASE_DATE' in albumAPI_gw:
@@ -280,7 +281,8 @@ class Track:
                     'year': albumAPI_gw["PHYSICAL_RELEASE_DATE"][0:4]
                 }
 
-        self.album['mainArtist']['save'] = self.album['mainArtist']['id'] != 5080 or self.album['mainArtist']['id'] == 5080 and settings['albumVariousArtists']
+        isAlbumArtistVariousArtists = self.album['mainArtist']['id'] == VARIOUS_ARTISTS
+        self.album['mainArtist']['save'] = not isAlbumArtistVariousArtists or settings['albumVariousArtists'] and isAlbumArtistVariousArtists
 
         if self.album['date'] and not self.date:
             self.date = self.album['date']
@@ -291,7 +293,7 @@ class Track:
         self.bpm = trackAPI['bpm']
 
         if not self.replayGain and 'gain' in trackAPI:
-            self.replayGain = "{0:.2f} dB".format((float(trackAPI['gain']) + 18.4) * -1)
+            self.replayGain = generateReplayGainString(trackAPI['gain'])
         if not self.explicit:
             self.explicit = trackAPI['explicit_lyrics']
         if not self.discNumber:
@@ -300,13 +302,18 @@ class Track:
         self.artist = {}
         self.artists = []
         for artist in trackAPI['contributors']:
-            if artist['id'] != 5080 or artist['id'] == 5080 and len(trackAPI['contributors']) == 1:
+            isVariousArtists = artist['id'] == VARIOUS_ARTISTS
+            isMainArtist = artist['role'] == "Main"
+
+            if not isVariousArtists or len(trackAPI['contributors']) == 1 and isVariousArtists:
                 if artist['name'] not in self.artists:
                     self.artists.append(artist['name'])
-                if artist['role'] != "Main" and artist['name'] not in self.artist['Main'] or artist['role'] == "Main":
+
+                if isMainArtist or artist['name'] not in self.artist['Main'] and not isMainArtist:
                     if not artist['role'] in self.artist:
                         self.artist[artist['role']] = []
                     self.artist[artist['role']].append(artist['name'])
+
         if settings['removeDuplicateArtists']:
             self.artists = uniqueArray(self.artists)
             for role in self.artist.keys():
@@ -317,11 +324,49 @@ class Track:
                 logger.info(f"[{self.mainArtist['name']} - {self.title}] Getting more album infos")
                 albumAPI_gw = dz.get_album_gw(self.album['id'])
             self.album['discTotal'] = albumAPI_gw['NUMBER_DISK']
+
         if not self.copyright:
             if not albumAPI_gw:
                 logger.info(f"[{self.mainArtist['name']} - {self.title}] Getting more album infos")
                 albumAPI_gw = dz.get_album_gw(self.album['id'])
             self.copyright = albumAPI_gw['COPYRIGHT']
+
+    def parsePlaylistData(self):
+        self.playlist = {}
+        if 'dzcdn.net' in trackAPI_gw["_EXTRA_PLAYLIST"]['picture_small']:
+            self.playlist['pic'] = trackAPI_gw["_EXTRA_PLAYLIST"]['picture_small'][:-24]
+            self.playlist['picUrl'] = "{}/{}x{}-{}".format(
+                self.playlist['pic'],
+                settings['embeddedArtworkSize'], settings['embeddedArtworkSize'],
+                'none-100-0-0.png' if settings['embeddedArtworkPNG'] else f'000000-{settings["jpegImageQuality"]}-0-0.jpg'
+            )
+        else:
+            self.playlist['pic'] = None
+            self.playlist['picUrl'] = trackAPI_gw["_EXTRA_PLAYLIST"]['picture_xl']
+        self.playlist['title'] = trackAPI_gw["_EXTRA_PLAYLIST"]['title']
+        self.playlist['mainArtist'] = {
+            'id': trackAPI_gw["_EXTRA_PLAYLIST"]['various_artist']['id'],
+            'name': trackAPI_gw["_EXTRA_PLAYLIST"]['various_artist']['name'],
+            'pic': trackAPI_gw["_EXTRA_PLAYLIST"]['various_artist']['picture_small'][
+                   trackAPI_gw["_EXTRA_PLAYLIST"]['various_artist']['picture_small'].find('artist/') + 7:-24]
+        }
+        if settings['albumVariousArtists']:
+            self.playlist['artist'] = {"Main": [trackAPI_gw["_EXTRA_PLAYLIST"]['various_artist']['name'], ]}
+            self.playlist['artists'] = [trackAPI_gw["_EXTRA_PLAYLIST"]['various_artist']['name'], ]
+        else:
+            self.playlist['artist'] = {"Main": []}
+            self.playlist['artists'] = []
+        self.playlist['trackTotal'] = trackAPI_gw["_EXTRA_PLAYLIST"]['nb_tracks']
+        self.playlist['recordType'] = "compile"
+        self.playlist['barcode'] = ""
+        self.playlist['label'] = ""
+        self.playlist['explicit'] = trackAPI_gw['_EXTRA_PLAYLIST']['explicit']
+        self.playlist['date'] = {
+            'day': trackAPI_gw["_EXTRA_PLAYLIST"]["creation_date"][8:10],
+            'month': trackAPI_gw["_EXTRA_PLAYLIST"]["creation_date"][5:7],
+            'year': trackAPI_gw["_EXTRA_PLAYLIST"]["creation_date"][0:4]
+        }
+        self.playlist['discTotal'] = "1"
 
     # Removes featuring from the title
     def getCleanTitle(self):
@@ -341,3 +386,10 @@ class Track:
         self.featArtistsString = None
         if 'Featured' in self.artist:
             self.featArtistsString = "feat. "+andCommaConcat(self.artist['Featured'])
+
+class TrackError(Exception):
+    """Base class for exceptions in this module."""
+    pass
+
+class AlbumDoesntExsists(TrackError):
+    pass
