@@ -1,5 +1,6 @@
 import eventlet
 import binascii
+import datetime
 import time
 
 requests = eventlet.import_patched('requests')
@@ -109,18 +110,20 @@ class Deezer:
                 filesizes[key+"_TESTED"] = False
         return filesizes
 
-    def gw_api_call(self, method, args=None):
+    def gw_api_call(self, method, args=None, params=None):
         if args is None:
             args = {}
+        if params is None:
+            params = {}
+        p = {'api_version': "1.0",
+             'api_token': 'null' if method == 'deezer.getUserData' else self.get_token(),
+             'input': '3',
+             'method': method}
+        p.update(params)
         try:
             result = self.session.post(
                 self.api_url,
-                params={
-                    'api_version': "1.0",
-                    'api_token': 'null' if method == 'deezer.getUserData' else self.get_token(),
-                    'input': '3',
-                    'method': method
-                },
+                params=p,
                 timeout=30,
                 json=args,
                 headers=self.http_headers
@@ -128,7 +131,7 @@ class Deezer:
             result_json = result.json()
         except:
             eventlet.sleep(2)
-            return self.gw_api_call(method, args)
+            return self.gw_api_call(method, args, params)
         if len(result_json['error']):
             raise APIError(json.dumps(result_json['error']))
         return result.json()
@@ -290,6 +293,29 @@ class Deezer:
     def get_album_gw(self, alb_id):
         return self.gw_api_call('album.getData', {'alb_id': alb_id})['results']
 
+    def get_album_details_gw(self, alb_id):
+        result = self.gw_api_call('deezer.pageAlbum',
+                                  {
+                                      'alb_id': alb_id,
+                                      'lang': 'en',
+                                      'header': True,
+                                      'tab': 0
+                                  })['results']
+        output = result['DATA']
+
+        duration = 0
+        for x in result['SONGS']['data']:
+            try:
+                duration += int(x['DURATION'])
+            except:
+                pass
+            
+        output['DURATION'] = duration
+        output['NUMBER_TRACK'] = result['SONGS']['total']
+        output['LINK'] = f"https://deezer.com/album/{str(output['ALB_ID'])}"
+
+        return output
+
     def get_album_tracks_gw(self, alb_id):
         tracks_array = []
         body = self.gw_api_call('song.getListByAlbum', {'alb_id': alb_id, 'nb': -1})
@@ -443,6 +469,66 @@ class Deezer:
             self.gw_api_call('search.music',
                              {"query": clean_search_query(term), "filter": "ALL", "output": type, "start": start, "nb": nb})[
                 'results']
+
+    def search_album_gw(self, term, start, nb=20):
+        results = self.search_gw(term, "ALBUM", start, nb)
+        ids = [x['ALB_ID'] for x in results['data']]
+
+        pool = eventlet.GreenPool(100)
+        albums = [a for a in pool.imap(self.get_album_details_gw, ids)]
+
+        return albums
+
+    def get_page_gw(self, page):
+        params = {
+            'gateway_input': json.dumps({
+                'PAGE': page,
+                'VERSION': '2.3',
+                'SUPPORT': {
+                    'grid': [
+                        'channel',
+                        'album'
+                    ],
+                    'horizontal-grid': [
+                        'album'
+                    ],
+                },
+                'LANG': 'en'
+            })
+        }
+        return self.gw_api_call('page.get', params=params)
+        
+    def get_new_releases(self):
+        explore = self.get_page_gw('channels/explore')
+        music_section = next((x for x in explore['results']['sections'] if x['title'] == 'Music'), None)
+        channels = [x['target'] for x in music_section['items']]
+
+        pool = eventlet.GreenPool(100)
+        new_releases_lists = [x for x in pool.imap(self.get_channel_new_releases, channels)]
+
+        seen = set()
+        new_releases = [seen.add(x['ALB_ID']) or x for list in new_releases_lists for x in list if x['ALB_ID'] not in seen]
+        new_releases.sort(key=lambda x: x['DIGITAL_RELEASE_DATE'], reverse=True)
+
+        now = datetime.datetime.now()
+        delta = datetime.timedelta(days=8)
+        recent_releases = [x for x in new_releases if now - datetime.datetime.strptime(x['DIGITAL_RELEASE_DATE'], "%Y-%m-%d") < delta]
+        recent_releases.sort(key=lambda x: x['ALB_ID'], reverse=True)
+
+        albums = [a for a in pool.imap(self.get_album_details_gw, [x['ALB_ID'] for x in recent_releases])]
+        
+        return albums
+
+    def get_channel_new_releases(self, channel_name):
+        channel_data = self.get_page_gw(channel_name)
+        pattern = '^New.*releases$'
+        new_releases = next((x for x in channel_data['results']['sections'] if re.match(pattern, x['title'])), None)
+        if new_releases is not None:
+            show_all = self.get_page_gw(new_releases['target'])
+            albums = [x['data'] for x in show_all['results']['sections'][0]['items']]
+            return albums
+            
+        return []
 
     def get_lyrics_gw(self, sng_id):
         return self.gw_api_call('song.getLyrics', {'sng_id': sng_id})["results"]
