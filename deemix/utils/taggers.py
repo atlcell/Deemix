@@ -23,6 +23,8 @@ def tagID3(stream, track, save):
                 tag.add(TPE1(text=track.mainArtist['name']))
             else:
                 tag.add(TPE1(text=track.artistsString))
+            # Tag ARTISTS is added to keep the multiartist support when using a non standard tagging method
+            # https://picard-docs.musicbrainz.org/en/technical/tag_mapping.html#artists
             tag.add(TXXX(desc="ARTISTS", text=track.artists))
 
     if save['album']:
@@ -128,6 +130,8 @@ def tagFLAC(stream, track, save):
                 tag["ARTIST"] = track.mainArtist['name']
             else:
                 tag["ARTIST"] = track.artistsString
+            # Tag ARTISTS is added to keep the multiartist support when using a non standard tagging method
+            # https://picard-docs.musicbrainz.org/en/technical/tag_mapping.html#artists
             tag["ARTISTS"] = track.artists
 
     if save['album']:
