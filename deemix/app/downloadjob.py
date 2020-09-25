@@ -298,6 +298,15 @@ class DownloadJob:
             track.trackNumber = track.position
             track.discNumber = "1"
             track.album = {**track.album, **track.playlist}
+            if 'picType' in track.playlist:
+                track.playlist['picUrl'] = "https://e-cdns-images.dzcdn.net/images/{}/{}/{}x{}-{}".format(
+                    track.playlist['picType'],
+                    track.playlist['pic'],
+                    self.settings['embeddedArtworkSize'], self.settings['embeddedArtworkSize'],
+                    'none-100-0-0.png' if self.settings['embeddedArtworkPNG'] else f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg'
+                )
+            else:
+                track.playlist['picUrl'] = track.playlist['pic']
             ext = track.playlist['picUrl'][-4:]
             if ext[0] != ".":
                 ext = ".jpg"
@@ -373,14 +382,15 @@ class DownloadJob:
             for format in self.settings['localArtworkFormat'].split(","):
                 if format in ["png","jpg"]:
                     if self.settings['tags']['savePlaylistAsCompilation'] and track.playlist:
-                        if track.playlist['pic']:
-                            url = "{}/{}x{}-{}".format(
+                        if track.playlist['picType']:
+                            url = "https://e-cdns-images.dzcdn.net/images/{}/{}/{}x{}-{}".format(
+                                track.album['picType'],
                                 track.album['pic'],
                                 self.settings['localArtworkSize'], self.settings['localArtworkSize'],
                                 'none-100-0-0.png' if format == "png" else f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg'
                             )
                         else:
-                            url = track.album['picUrl']
+                            url = track.album['pic']
                             if format != "jpg":
                                 continue
                     else:
@@ -456,17 +466,18 @@ class DownloadJob:
         # Save playlist cover
         if track.playlist:
             if not len(self.playlistURLs):
-                if track.playlist['pic']:
+                if track.playlist['picType']:
                     for format in self.settings['localArtworkFormat'].split(","):
                         if format in ["png","jpg"]:
-                            url = "{}/{}x{}-{}".format(
+                            url = "https://e-cdns-images.dzcdn.net/images/{}/{}/{}x{}-{}".format(
+                                track.playlist['picType'],
                                 track.playlist['pic'],
                                 self.settings['localArtworkSize'], self.settings['localArtworkSize'],
                                 'none-100-0-0.png' if format == "png" else f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg'
                             )
                             self.playlistURLs.append({'url': url, 'ext': format})
                 else:
-                    self.playlistURLs.append({'url': track.playlist['picUrl'], 'ext': 'jpg'})
+                    self.playlistURLs.append({'url': track.playlist['pic'], 'ext': 'jpg'})
             if not self.playlistPath:
                 track.playlist['id'] = "pl_" + str(trackAPI_gw['_EXTRA_PLAYLIST']['id'])
                 track.playlist['genre'] = ["Compilation", ]

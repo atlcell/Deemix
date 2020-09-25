@@ -41,7 +41,7 @@ class Track:
         # Add playlist data if track is in a playlist
         self.playlist = None
         if "_EXTRA_PLAYLIST" in trackAPI_gw:
-            self.parsePlaylistData()
+            self.parsePlaylistData(trackAPI_gw["_EXTRA_PLAYLIST"], settings)
 
         self.generateMainFeatStrings()
 
@@ -280,6 +280,7 @@ class Track:
                     'month': albumAPI_gw["PHYSICAL_RELEASE_DATE"][5:7],
                     'year': albumAPI_gw["PHYSICAL_RELEASE_DATE"][0:4]
                 }
+        self.album['picType'] = 'cover'
 
         isAlbumArtistVariousArtists = self.album['mainArtist']['id'] == VARIOUS_ARTISTS
         self.album['mainArtist']['save'] = not isAlbumArtistVariousArtists or settings['albumVariousArtists'] and isAlbumArtistVariousArtists
@@ -331,40 +332,39 @@ class Track:
                 albumAPI_gw = dz.get_album_gw(self.album['id'])
             self.copyright = albumAPI_gw['COPYRIGHT']
 
-    def parsePlaylistData(self):
+    def parsePlaylistData(self, playlist, settings):
         self.playlist = {}
-        if 'dzcdn.net' in trackAPI_gw["_EXTRA_PLAYLIST"]['picture_small']:
-            self.playlist['pic'] = trackAPI_gw["_EXTRA_PLAYLIST"]['picture_small'][:-24]
-            self.playlist['picUrl'] = "{}/{}x{}-{}".format(
-                self.playlist['pic'],
-                settings['embeddedArtworkSize'], settings['embeddedArtworkSize'],
-                'none-100-0-0.png' if settings['embeddedArtworkPNG'] else f'000000-{settings["jpegImageQuality"]}-0-0.jpg'
-            )
+        if 'dzcdn.net' in playlist['picture_small']:
+            url = playlist['picture_small']
+            picType = url[url.find('images/')+7:]
+            picType = picType[:picType.find('/')]
+            self.playlist['pic'] = url[url.find(picType+'/') + len(picType)+1:-24]
+            self.playlist['picType'] = picType
         else:
-            self.playlist['pic'] = None
-            self.playlist['picUrl'] = trackAPI_gw["_EXTRA_PLAYLIST"]['picture_xl']
-        self.playlist['title'] = trackAPI_gw["_EXTRA_PLAYLIST"]['title']
+            self.playlist['pic'] = playlist['picture_xl']
+            self.playlist['picType'] = None
+        self.playlist['title'] = playlist['title']
         self.playlist['mainArtist'] = {
-            'id': trackAPI_gw["_EXTRA_PLAYLIST"]['various_artist']['id'],
-            'name': trackAPI_gw["_EXTRA_PLAYLIST"]['various_artist']['name'],
-            'pic': trackAPI_gw["_EXTRA_PLAYLIST"]['various_artist']['picture_small'][
-                   trackAPI_gw["_EXTRA_PLAYLIST"]['various_artist']['picture_small'].find('artist/') + 7:-24]
+            'id': playlist['various_artist']['id'],
+            'name': playlist['various_artist']['name'],
+            'pic': playlist['various_artist']['picture_small'][
+                   playlist['various_artist']['picture_small'].find('artist/') + 7:-24]
         }
         if settings['albumVariousArtists']:
-            self.playlist['artist'] = {"Main": [trackAPI_gw["_EXTRA_PLAYLIST"]['various_artist']['name'], ]}
-            self.playlist['artists'] = [trackAPI_gw["_EXTRA_PLAYLIST"]['various_artist']['name'], ]
+            self.playlist['artist'] = {"Main": [playlist['various_artist']['name'], ]}
+            self.playlist['artists'] = [playlist['various_artist']['name'], ]
         else:
             self.playlist['artist'] = {"Main": []}
             self.playlist['artists'] = []
-        self.playlist['trackTotal'] = trackAPI_gw["_EXTRA_PLAYLIST"]['nb_tracks']
+        self.playlist['trackTotal'] = playlist['nb_tracks']
         self.playlist['recordType'] = "compile"
         self.playlist['barcode'] = ""
         self.playlist['label'] = ""
-        self.playlist['explicit'] = trackAPI_gw['_EXTRA_PLAYLIST']['explicit']
+        self.playlist['explicit'] = playlist['explicit']
         self.playlist['date'] = {
-            'day': trackAPI_gw["_EXTRA_PLAYLIST"]["creation_date"][8:10],
-            'month': trackAPI_gw["_EXTRA_PLAYLIST"]["creation_date"][5:7],
-            'year': trackAPI_gw["_EXTRA_PLAYLIST"]["creation_date"][0:4]
+            'day': playlist["creation_date"][8:10],
+            'month': playlist["creation_date"][5:7],
+            'year': playlist["creation_date"][0:4]
         }
         self.playlist['discTotal'] = "1"
 
