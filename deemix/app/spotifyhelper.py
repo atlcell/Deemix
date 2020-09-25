@@ -149,8 +149,11 @@ class SpotifyHelper:
             else:
                 cache = {'tracks': {}, 'albums': {}}
             if str(track_id) in cache['tracks']:
+                dz_track = None
                 if cache['tracks'][str(track_id)]['isrc']:
                     dz_track = dz.get_track_by_ISRC(cache['tracks'][str(track_id)]['isrc'])
+                    dz_id = dz_track['id'] if 'id' in dz_track and 'title' in dz_track else "0"
+                    cache['tracks'][str(track_id)]['id'] = dz_id
                 return (cache['tracks'][str(track_id)]['id'], dz_track, cache['tracks'][str(track_id)]['isrc'])
             singleTrack = True
             spotify_track = self.sp.track(track_id)
