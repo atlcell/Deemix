@@ -215,7 +215,7 @@ class Deezer:
         user_data = self.gw_api_call("deezer.getUserData")
         if user_data["results"]["USER"]["USER_ID"] == 0:
             self.logged_in = False
-            return 0
+            return False
         self.family = user_data["results"]["USER"]["MULTI_ACCOUNT"]["ENABLED"]
         if self.family:
             self.childs = self.get_child_accounts_gw()
@@ -242,7 +242,7 @@ class Deezer:
                     "USER"] else ""
             }
         self.logged_in = True
-        return 1
+        return True
 
     def change_account(self, child):
         if len(self.childs)-1 >= child:
@@ -309,7 +309,7 @@ class Deezer:
                 duration += int(x['DURATION'])
             except:
                 pass
-            
+
         output['DURATION'] = duration
         output['NUMBER_TRACK'] = result['SONGS']['total']
         output['LINK'] = f"https://deezer.com/album/{str(output['ALB_ID'])}"
@@ -497,7 +497,7 @@ class Deezer:
             })
         }
         return self.gw_api_call('page.get', params=params)
-        
+
     def get_new_releases(self):
         explore = self.get_page_gw('channels/explore')
         music_section = next((x for x in explore['results']['sections'] if x['title'] == 'Music'), None)
@@ -516,7 +516,7 @@ class Deezer:
         recent_releases.sort(key=lambda x: x['ALB_ID'], reverse=True)
 
         albums = [a for a in pool.imap(self.get_album_details_gw, [x['ALB_ID'] for x in recent_releases])]
-        
+
         return albums
 
     def get_channel_new_releases(self, channel_name):
@@ -527,7 +527,7 @@ class Deezer:
             show_all = self.get_page_gw(new_releases['target'])
             albums = [x['data'] for x in show_all['results']['sections'][0]['items']]
             return albums
-            
+
         return []
 
     def get_lyrics_gw(self, sng_id):

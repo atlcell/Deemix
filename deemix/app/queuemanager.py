@@ -4,7 +4,7 @@ from deemix.api.deezer import APIError
 from spotipy.exceptions import SpotifyException
 from deemix.app.queueitem import QueueItem, QISingle, QICollection, QIConvertable
 import logging
-import os.path as path
+from pathlib import Path
 import json
 from os import remove
 import eventlet
@@ -434,7 +434,7 @@ class QueueManager:
         if len(self.queueList) > 0:
             if self.currentItem != "":
                 self.queue.insert(0, self.currentItem)
-            with open(path.join(configFolder, 'queue.json'), 'w') as f:
+            with open(Path(configFolder) / 'queue.json', 'w') as f:
                 json.dump({
                     'queue': self.queue,
                     'queueComplete': self.queueComplete,
@@ -457,12 +457,13 @@ class QueueManager:
         return queueList
 
     def loadQueue(self, configFolder, settings, interface=None):
-        if path.isfile(path.join(configFolder, 'queue.json')) and not len(self.queue):
+        configFolder = Path(configFolder)
+        if (configFolder / 'queue.json').is_file() and not len(self.queue):
             if interface:
                 interface.send('restoringQueue')
-            with open(path.join(configFolder, 'queue.json'), 'r') as f:
+            with open(configFolder / 'queue.json', 'r') as f:
                 qd = json.load(f)
-            remove(path.join(configFolder, 'queue.json'))
+            remove(configFolder / 'queue.json')
             self.restoreQueue(qd['queue'], qd['queueComplete'], qd['queueList'], settings)
             if interface:
                 interface.send('init_downloadQueue', {

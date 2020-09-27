@@ -101,7 +101,7 @@ def tagID3(stream, track, save):
             descEncoding = Encoding.UTF8
 
         mimeType = 'image/jpeg'
-        if track.album['picPath'].endswith('png'):
+        if str(track.album['picPath']).endswith('png'):
             mimeType = 'image/png'
 
         with open(track.album['picPath'], 'rb') as f:
@@ -195,7 +195,7 @@ def tagFLAC(stream, track, save):
         image = Picture()
         image.type = PictureType.COVER_FRONT
         image.mime = 'image/jpeg'
-        if track.album['picPath'].endswith('png'):
+        if str(track.album['picPath']).endswith('png'):
             image.mime = 'image/png'
         with open(track.album['picPath'], 'rb') as f:
             image.data = f.read()

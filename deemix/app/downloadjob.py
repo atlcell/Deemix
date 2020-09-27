@@ -1,5 +1,6 @@
 import eventlet
-import os.path
+from os.path import sep as pathSep
+from pathlib import Path
 import re
 import errno
 
@@ -25,8 +26,8 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('deemix')
 
-TEMPDIR = os.path.join(gettempdir(), 'deemix-imgs')
-if not os.path.isdir(TEMPDIR):
+TEMPDIR = Path(gettempdir()) / 'deemix-imgs'
+if not TEMPDIR.is_dir():
     makedirs(TEMPDIR)
 
 extensions = {
@@ -52,8 +53,9 @@ errorMessages = {
     'noSpaceLeft': "No space left on target drive, clean up some space for the tracks",
     'albumDoesntExsists': "Track's album does not exsist, failed to gather info"
 }
+
 def downloadImage(url, path, overwrite="n"):
-    if not os.path.isfile(path) or overwrite in ['y', 't', 'b']:
+    if not path.is_file() or overwrite in ['y', 't', 'b']:
         try:
             image = get(url, headers={'User-Agent': USER_AGENT_HEADER}, timeout=30)
             image.raise_for_status()
@@ -81,7 +83,7 @@ def downloadImage(url, path, overwrite="n"):
                 logger.exception(f"Error while downloading an image, you should report this to the developers: {str(e)}")
         except Exception as e:
             logger.exception(f"Error while downloading an image, you should report this to the developers: {str(e)}")
-        if os.path.isfile(path): remove(path)
+        if path.is_file(): path.unlink()
         return None
     else:
         return path
@@ -108,7 +110,7 @@ class DownloadJob:
         self.downloadPercentage = 0
         self.lastPercentage = 0
         self.extrasPath = None
-        self.playlistPath = None
+        self.playlistCoverName = None
         self.playlistURLs = []
 
     def start(self):
@@ -134,18 +136,18 @@ class DownloadJob:
 
     def singleAfterDownload(self, result):
         if not self.extrasPath:
-            self.extrasPath = self.settings['downloadLocation']
+            self.extrasPath = Path(self.settings['downloadLocation'])
         # Save Album Cover
         if self.settings['saveArtwork'] and 'albumPath' in result:
             for image in result['albumURLs']:
-                downloadImage(image['url'], f"{result['albumPath']}.{image['ext']}", self.settings['overwriteFile'])
+                downloadImage(image['url'], result['albumPath'] / f"{result['albumFilename']}.{image['ext']}", self.settings['overwriteFile'])
         # Save Artist Artwork
         if self.settings['saveArtworkArtist'] and 'artistPath' in result:
             for image in result['artistURLs']:
-                downloadImage(image['url'], f"{result['artistPath']}.{image['ext']}", self.settings['overwriteFile'])
+                downloadImage(image['url'], result['artistPath'] / f"{result['artistFilename']}.{image['ext']}", self.settings['overwriteFile'])
         # Create searched logfile
         if self.settings['logSearched'] and 'searched' in result:
-            with open(os.path.join(self.extrasPath, 'searched.txt'), 'wb+') as f:
+            with open(self.extrasPath / 'searched.txt', 'wb+') as f:
                 orig = f.read().decode('utf-8')
                 if not result['searched'] in orig:
                     if orig != "":
@@ -154,11 +156,11 @@ class DownloadJob:
                 f.write(orig.encode('utf-8'))
         # Execute command after download
         if self.settings['executeCommand'] != "":
-            execute(self.settings['executeCommand'].replace("%folder%", self.extrasPath).replace("%filename%", result['filename']))
+            execute(self.settings['executeCommand'].replace("%folder%", str(self.extrasPath)).replace("%filename%", result['filename']))
 
     def collectionAfterDownload(self, tracks):
         if not self.extrasPath:
-            self.extrasPath = self.settings['downloadLocation']
+            self.extrasPath = Path(self.settings['downloadLocation'])
         playlist = [None] * len(tracks)
         errors = ""
         searched = ""
@@ -179,11 +181,11 @@ class DownloadJob:
             # Save Album Cover
             if self.settings['saveArtwork'] and 'albumPath' in result:
                 for image in result['albumURLs']:
-                    downloadImage(image['url'], f"{result['albumPath']}.{image['ext']}", self.settings['overwriteFile'])
+                    downloadImage(image['url'], result['albumPath'] / f"{result['albumFilename']}.{image['ext']}", self.settings['overwriteFile'])
             # Save Artist Artwork
             if self.settings['saveArtworkArtist'] and 'artistPath' in result:
                 for image in result['artistURLs']:
-                    downloadImage(image['url'], f"{result['artistPath']}.{image['ext']}", self.settings['overwriteFile'])
+                    downloadImage(image['url'], result['artistPath'] / f"{result['artistFilename']}.{image['ext']}", self.settings['overwriteFile'])
             # Save filename for playlist file
             playlist[index] = ""
             if 'filename' in result:
@@ -191,20 +193,20 @@ class DownloadJob:
 
         # Create errors logfile
         if self.settings['logErrors'] and errors != "":
-            with open(os.path.join(self.extrasPath, 'errors.txt'), 'wb') as f:
+            with open(self.extrasPath / 'errors.txt', 'wb') as f:
                 f.write(errors.encode('utf-8'))
         # Create searched logfile
         if self.settings['logSearched'] and searched != "":
-            with open(os.path.join(self.extrasPath, 'searched.txt'), 'wb') as f:
+            with open(self.extrasPath / 'searched.txt', 'wb') as f:
                 f.write(searched.encode('utf-8'))
         # Save Playlist Artwork
-        if self.settings['saveArtwork'] and self.playlistPath and not self.settings['tags']['savePlaylistAsCompilation']:
+        if self.settings['saveArtwork'] and self.playlistCoverName and not self.settings['tags']['savePlaylistAsCompilation']:
             for image in self.playlistURLs:
-                downloadImage(image['url'], os.path.join(self.extrasPath, self.playlistPath)+f".{image['ext']}", self.settings['overwriteFile'])
+                downloadImage(image['url'], self.extrasPath / f"{self.playlistCoverName}.{image['ext']}", self.settings['overwriteFile'])
         # Create M3U8 File
         if self.settings['createM3U8File']:
             filename = settingsRegexPlaylistFile(self.settings['playlistFilenameTemplate'], self.queueItem, self.settings) or "playlist"
-            with open(os.path.join(self.extrasPath, filename+'.m3u8'), 'wb') as f:
+            with open(self.extrasPath / f'{filename}.m3u8', 'wb') as f:
                 for line in playlist:
                     f.write((line + "\n").encode('utf-8'))
         # Execute command after download
@@ -310,7 +312,7 @@ class DownloadJob:
             ext = track.playlist['picUrl'][-4:]
             if ext[0] != ".":
                 ext = ".jpg"
-            track.album['picPath'] = os.path.join(TEMPDIR, f"pl{trackAPI_gw['_EXTRA_PLAYLIST']['id']}_{self.settings['embeddedArtworkSize']}{ext}")
+            track.album['picPath'] = TEMPDIR / f"pl{trackAPI_gw['_EXTRA_PLAYLIST']['id']}_{self.settings['embeddedArtworkSize']}{ext}"
         else:
             if track.album['date']:
                 track.date = track.album['date']
@@ -319,11 +321,12 @@ class DownloadJob:
                 self.settings['embeddedArtworkSize'], self.settings['embeddedArtworkSize'],
                 'none-100-0-0.png' if self.settings['embeddedArtworkPNG'] else f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg'
             )
-            track.album['picPath'] = os.path.join(TEMPDIR, f"alb{track.album['id']}_{self.settings['embeddedArtworkSize']}{track.album['picUrl'][-4:]}")
+            track.album['picPath'] = TEMPDIR / f"alb{track.album['id']}_{self.settings['embeddedArtworkSize']}{track.album['picUrl'][-4:]}"
         track.album['bitrate'] = selectedFormat
 
         track.dateString = formatDate(track.date, self.settings['dateFormat'])
         track.album['dateString'] = formatDate(track.album['date'], self.settings['dateFormat'])
+        if track.playlist: track.playlist['dateString'] = formatDate(track.playlist['date'], self.settings['dateFormat'])
 
         # Check if user wants the feat in the title
         # 0 => do not change
@@ -356,19 +359,19 @@ class DownloadJob:
             track.generateMainFeatStrings()
 
         # Generate artist tag if needed
-        if self.settings['tags']['multiArtistSeparator'] != "default":
-            if self.settings['tags']['multiArtistSeparator'] == "andFeat":
-                track.artistsString = track.mainArtistsString
-                if track.featArtistsString and str(self.settings['featuredToTitle']) != "2":
-                    track.artistsString += " " + track.featArtistsString
-            else:
-                track.artistsString = self.settings['tags']['multiArtistSeparator'].join(track.artists)
-        else:
+        if self.settings['tags']['multiArtistSeparator'] == "default":
             track.artistsString = ", ".join(track.artists)
+        elif self.settings['tags']['multiArtistSeparator'] == "andFeat":
+            track.artistsString = track.mainArtistsString
+            if track.featArtistsString and str(self.settings['featuredToTitle']) != "2":
+                track.artistsString += " " + track.featArtistsString
+        else:
+            track.artistsString = self.settings['tags']['multiArtistSeparator'].join(track.artists)
+
 
         # Generate filename and filepath from metadata
-        filename = generateFilename(track, trackAPI_gw, self.settings)
-        (filepath, artistPath, coverPath, extrasPath) = generateFilepath(track, trackAPI_gw, self.settings)
+        filename = generateFilename(track, self.settings, trackAPI_gw['FILENAME_TEMPLATE'])
+        (filepath, artistPath, coverPath, extrasPath) = generateFilepath(track, self.settings)
 
         if self.queueItem.cancel: raise DownloadCancelled
 
@@ -400,8 +403,8 @@ class DownloadJob:
                             'none-100-0-0.png' if format == "png" else f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg'
                         )
                     result['albumURLs'].append({'url': url, 'ext': format})
-            result['albumPath'] = os.path.join(coverPath,
-                                               f"{settingsRegexAlbum(self.settings['coverImageTemplate'], track.album, self.settings, trackAPI_gw['_EXTRA_PLAYLIST'] if'_EXTRA_PLAYLIST' in trackAPI_gw else None)}")
+            result['albumPath'] = coverPath
+            result['albumFilename'] = f"{settingsRegexAlbum(self.settings['coverImageTemplate'], track.album, self.settings, track.playlist)}"
 
         # Save artist art
         if artistPath:
@@ -418,50 +421,47 @@ class DownloadJob:
                             self.settings['localArtworkSize'], self.settings['localArtworkSize'], f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg')
                     if url:
                         result['artistURLs'].append({'url': url, 'ext': format})
-            result['artistPath'] = os.path.join(artistPath,
-                f"{settingsRegexArtist(self.settings['artistImageTemplate'], track.album['mainArtist'], self.settings)}")
+            result['artistPath'] = artistPath
+            result['artistFilename'] = f"{settingsRegexArtist(self.settings['artistImageTemplate'], track.album['mainArtist'], self.settings)}"
 
         # Remove subfolders from filename and add it to filepath
-        if os.path.sep in filename:
-            tempPath = filename[:filename.rfind(os.path.sep)]
-            filepath = os.path.join(filepath, tempPath)
-            filename = filename[filename.rfind(os.path.sep) + len(os.path.sep):]
+        if pathSep in filename:
+            tempPath = filename[:filename.rfind(pathSep)]
+            filepath = filepath / tempPath
+            filename = filename[filename.rfind(pathSep) + len(pathSep):]
 
         # Make sure the filepath exsists
         makedirs(filepath, exist_ok=True)
-        writepath = os.path.join(filepath, filename + extensions[track.selectedFormat])
+        writepath = filepath / f"{filename}{extensions[track.selectedFormat]}"
 
         # Save lyrics in lrc file
         if self.settings['syncedLyrics'] and track.lyrics['sync']:
-            if not os.path.isfile(os.path.join(filepath, filename + '.lrc')) or self.settings['overwriteFile'] in ['y', 't']:
-                with open(os.path.join(filepath, filename + '.lrc'), 'wb') as f:
+            if not (filepath / f"{filename}.lrc").is_file() or self.settings['overwriteFile'] in ['y', 't']:
+                with open(filepath / f"{filename}.lrc", 'wb') as f:
                     f.write(track.lyrics['sync'].encode('utf-8'))
 
-        trackAlreadyDownloaded = os.path.isfile(writepath)
+        trackAlreadyDownloaded = writepath.is_file()
         if not trackAlreadyDownloaded and self.settings['overwriteFile'] == 'e':
             exts = ['.mp3', '.flac', '.opus', '.m4a']
-            baseFilename = os.path.join(filepath, filename)
+            baseFilename = str(filepath / filename)
             for ext in exts:
-                trackAlreadyDownloaded = os.path.isfile(baseFilename+ext)
+                trackAlreadyDownloaded = Path(baseFilename+ext).is_file()
                 if trackAlreadyDownloaded:
                     break
         if trackAlreadyDownloaded and self.settings['overwriteFile'] == 'b':
-            baseFilename = os.path.join(filepath, filename)
+            baseFilename = str(filepath / filename)
             i = 1
             currentFilename = baseFilename+' ('+str(i)+')'+ extensions[track.selectedFormat]
-            while os.path.isfile(currentFilename):
+            while Path(currentFilename).is_file():
                 i += 1
                 currentFilename = baseFilename+' ('+str(i)+')'+ extensions[track.selectedFormat]
             trackAlreadyDownloaded = False
-            writepath = currentFilename
+            writepath = Path(currentFilename)
 
 
         if extrasPath:
-            if not self.extrasPath:
-                self.extrasPath = extrasPath
-
-            # Data for m3u file
-            result['filename'] = writepath[len(extrasPath):]
+            if not self.extrasPath: self.extrasPath = extrasPath
+            result['filename'] = str(writepath)[len(str(extrasPath)):]
 
         # Save playlist cover
         if track.playlist:
@@ -478,12 +478,12 @@ class DownloadJob:
                             self.playlistURLs.append({'url': url, 'ext': format})
                 else:
                     self.playlistURLs.append({'url': track.playlist['pic'], 'ext': 'jpg'})
-            if not self.playlistPath:
+            if not self.playlistCoverName:
                 track.playlist['id'] = "pl_" + str(trackAPI_gw['_EXTRA_PLAYLIST']['id'])
                 track.playlist['genre'] = ["Compilation", ]
                 track.playlist['bitrate'] = selectedFormat
                 track.playlist['dateString'] = formatDate(track.playlist['date'], self.settings['dateFormat'])
-                self.playlistPath = f"{settingsRegexAlbum(self.settings['coverImageTemplate'], track.playlist, self.settings, trackAPI_gw['_EXTRA_PLAYLIST'])}"
+                self.playlistCoverName = f"{settingsRegexAlbum(self.settings['coverImageTemplate'], track.playlist, self.settings, track.playlist)}"
 
         if not trackAlreadyDownloaded or self.settings['overwriteFile'] == 'y':
             logger.info(f"[{track.mainArtist['name']} - {track.title}] Downloading the track")
@@ -494,10 +494,10 @@ class DownloadJob:
                     with open(writepath, 'wb') as stream:
                         self.streamTrack(stream, track)
                 except DownloadCancelled:
-                    if os.path.isfile(writepath): remove(writepath)
+                    if writepath.is_file(): writepath.unlink()
                     raise DownloadCancelled
                 except (request_exception.HTTPError, DownloadEmpty):
-                    if os.path.isfile(writepath): remove(writepath)
+                    if writepath.is_file(): writepath.unlink()
                     if track.fallbackId != "0":
                         logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not available, using fallback id")
                         newTrack = self.dz.get_track_gw(track.fallbackId)
@@ -526,7 +526,7 @@ class DownloadJob:
                     else:
                         raise DownloadFailed("notAvailable")
                 except (request_exception.ConnectionError, request_exception.ChunkedEncodingError) as e:
-                    if os.path.isfile(writepath): remove(writepath)
+                    if writepath.is_file(): writepath.unlink()
                     logger.warn(f"[{track.mainArtist['name']} - {track.title}] Error while downloading the track, trying again in 5s...")
                     eventlet.sleep(5)
                     return downloadMusic(track, trackAPI_gw)
@@ -534,11 +534,11 @@ class DownloadJob:
                     if e.errno == errno.ENOSPC:
                         raise DownloadFailed("noSpaceLeft")
                     else:
-                        if os.path.isfile(writepath): remove(writepath)
+                        if writepath.is_file(): writepath.unlink()
                         logger.exception(f"[{track.mainArtist['name']} - {track.title}] Error while downloading the track, you should report this to the developers: {str(e)}")
                         raise e
                 except Exception as e:
-                    if os.path.isfile(writepath): remove(writepath)
+                    if writepath.is_file(): writepath.unlink()
                     logger.exception(f"[{track.mainArtist['name']} - {track.title}] Error while downloading the track, you should report this to the developers: {str(e)}")
                     raise e
                 return True
@@ -565,7 +565,7 @@ class DownloadJob:
                 try:
                     tagFLAC(writepath, track, self.settings['tags'])
                 except FLACNoHeaderError:
-                    if os.path.isfile(writepath): remove(writepath)
+                    if writepath.is_file(): writepath.unlink()
                     logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not available in FLAC, falling back if necessary")
                     self.removeTrackPercentage()
                     track.filesizes['FILESIZE_FLAC'] = "0"
@@ -574,11 +574,11 @@ class DownloadJob:
             if track.searched:
                 result['searched'] = f"{track.mainArtist['name']} - {track.title}"
 
-        logger.info(f"[{track.mainArtist['name']} - {track.title}] Track download completed\n{writepath}")
+        logger.info(f"[{track.mainArtist['name']} - {track.title}] Track download completed\n{str(writepath)}")
         self.queueItem.downloaded += 1
-        self.queueItem.files.append(writepath)
+        self.queueItem.files.append(str(writepath))
         if self.interface:
-            self.interface.send("updateQueue", {'uuid': self.queueItem.uuid, 'downloaded': True, 'downloadPath': writepath})
+            self.interface.send("updateQueue", {'uuid': self.queueItem.uuid, 'downloaded': True, 'downloadPath': str(writepath)})
         return result
 
     def getPreferredBitrate(self, track):

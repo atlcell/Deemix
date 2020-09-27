@@ -1,7 +1,6 @@
 import eventlet
 import json
-import os.path as path
-from os import mkdir, remove
+from pathlib import Path
 
 eventlet.import_patched('requests.adapters')
 
@@ -38,33 +37,34 @@ class SpotifyHelper:
         # Make sure config folder exsists
         if not self.configFolder:
             self.configFolder = getConfigFolder()
-        if not path.isdir(self.configFolder):
-            mkdir(self.configFolder)
+        self.configFolder = Path(self.configFolder)
+        if not self.configFolder.is_dir():
+            self.configFolder.mkdir()
 
         # Make sure authCredentials exsits
-        if not path.isfile(path.join(self.configFolder, 'authCredentials.json')):
-            with open(path.join(self.configFolder, 'authCredentials.json'), 'w') as f:
+        if not (self.configFolder / 'authCredentials.json').is_file():
+            with open(self.configFolder / 'authCredentials.json', 'w') as f:
                 json.dump({'clientId': "", 'clientSecret': ""}, f, indent=2)
 
         # Load spotify id and secret and check if they are usable
-        with open(path.join(self.configFolder, 'authCredentials.json'), 'r') as credentialsFile:
+        with open(self.configFolder / 'authCredentials.json', 'r') as credentialsFile:
             self.credentials = json.load(credentialsFile)
         self.checkCredentials()
         self.checkValidCache()
 
     def checkValidCache(self):
-        if path.isfile(path.join(self.configFolder, 'spotifyCache.json')):
-            with open(path.join(self.configFolder, 'spotifyCache.json'), 'r') as spotifyCache:
+        if (self.configFolder / 'spotifyCache.json').is_file():
+            with open(self.configFolder / 'spotifyCache.json', 'r') as spotifyCache:
                 try:
                     cache = json.load(spotifyCache)
                 except Exception as e:
                     print(str(e))
-                    remove(path.join(self.configFolder, 'spotifyCache.json'))
+                    (self.configFolder / 'spotifyCache.json').unlink()
                     return
             # Remove old versions of cache
             if len(cache['tracks'].values()) and isinstance(list(cache['tracks'].values())[0], int) or \
                len(cache['albums'].values()) and isinstance(list(cache['albums'].values())[0], int):
-                remove(path.join(self.configFolder, 'spotifyCache.json'))
+                (self.configFolder / 'spotifyCache.json').unlink()
 
     def checkCredentials(self):
         if self.credentials['clientId'] == "" or self.credentials['clientSecret'] == "":
@@ -89,7 +89,7 @@ class SpotifyHelper:
         spotifyCredentials['clientSecret'] = spotifyCredentials['clientSecret'].strip()
 
         # Save them to disk
-        with open(path.join(self.configFolder, 'authCredentials.json'), 'w') as f:
+        with open(self.configFolder / 'authCredentials.json', 'w') as f:
             json.dump(spotifyCredentials, f, indent=2)
 
         # Check if they are usable
@@ -143,8 +143,8 @@ class SpotifyHelper:
             raise spotifyFeaturesNotEnabled
         singleTrack = False
         if not spotifyTrack:
-            if path.isfile(path.join(self.configFolder, 'spotifyCache.json')):
-                with open(path.join(self.configFolder, 'spotifyCache.json'), 'r') as spotifyCache:
+            if (self.configFolder / 'spotifyCache.json').is_file():
+                with open(self.configFolder / 'spotifyCache.json', 'r') as spotifyCache:
                     cache = json.load(spotifyCache)
             else:
                 cache = {'tracks': {}, 'albums': {}}
@@ -175,7 +175,7 @@ class SpotifyHelper:
                                                   spotify_track['album']['name'])
         if singleTrack:
             cache['tracks'][str(track_id)] = {'id': dz_id, 'isrc': isrc}
-            with open(path.join(self.configFolder, 'spotifyCache.json'), 'w') as spotifyCache:
+            with open(self.configFolder / 'spotifyCache.json', 'w') as spotifyCache:
                 json.dump(cache, spotifyCache)
         return (dz_id, dz_track, isrc)
 
@@ -183,8 +183,8 @@ class SpotifyHelper:
     def get_albumid_spotify(self, dz, album_id):
         if not self.spotifyEnabled:
             raise spotifyFeaturesNotEnabled
-        if path.isfile(path.join(self.configFolder, 'spotifyCache.json')):
-            with open(path.join(self.configFolder, 'spotifyCache.json'), 'r') as spotifyCache:
+        if (self.configFolder / 'spotifyCache.json').is_file():
+            with open(self.configFolder / 'spotifyCache.json', 'r') as spotifyCache:
                 cache = json.load(spotifyCache)
         else:
             cache = {'tracks': {}, 'albums': {}}
@@ -205,7 +205,7 @@ class SpotifyHelper:
                 except:
                     dz_album = "0"
         cache['albums'][str(album_id)] = {'id': dz_album, 'upc': upc}
-        with open(path.join(self.configFolder, 'spotifyCache.json'), 'w') as spotifyCache:
+        with open(self.configFolder / 'spotifyCache.json', 'w') as spotifyCache:
             json.dump(cache, spotifyCache)
         return dz_album
 
@@ -255,8 +255,8 @@ class SpotifyHelper:
     def convert_spotify_playlist(self, dz, queueItem, interface=None):
         convertPercentage = 0
         lastPercentage = 0
-        if path.isfile(path.join(self.configFolder, 'spotifyCache.json')):
-            with open(path.join(self.configFolder, 'spotifyCache.json'), 'r') as spotifyCache:
+        if (self.configFolder / 'spotifyCache.json').is_file():
+            with open(self.configFolder / 'spotifyCache.json', 'r') as spotifyCache:
                 cache = json.load(spotifyCache)
         else:
             cache = {'tracks': {}, 'albums': {}}
@@ -309,7 +309,7 @@ class SpotifyHelper:
         queueItem.extra = None
         queueItem.collection = collection
 
-        with open(path.join(self.configFolder, 'spotifyCache.json'), 'w') as spotifyCache:
+        with open(self.configFolder / 'spotifyCache.json', 'w') as spotifyCache:
             json.dump(cache, spotifyCache)
         if interface:
             interface.send("startDownload", queueItem.uuid)

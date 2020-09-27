@@ -2,7 +2,7 @@
 import click
 
 from deemix.app.cli import cli
-import os.path
+from pathlib import Path
 
 @click.command()
 @click.option('--portable', is_flag=True, help='Creates the config folder in the same directory where the script is launched')
@@ -11,21 +11,21 @@ import os.path
 @click.argument('url', nargs=-1, required=True)
 def download(url, bitrate, portable, path):
 
-    localpath = os.path.realpath('.')
-    configFolder = os.path.join(localpath, 'config') if portable else None
+    localpath = Path('.')
+    configFolder = localpath / 'config' if portable else None
     if path is not None:
         if path == '': path = '.'
-        path = os.path.realpath(path)
+        path = Path(path)
 
     app = cli(path, configFolder)
     app.login()
     url = list(url)
 
-    if os.path.isfile(url[0]):
+    if Path(url[0]).is_file():
         filename = url[0]
         with open(filename) as f:
             url = f.readlines()
-    
+
     app.downloadLink(url, bitrate)
     click.echo("All done!")
 

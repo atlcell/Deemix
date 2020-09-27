@@ -43,6 +43,8 @@ class Track:
         if "_EXTRA_PLAYLIST" in trackAPI_gw:
             self.parsePlaylistData(trackAPI_gw["_EXTRA_PLAYLIST"], settings)
 
+        self.singleDownload = trackAPI_gw.get('SINGLE_TRACK', False)
+
         self.generateMainFeatStrings()
 
         # Bits useful for later
@@ -367,6 +369,8 @@ class Track:
             'year': playlist["creation_date"][0:4]
         }
         self.playlist['discTotal'] = "1"
+        self.playlist['playlistId'] = playlist['id']
+        self.playlist['owner'] = playlist['creator']
 
     # Removes featuring from the title
     def getCleanTitle(self):
@@ -383,7 +387,7 @@ class Track:
 
     def generateMainFeatStrings(self):
         self.mainArtistsString = andCommaConcat(self.artist['Main'])
-        self.featArtistsString = None
+        self.featArtistsString = ""
         if 'Featured' in self.artist:
             self.featArtistsString = "feat. "+andCommaConcat(self.artist['Featured'])
 
