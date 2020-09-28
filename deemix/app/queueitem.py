@@ -1,9 +1,10 @@
 class QueueItem:
-    def __init__(self, id=None, bitrate=None, title=None, artist=None, cover=None, size=None, type=None, settings=None, queueItemDict=None):
+    def __init__(self, id=None, bitrate=None, title=None, artist=None, cover=None, explicit=False, size=None, type=None, settings=None, queueItemDict=None):
         if queueItemDict:
             self.title = queueItemDict['title']
             self.artist = queueItemDict['artist']
             self.cover = queueItemDict['cover']
+            self.explicit = queueItemDict['explicit']
             self.size = queueItemDict['size']
             self.type = queueItemDict['type']
             self.id = queueItemDict['id']
@@ -18,6 +19,7 @@ class QueueItem:
             self.title = title
             self.artist = artist
             self.cover = cover
+            self.explicit = explicit
             self.size = size
             self.type = type
             self.id = id
@@ -37,6 +39,7 @@ class QueueItem:
             'title': self.title,
             'artist': self.artist,
             'cover': self.cover,
+            'explicit': self.explicit,
             'size': self.size,
             'files': self.files,
             'downloaded': self.downloaded,
@@ -67,12 +70,12 @@ class QueueItem:
         return light
 
 class QISingle(QueueItem):
-    def __init__(self, id=None, bitrate=None, title=None, artist=None, cover=None, type=None, settings=None, single=None, queueItemDict=None):
+    def __init__(self, id=None, bitrate=None, title=None, artist=None, cover=None, explicit=False, type=None, settings=None, single=None, queueItemDict=None):
         if queueItemDict:
             super().__init__(queueItemDict=queueItemDict)
             self.single = queueItemDict['single']
         else:
-            super().__init__(id, bitrate, title, artist, cover, 1, type, settings)
+            super().__init__(id, bitrate, title, artist, cover, explicit, 1, type, settings)
             self.single = single
 
     def toDict(self):
@@ -81,12 +84,12 @@ class QISingle(QueueItem):
         return queueItem
 
 class QICollection(QueueItem):
-    def __init__(self, id=None, bitrate=None, title=None, artist=None, cover=None, size=None, type=None, settings=None, collection=None, queueItemDict=None):
+    def __init__(self, id=None, bitrate=None, title=None, artist=None, cover=None, explicit=False, size=None, type=None, settings=None, collection=None, queueItemDict=None):
         if queueItemDict:
             super().__init__(queueItemDict=queueItemDict)
             self.collection = queueItemDict['collection']
         else:
-            super().__init__(id, bitrate, title, artist, cover, size, type, settings)
+            super().__init__(id, bitrate, title, artist, cover, explicit, size, type, settings)
             self.collection = collection
 
     def toDict(self):
@@ -95,12 +98,12 @@ class QICollection(QueueItem):
         return queueItem
 
 class QIConvertable(QICollection):
-    def __init__(self, id=None, bitrate=None, title=None, artist=None, cover=None, size=None, type=None, settings=None, extra=None, queueItemDict=None):
+    def __init__(self, id=None, bitrate=None, title=None, artist=None, cover=None, explicit=False, size=None, type=None, settings=None, extra=None, queueItemDict=None):
         if queueItemDict:
             super().__init__(queueItemDict=queueItemDict)
             self.extra = queueItemDict['_EXTRA']
         else:
-            super().__init__(id, bitrate, title, artist, cover, size, type, settings, [])
+            super().__init__(id, bitrate, title, artist, cover, explicit, size, type, settings, [])
             self.extra = extra
 
     def toDict(self):
