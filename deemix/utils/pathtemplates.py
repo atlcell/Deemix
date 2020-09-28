@@ -94,7 +94,7 @@ def generateFilepath(track, settings):
                 (track.playlist and settings['createStructurePlaylist'])
             )
     ):
-        filepath = filepath / settingsRegexAlbum(settings['albumNameTemplate'], track.album, settings, track.playlist if track.playlist else None)
+        filepath = filepath / settingsRegexAlbum(settings['albumNameTemplate'], track.album, settings, track.playlist)
         coverPath = filepath
 
     if not (track.playlist and not settings['tags']['savePlaylistAsCompilation']):
@@ -109,7 +109,7 @@ def generateFilepath(track, settings):
                 (track.playlist and settings['createStructurePlaylist'])
             )
     )):
-        filepath = filepath / 'CD' + str(track.discNumber)
+        filepath = filepath / f'CD{str(track.discNumber)}'
 
     return (filepath, artistPath, coverPath, extrasPath)
 
