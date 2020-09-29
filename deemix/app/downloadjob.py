@@ -616,7 +616,7 @@ class DownloadJob:
                     if int(track.filesizes[f"FILESIZE_{format}"]) != 0:
                         return format_num
                     elif not track.filesizes[f"FILESIZE_{format}_TESTED"]:
-                        request = get(self.dz.get_track_stream_url(track.id, track.MD5, track.mediaVersion, format_num), stream=True)
+                        request = requests.head(self.dz.get_track_stream_url(track.id, track.MD5, track.mediaVersion, format_num), headers={'User-Agent': USER_AGENT_HEADER}, timeout=30)
                         try:
                             request.raise_for_status()
                             return format_num
