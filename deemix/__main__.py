@@ -21,7 +21,11 @@ def download(url, bitrate, portable, path):
     app.login()
     url = list(url)
 
-    if Path(url[0]).is_file():
+    try:
+        isfile = Path(url[0]).is_file()
+    except:
+        isfile = False
+    if isfile:
         filename = url[0]
         with open(filename) as f:
             url = f.readlines()
