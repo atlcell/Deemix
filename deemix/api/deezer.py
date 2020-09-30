@@ -81,7 +81,9 @@ class Deezer:
 
     def get_track_filesizes(self, sng_id):
         try:
-            response = requests.post("https://www.deezer.com/", headers=self.http_headers)
+            response = requests.post("https://www.deezer.com/",
+                                     headers=self.http_headers,
+                                     timeout=30)
             guest_sid = response.cookies.get('sid')
             site = requests.post(
                 "https://api.deezer.com/1.0/gateway.php",

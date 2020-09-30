@@ -616,7 +616,7 @@ class DownloadJob:
                     if int(track.filesizes[f"FILESIZE_{format}"]) != 0:
                         return format_num
                     elif not track.filesizes[f"FILESIZE_{format}_TESTED"]:
-                        request = get(self.dz.get_track_stream_url(track.id, track.MD5, track.mediaVersion, format_num), stream=True)
+                        request = requests.head(self.dz.get_track_stream_url(track.id, track.MD5, track.mediaVersion, format_num), headers={'User-Agent': USER_AGENT_HEADER}, timeout=30)
                         try:
                             request.raise_for_status()
                             return format_num
@@ -642,43 +642,54 @@ class DownloadJob:
 
         return error_num # fallback is enabled and loop went through all formats
 
-    def streamTrack(self, stream, track, range=None):
+    def streamTrack(self, stream, track, start=0):
         if self.queueItem.cancel: raise DownloadCancelled
 
-        try:
-            headers=self.dz.http_headers
-            if range is not None:
-                headers['Range'] = range
-            request = self.dz.session.get(track.downloadUrl, headers=self.dz.http_headers, stream=True, timeout=10)
-        except request_exception.ConnectionError:
-            eventlet.sleep(2)
-            return self.streamTrack(stream, track)
-        request.raise_for_status()
-        blowfish_key = str.encode(self.dz._get_blowfish_key(str(track.id)))
-        complete = int(request.headers["Content-Length"])
-        if complete == 0:
-            raise DownloadEmpty
-        chunkLength = 0
+        headers=dict(self.dz.http_headers)
+        if range != 0:
+            headers['Range'] = f'bytes={start}-'
+        chunkLength = start
         percentage = 0
+
         try:
-            for chunk in request.iter_content(2048 * 3):
-                eventlet.sleep(0)
-                if self.queueItem.cancel: raise DownloadCancelled
-                if len(chunk) >= 2048:
-                    chunk = Blowfish.new(blowfish_key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07").decrypt(chunk[0:2048]) + chunk[2048:]
-                stream.write(chunk)
-                chunkLength += len(chunk)
-                if isinstance(self.queueItem, QISingle):
-                    percentage = (chunkLength / complete) * 100
-                    self.downloadPercentage = percentage
+            with self.dz.session.get(track.downloadUrl, headers=headers, stream=True, timeout=10) as request:
+                request.raise_for_status()
+                
+                blowfish_key = str.encode(self.dz._get_blowfish_key(str(track.id)))
+
+                complete = int(request.headers["Content-Length"])
+                if complete == 0:
+                    raise DownloadEmpty
+                if start != 0:
+                    responseRange = request.headers["Content-Range"]
+                    logger.info(f'{track.title} downloading range {responseRange}')
                 else:
-                    chunkProgres = (len(chunk) / complete) / self.queueItem.size * 100
-                    self.downloadPercentage += chunkProgres
-                self.updatePercentage()
-        except SSLError:
-            range = f'bytes={chunkLength}-'
-            logger.info(f'retrying {track.title} with range {range}')
-            return self.streamTrack(stream, track, range)
+                    logger.info(f'{track.title} downloading {complete} bytes')
+
+                for chunk in request.iter_content(2048 * 3):
+                    if self.queueItem.cancel: raise DownloadCancelled
+                    
+                    if len(chunk) >= 2048:
+                        chunk = Blowfish.new(blowfish_key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07").decrypt(chunk[0:2048]) + chunk[2048:]
+
+                    stream.write(chunk)
+                    chunkLength += len(chunk)
+
+                    if isinstance(self.queueItem, QISingle):
+                        percentage = (chunkLength / (complete + start)) * 100
+                        self.downloadPercentage = percentage
+                    else:
+                        chunkProgres = (len(chunk) / (complete + start)) / self.queueItem.size * 100
+                        self.downloadPercentage += chunkProgres
+
+                    self.updatePercentage()
+
+        except SSLError as e:
+            logger.info(f'retrying {track.title} from byte {chunkLength}')
+            return self.streamTrack(stream, track, chunkLength)
+        except (request_exception.ConnectionError, requests.exceptions.ReadTimeout):
+            eventlet.sleep(2)
+            return self.streamTrack(stream, track, start)
 
     def updatePercentage(self):
         if round(self.downloadPercentage) != self.lastPercentage and round(self.downloadPercentage) % 2 == 0:
