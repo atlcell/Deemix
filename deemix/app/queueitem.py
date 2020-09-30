@@ -4,7 +4,7 @@ class QueueItem:
             self.title = queueItemDict['title']
             self.artist = queueItemDict['artist']
             self.cover = queueItemDict['cover']
-            self.explicit = queueItemDict['explicit']
+            self.explicit = queueItemDict.get('explicit', False)
             self.size = queueItemDict['size']
             self.type = queueItemDict['type']
             self.id = queueItemDict['id']
