@@ -246,6 +246,7 @@ class SpotifyHelper:
             spotify_playlist['name'],
             spotify_playlist['owner']['display_name'],
             cover,
+            playlistAPI['explicit'],
             totalSize,
             'spotify_playlist',
             settings,
