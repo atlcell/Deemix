@@ -20,7 +20,7 @@ from deemix.api.deezer import USER_AGENT_HEADER
 from deemix.utils.taggers import tagID3, tagFLAC
 
 from Cryptodome.Cipher import Blowfish
-from mutagen.flac import FLACNoHeaderError
+from mutagen.flac import FLACNoHeaderError, error as FLACError
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -564,7 +564,7 @@ class DownloadJob:
             elif track.selectedFormat == 9:
                 try:
                     tagFLAC(writepath, track, self.settings['tags'])
-                except FLACNoHeaderError:
+                except (FLACNoHeaderError, FLACError):
                     if writepath.is_file(): writepath.unlink()
                     logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not available in FLAC, falling back if necessary")
                     self.removeTrackPercentage()
