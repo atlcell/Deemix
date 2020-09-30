@@ -55,7 +55,7 @@ def pad(num, max, settings):
     if int(settings['paddingSize']) == 0:
         paddingSize = len(str(max))
     else:
-        paddingSize = 10 ** (int(settings['paddingSize']) - 1)
+        paddingSize = len(str(10 ** (int(settings['paddingSize']) - 1)))
     if paddingSize == 1:
         paddingSize = 2
     if settings['padTracks']:
