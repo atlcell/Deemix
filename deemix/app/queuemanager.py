@@ -22,7 +22,7 @@ class QueueManager:
         self.sp = spotifyHelper
 
     def generateTrackQueueItem(self, dz, id, settings, bitrate, trackAPI=None, albumAPI=None):
-        if id.startswith("isrc"):
+        if str(id).startswith("isrc"):
             try:
                 trackAPI = dz.get_track(id)
             except APIError as e:
@@ -77,7 +77,7 @@ class QueueManager:
             e = json.loads(str(e))
             return QueueError("https://deezer.com/album/"+str(id), f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
 
-        if id.startswith('upc'):
+        if str(id).startswith('upc'):
             id = albumAPI['id']
         albumAPI_gw = dz.get_album_gw(id)
         albumAPI['nb_disk'] = albumAPI_gw['NUMBER_DISK']
