@@ -94,10 +94,7 @@ DEFAULT_SETTINGS = {
 class Settings:
     def __init__(self, configFolder=None):
         self.settings = {}
-        self.configFolder = configFolder
-        if not self.configFolder:
-            self.configFolder = localpaths.getConfigFolder()
-        self.configFolder = Path(self.configFolder)
+        self.configFolder = Path(configFolder or localpaths.getConfigFolder())
 
         # Create config folder if it doesn't exsist
         makedirs(self.configFolder, exist_ok=True)
@@ -149,13 +146,13 @@ class Settings:
     # Checks if the default settings have changed
     def settingsCheck(self):
         changes = 0
-        for x in DEFAULT_SETTINGS:
-            if not x in self.settings or type(self.settings[x]) != type(DEFAULT_SETTINGS[x]):
-                self.settings[x] = DEFAULT_SETTINGS[x]
+        for set in DEFAULT_SETTINGS:
+            if not set in self.settings or type(self.settings[set]) != type(DEFAULT_SETTINGS[set]):
+                self.settings[set] = DEFAULT_SETTINGS[set]
                 changes += 1
-        for x in DEFAULT_SETTINGS['tags']:
-            if not x in self.settings['tags'] or type(self.settings['tags'][x]) != type(DEFAULT_SETTINGS['tags'][x]):
-                self.settings['tags'][x] = DEFAULT_SETTINGS['tags'][x]
+        for set in DEFAULT_SETTINGS['tags']:
+            if not set in self.settings['tags'] or type(self.settings['tags'][set]) != type(DEFAULT_SETTINGS['tags'][set]):
+                self.settings['tags'][set] = DEFAULT_SETTINGS['tags'][set]
                 changes += 1
         if self.settings['downloadLocation'] == "":
             self.settings['downloadLocation'] = str(localpaths.getHomeFolder() / 'deemix Music')
