@@ -9,6 +9,7 @@ class QueueItem:
             self.type = queueItemDict['type']
             self.id = queueItemDict['id']
             self.bitrate = queueItemDict['bitrate']
+            self.extrasPath = queueItemDict.get('extrasPath', '')
             self.files = queueItemDict['files']
             self.downloaded = queueItemDict['downloaded']
             self.failed = queueItemDict['failed']
@@ -24,6 +25,7 @@ class QueueItem:
             self.type = type
             self.id = id
             self.bitrate = bitrate
+            self.extrasPath = None
             self.files = []
             self.settings = settings
             self.downloaded = 0
@@ -41,6 +43,7 @@ class QueueItem:
             'cover': self.cover,
             'explicit': self.explicit,
             'size': self.size,
+            'extrasPath': self.extrasPath,
             'files': self.files,
             'downloaded': self.downloaded,
             'failed': self.failed,

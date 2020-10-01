@@ -1,4 +1,6 @@
 import eventlet
+from eventlet.green.subprocess import call as execute
+
 from os.path import sep as pathSep
 from pathlib import Path
 import re
@@ -9,7 +11,7 @@ get = requests.get
 request_exception = requests.exceptions
 
 from ssl import SSLError
-from os import makedirs, remove, system as execute
+from os import makedirs
 from tempfile import gettempdir
 
 from deemix.app.queueitem import QISingle, QICollection
@@ -156,7 +158,7 @@ class DownloadJob:
                 f.write(orig.encode('utf-8'))
         # Execute command after download
         if self.settings['executeCommand'] != "":
-            execute(self.settings['executeCommand'].replace("%folder%", str(self.extrasPath)).replace("%filename%", result['filename']))
+            execute(self.settings['executeCommand'].replace("%folder%", str(self.extrasPath)).replace("%filename%", result['filename']), shell=True)
 
     def collectionAfterDownload(self, tracks):
         if not self.extrasPath:
@@ -211,7 +213,7 @@ class DownloadJob:
                     f.write((line + "\n").encode('utf-8'))
         # Execute command after download
         if self.settings['executeCommand'] != "":
-            execute(self.settings['executeCommand'].replace("%folder%", self.extrasPath))
+            execute(self.settings['executeCommand'].replace("%folder%", str(self.extrasPath)), shell=True)
 
     def download(self, trackAPI_gw, track=None):
         result = {}
@@ -577,8 +579,9 @@ class DownloadJob:
         logger.info(f"[{track.mainArtist['name']} - {track.title}] Track download completed\n{str(writepath)}")
         self.queueItem.downloaded += 1
         self.queueItem.files.append(str(writepath))
+        self.queueItem.extrasPath = str(self.extrasPath)
         if self.interface:
-            self.interface.send("updateQueue", {'uuid': self.queueItem.uuid, 'downloaded': True, 'downloadPath': str(writepath)})
+            self.interface.send("updateQueue", {'uuid': self.queueItem.uuid, 'downloaded': True, 'downloadPath': str(writepath), 'extrasPath': str(self.extrasPath)})
         return result
 
     def getPreferredBitrate(self, track):
@@ -651,6 +654,8 @@ class DownloadJob:
         chunkLength = start
         percentage = 0
 
+        itemName = f"[{track.mainArtist['name']} - {track.title}]"
+
         try:
             with self.dz.session.get(track.downloadUrl, headers=headers, stream=True, timeout=10) as request:
                 request.raise_for_status()
@@ -662,9 +667,9 @@ class DownloadJob:
                     raise DownloadEmpty
                 if start != 0:
                     responseRange = request.headers["Content-Range"]
-                    logger.info(f'{track.title} downloading range {responseRange}')
+                    logger.info(f'{itemName} downloading range {responseRange}')
                 else:
-                    logger.info(f'{track.title} downloading {complete} bytes')
+                    logger.info(f'{itemName} downloading {complete} bytes')
 
                 for chunk in request.iter_content(2048 * 3):
                     if self.queueItem.cancel: raise DownloadCancelled
@@ -685,7 +690,7 @@ class DownloadJob:
                     self.updatePercentage()
 
         except SSLError as e:
-            logger.info(f'retrying {track.title} from byte {chunkLength}')
+            logger.info(f'{itemName} retrying from byte {chunkLength}')
             return self.streamTrack(stream, track, chunkLength)
         except (request_exception.ConnectionError, requests.exceptions.ReadTimeout):
             eventlet.sleep(2)
