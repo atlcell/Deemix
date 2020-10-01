@@ -651,6 +651,8 @@ class DownloadJob:
         chunkLength = start
         percentage = 0
 
+        itemName = f"[{track.mainArtist['name']} - {track.title}]"
+
         try:
             with self.dz.session.get(track.downloadUrl, headers=headers, stream=True, timeout=10) as request:
                 request.raise_for_status()
@@ -662,9 +664,9 @@ class DownloadJob:
                     raise DownloadEmpty
                 if start != 0:
                     responseRange = request.headers["Content-Range"]
-                    logger.info(f'{track.title} downloading range {responseRange}')
+                    logger.info(f'{itemName} downloading range {responseRange}')
                 else:
-                    logger.info(f'{track.title} downloading {complete} bytes')
+                    logger.info(f'{itemName} downloading {complete} bytes')
 
                 for chunk in request.iter_content(2048 * 3):
                     if self.queueItem.cancel: raise DownloadCancelled
@@ -685,7 +687,7 @@ class DownloadJob:
                     self.updatePercentage()
 
         except SSLError as e:
-            logger.info(f'retrying {track.title} from byte {chunkLength}')
+            logger.info(f'{itemName} retrying from byte {chunkLength}')
             return self.streamTrack(stream, track, chunkLength)
         except (request_exception.ConnectionError, requests.exceptions.ReadTimeout):
             eventlet.sleep(2)
