@@ -577,8 +577,9 @@ class DownloadJob:
         logger.info(f"[{track.mainArtist['name']} - {track.title}] Track download completed\n{str(writepath)}")
         self.queueItem.downloaded += 1
         self.queueItem.files.append(str(writepath))
+        self.queueItem.extrasPath = str(self.extrasPath)
         if self.interface:
-            self.interface.send("updateQueue", {'uuid': self.queueItem.uuid, 'downloaded': True, 'downloadPath': str(writepath)})
+            self.interface.send("updateQueue", {'uuid': self.queueItem.uuid, 'downloaded': True, 'downloadPath': str(writepath), 'extrasPath': str(self.extrasPath)})
         return result
 
     def getPreferredBitrate(self, track):
