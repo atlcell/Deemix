@@ -211,7 +211,7 @@ class DownloadJob:
                     f.write((line + "\n").encode('utf-8'))
         # Execute command after download
         if self.settings['executeCommand'] != "":
-            execute(self.settings['executeCommand'].replace("%folder%", self.extrasPath))
+            execute(self.settings['executeCommand'].replace("%folder%", str(self.extrasPath)))
 
     def download(self, trackAPI_gw, track=None):
         result = {}
