@@ -1,4 +1,6 @@
 import eventlet
+from eventlet.green.subprocess import call as execute
+
 from os.path import sep as pathSep
 from pathlib import Path
 import re
@@ -9,7 +11,7 @@ get = requests.get
 request_exception = requests.exceptions
 
 from ssl import SSLError
-from os import makedirs, remove, system as execute
+from os import makedirs
 from tempfile import gettempdir
 
 from deemix.app.queueitem import QISingle, QICollection
@@ -156,7 +158,7 @@ class DownloadJob:
                 f.write(orig.encode('utf-8'))
         # Execute command after download
         if self.settings['executeCommand'] != "":
-            execute(self.settings['executeCommand'].replace("%folder%", str(self.extrasPath)).replace("%filename%", result['filename']))
+            execute(self.settings['executeCommand'].replace("%folder%", str(self.extrasPath)).replace("%filename%", result['filename']), shell=True)
 
     def collectionAfterDownload(self, tracks):
         if not self.extrasPath:
@@ -211,7 +213,7 @@ class DownloadJob:
                     f.write((line + "\n").encode('utf-8'))
         # Execute command after download
         if self.settings['executeCommand'] != "":
-            execute(self.settings['executeCommand'].replace("%folder%", str(self.extrasPath)))
+            execute(self.settings['executeCommand'].replace("%folder%", str(self.extrasPath)), shell=True)
 
     def download(self, trackAPI_gw, track=None):
         result = {}
