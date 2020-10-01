@@ -130,7 +130,10 @@ class Track:
         }
         if not "LYRICS" in trackAPI_gw and self.lyrics['id'] != 0:
             logger.info(f"[{trackAPI_gw['ART_NAME']} - {self.title}] Getting lyrics")
-            trackAPI_gw["LYRICS"] = dz.get_lyrics_gw(self.id)
+            try:
+                trackAPI_gw["LYRICS"] = dz.get_lyrics_gw(self.id)
+            except APIError:
+                self.lyrics['id'] = 0
         if self.lyrics['id'] != 0:
             self.lyrics['unsync'] = trackAPI_gw["LYRICS"].get("LYRICS_TEXT")
             if "LYRICS_SYNC_JSON" in trackAPI_gw["LYRICS"]:
