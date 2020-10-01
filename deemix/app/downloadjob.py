@@ -463,7 +463,7 @@ class DownloadJob:
 
         if extrasPath:
             if not self.extrasPath: self.extrasPath = extrasPath
-            result['filename'] = str(writepath)[len(str(extrasPath)):]
+            result['filename'] = str(writepath)[len(str(extrasPath))+ len(pathSep):]
 
         # Save playlist cover
         if track.playlist:
@@ -659,7 +659,7 @@ class DownloadJob:
         try:
             with self.dz.session.get(track.downloadUrl, headers=headers, stream=True, timeout=10) as request:
                 request.raise_for_status()
-                
+
                 blowfish_key = str.encode(self.dz._get_blowfish_key(str(track.id)))
 
                 complete = int(request.headers["Content-Length"])
@@ -673,7 +673,7 @@ class DownloadJob:
 
                 for chunk in request.iter_content(2048 * 3):
                     if self.queueItem.cancel: raise DownloadCancelled
-                    
+
                     if len(chunk) >= 2048:
                         chunk = Blowfish.new(blowfish_key, Blowfish.MODE_CBC, b"\x00\x01\x02\x03\x04\x05\x06\x07").decrypt(chunk[0:2048]) + chunk[2048:]
 
