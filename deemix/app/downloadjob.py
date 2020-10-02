@@ -1,15 +1,14 @@
 import eventlet
 from eventlet.green.subprocess import call as execute
+requests = eventlet.import_patched('requests')
+get = requests.get
+request_exception = requests.exceptions
 
 from os.path import sep as pathSep
 from pathlib import Path
 from shlex import quote
 import re
 import errno
-
-requests = eventlet.import_patched('requests')
-get = requests.get
-request_exception = requests.exceptions
 
 from ssl import SSLError
 from os import makedirs
@@ -30,8 +29,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('deemix')
 
 TEMPDIR = Path(gettempdir()) / 'deemix-imgs'
-if not TEMPDIR.is_dir():
-    makedirs(TEMPDIR)
+if not TEMPDIR.is_dir(): makedirs(TEMPDIR)
 
 extensions = {
     9: '.flac',
@@ -117,44 +115,42 @@ class DownloadJob:
         self.playlistURLs = []
 
     def start(self):
-        if not self.queueItem.cancel:
-            if isinstance(self.queueItem, QISingle):
-                result = self.downloadWrapper(self.queueItem.single)
-                if result:
-                    self.singleAfterDownload(result)
-            elif isinstance(self.queueItem, QICollection):
-                tracks = [None] * len(self.queueItem.collection)
-                pool = eventlet.GreenPool(size=self.settings['queueConcurrency'])
-                for pos, track in enumerate(self.queueItem.collection, start=0):
-                    tracks[pos] = pool.spawn(self.downloadWrapper, track)
-                pool.waitall()
-                self.collectionAfterDownload(tracks)
-        if self.interface:
-            if self.queueItem.cancel:
-                self.interface.send('currentItemCancelled', self.queueItem.uuid)
-                self.interface.send("removedFromQueue", self.queueItem.uuid)
-            else:
-                self.interface.send("finishDownload", self.queueItem.uuid)
+        if self.queueItem.cancel:
+            self.interface.send('currentItemCancelled', self.queueItem.uuid)
+            self.interface.send("removedFromQueue", self.queueItem.uuid)
+            return None
+        if isinstance(self.queueItem, QISingle):
+            result = self.downloadWrapper(self.queueItem.single)
+            if result: self.singleAfterDownload(result)
+        elif isinstance(self.queueItem, QICollection):
+            tracks = [None] * len(self.queueItem.collection)
+            pool = eventlet.GreenPool(size=self.settings['queueConcurrency'])
+            for pos, track in enumerate(self.queueItem.collection, start=0):
+                tracks[pos] = pool.spawn(self.downloadWrapper, track)
+            pool.waitall()
+            self.collectionAfterDownload(tracks)
+        if self.interface: self.interface.send("finishDownload", self.queueItem.uuid)
         return self.extrasPath
 
     def singleAfterDownload(self, result):
-        if not self.extrasPath:
-            self.extrasPath = Path(self.settings['downloadLocation'])
+        if not self.extrasPath: self.extrasPath = Path(self.settings['downloadLocation'])
+
         # Save Album Cover
         if self.settings['saveArtwork'] and 'albumPath' in result:
             for image in result['albumURLs']:
                 downloadImage(image['url'], result['albumPath'] / f"{result['albumFilename']}.{image['ext']}", self.settings['overwriteFile'])
+
         # Save Artist Artwork
         if self.settings['saveArtworkArtist'] and 'artistPath' in result:
             for image in result['artistURLs']:
                 downloadImage(image['url'], result['artistPath'] / f"{result['artistFilename']}.{image['ext']}", self.settings['overwriteFile'])
+
         # Create searched logfile
         if self.settings['logSearched'] and 'searched' in result:
             with open(self.extrasPath / 'searched.txt', 'wb+') as f:
                 orig = f.read().decode('utf-8')
                 if not result['searched'] in orig:
-                    if orig != "":
-                        orig += "\r\n"
+                    if orig != "": orig += "\r\n"
                     orig += result['searched'] + "\r\n"
                 f.write(orig.encode('utf-8'))
         # Execute command after download
@@ -162,56 +158,58 @@ class DownloadJob:
             execute(self.settings['executeCommand'].replace("%folder%", quote(str(self.extrasPath))).replace("%filename%", quote(result['filename'])), shell=True)
 
     def collectionAfterDownload(self, tracks):
-        if not self.extrasPath:
-            self.extrasPath = Path(self.settings['downloadLocation'])
+        if not self.extrasPath: self.extrasPath = Path(self.settings['downloadLocation'])
         playlist = [None] * len(tracks)
         errors = ""
         searched = ""
 
-        for index in range(len(tracks)):
-            result = tracks[index].wait()
-            # Check if queue is cancelled
-            if not result:
-                return None
+        for i in range(len(tracks)):
+            result = tracks[i].wait()
+            if not result: return None # Check if item is cancelled
+
             # Log errors to file
-            if 'error' in result:
-                if not 'data' in result['error']:
-                    result['error']['data'] = {'id': "0", 'title': 'Unknown', 'artist': 'Unknown'}
+            if result.get('error'):
+                if not result['error'].get('data'): result['error']['data'] = {'id': "0", 'title': 'Unknown', 'artist': 'Unknown'}
                 errors += f"{result['error']['data']['id']} | {result['error']['data']['artist']} - {result['error']['data']['title']} | {result['error']['message']}\r\n"
+
             # Log searched to file
-            if 'searched' in result:
-                searched += result['searched'] + "\r\n"
+            if 'searched' in result: searched += result['searched'] + "\r\n"
+
             # Save Album Cover
             if self.settings['saveArtwork'] and 'albumPath' in result:
                 for image in result['albumURLs']:
                     downloadImage(image['url'], result['albumPath'] / f"{result['albumFilename']}.{image['ext']}", self.settings['overwriteFile'])
+
             # Save Artist Artwork
             if self.settings['saveArtworkArtist'] and 'artistPath' in result:
                 for image in result['artistURLs']:
                     downloadImage(image['url'], result['artistPath'] / f"{result['artistFilename']}.{image['ext']}", self.settings['overwriteFile'])
+
             # Save filename for playlist file
-            playlist[index] = ""
-            if 'filename' in result:
-                playlist[index] = result['filename']
+            playlist[i] = result.get('filename', "")
 
         # Create errors logfile
         if self.settings['logErrors'] and errors != "":
             with open(self.extrasPath / 'errors.txt', 'wb') as f:
                 f.write(errors.encode('utf-8'))
+
         # Create searched logfile
         if self.settings['logSearched'] and searched != "":
             with open(self.extrasPath / 'searched.txt', 'wb') as f:
                 f.write(searched.encode('utf-8'))
+
         # Save Playlist Artwork
         if self.settings['saveArtwork'] and self.playlistCoverName and not self.settings['tags']['savePlaylistAsCompilation']:
             for image in self.playlistURLs:
                 downloadImage(image['url'], self.extrasPath / f"{self.playlistCoverName}.{image['ext']}", self.settings['overwriteFile'])
+
         # Create M3U8 File
         if self.settings['createM3U8File']:
             filename = settingsRegexPlaylistFile(self.settings['playlistFilenameTemplate'], self.queueItem, self.settings) or "playlist"
             with open(self.extrasPath / f'{filename}.m3u8', 'wb') as f:
                 for line in playlist:
                     f.write((line + "\n").encode('utf-8'))
+
         # Execute command after download
         if self.settings['executeCommand'] != "":
             execute(self.settings['executeCommand'].replace("%folder%", quote(str(self.extrasPath))), shell=True)
@@ -219,9 +217,7 @@ class DownloadJob:
     def download(self, trackAPI_gw, track=None):
         result = {}
         if self.queueItem.cancel: raise DownloadCancelled
-
-        if trackAPI_gw['SNG_ID'] == "0":
-            raise DownloadFailed("notOnDeezer")
+        if trackAPI_gw['SNG_ID'] == "0": raise DownloadFailed("notOnDeezer")
 
         # Create Track object
         if not track:
@@ -237,6 +233,7 @@ class DownloadJob:
                 raise DownloadError('albumDoesntExsists')
             if self.queueItem.cancel: raise DownloadCancelled
 
+        # Check if track not yet encoded
         if track.MD5 == '':
             if track.fallbackId != "0":
                 logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not yet encoded, using fallback id")
@@ -266,8 +263,9 @@ class DownloadJob:
             else:
                 raise DownloadFailed("notEncoded")
 
-        selectedFormat = self.getPreferredBitrate(track)
-        if selectedFormat == -100:
+        try:
+            selectedFormat = self.getPreferredBitrate(track)
+        except PreferredBitrateNotFound:
             if track.fallbackId != "0":
                 logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not found at desired bitrate, using fallback id")
                 newTrack = self.dz.get_track_gw(track.fallbackId)
@@ -295,9 +293,12 @@ class DownloadJob:
                     raise DownloadFailed("wrongBitrateNoAlternative")
             else:
                 raise DownloadFailed("wrongBitrate")
-        elif selectedFormat == -200:
+        except TrackNot360:
             raise DownloadFailed("no360RA")
         track.selectedFormat = selectedFormat
+
+        imageQuality = f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg'
+        if self.settings['embeddedArtworkPNG']: imageQuality = 'none-100-0-0.png'
 
         if self.settings['tags']['savePlaylistAsCompilation'] and track.playlist:
             track.trackNumber = track.position
@@ -308,23 +309,25 @@ class DownloadJob:
                     track.playlist['picType'],
                     track.playlist['pic'],
                     self.settings['embeddedArtworkSize'], self.settings['embeddedArtworkSize'],
-                    'none-100-0-0.png' if self.settings['embeddedArtworkPNG'] else f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg'
+                    imageQuality
                 )
             else:
                 track.playlist['picUrl'] = track.playlist['pic']
+
             ext = track.playlist['picUrl'][-4:]
-            if ext[0] != ".":
-                ext = ".jpg"
+            if ext[0] != ".": ext = ".jpg"
+
             track.album['picPath'] = TEMPDIR / f"pl{trackAPI_gw['_EXTRA_PLAYLIST']['id']}_{self.settings['embeddedArtworkSize']}{ext}"
         else:
-            if track.album['date']:
-                track.date = track.album['date']
+            if track.album['date']: track.date = track.album['date']
             track.album['picUrl'] = "https://e-cdns-images.dzcdn.net/images/cover/{}/{}x{}-{}".format(
                 track.album['pic'],
                 self.settings['embeddedArtworkSize'], self.settings['embeddedArtworkSize'],
-                'none-100-0-0.png' if self.settings['embeddedArtworkPNG'] else f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg'
+                imageQuality
             )
+
             track.album['picPath'] = TEMPDIR / f"alb{track.album['id']}_{self.settings['embeddedArtworkSize']}{track.album['picUrl'][-4:]}"
+
         track.album['bitrate'] = selectedFormat
 
         track.dateString = formatDate(track.date, self.settings['dateFormat'])
@@ -393,17 +396,16 @@ class DownloadJob:
                                 track.album['picType'],
                                 track.album['pic'],
                                 self.settings['localArtworkSize'], self.settings['localArtworkSize'],
-                                'none-100-0-0.png' if format == "png" else f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg'
+                                imageQuality
                             )
                         else:
                             url = track.album['pic']
-                            if format != "jpg":
-                                continue
+                            if format != "jpg": continue
                     else:
                         url = "https://e-cdns-images.dzcdn.net/images/cover/{}/{}x{}-{}".format(
                             track.album['pic'],
                             self.settings['localArtworkSize'], self.settings['localArtworkSize'],
-                            'none-100-0-0.png' if format == "png" else f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg'
+                            imageQuality
                         )
                     result['albumURLs'].append({'url': url, 'ext': format})
             result['albumPath'] = coverPath
@@ -418,12 +420,14 @@ class DownloadJob:
                     if track.album['mainArtist']['pic'] != "":
                         url = "https://e-cdns-images.dzcdn.net/images/artist/{}/{}x{}-{}".format(
                             track.album['mainArtist']['pic'], self.settings['localArtworkSize'], self.settings['localArtworkSize'],
-                            'none-100-0-0.png' if format == "png" else f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg')
-                    elif format == "jpg":
+                            imageQuality
+                        )
+                    elif format == "jpg": # Blank artist image is not available in PNG
                         url = "https://e-cdns-images.dzcdn.net/images/artist//{}x{}-{}".format(
-                            self.settings['localArtworkSize'], self.settings['localArtworkSize'], f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg')
-                    if url:
-                        result['artistURLs'].append({'url': url, 'ext': format})
+                            self.settings['localArtworkSize'], self.settings['localArtworkSize'],
+                            f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg'
+                        )
+                    if url: result['artistURLs'].append({'url': url, 'ext': format})
             result['artistPath'] = artistPath
             result['artistFilename'] = f"{settingsRegexArtist(self.settings['artistImageTemplate'], track.album['mainArtist'], self.settings)}"
 
@@ -444,13 +448,16 @@ class DownloadJob:
                     f.write(track.lyrics['sync'].encode('utf-8'))
 
         trackAlreadyDownloaded = writepath.is_file()
+
+        # Don't overwrite and don't mind extension
         if not trackAlreadyDownloaded and self.settings['overwriteFile'] == 'e':
             exts = ['.mp3', '.flac', '.opus', '.m4a']
             baseFilename = str(filepath / filename)
             for ext in exts:
                 trackAlreadyDownloaded = Path(baseFilename+ext).is_file()
-                if trackAlreadyDownloaded:
-                    break
+                if trackAlreadyDownloaded: break
+
+        # Don't overwrite and keep both files
         if trackAlreadyDownloaded and self.settings['overwriteFile'] == 'b':
             baseFilename = str(filepath / filename)
             i = 1
@@ -460,7 +467,6 @@ class DownloadJob:
                 currentFilename = baseFilename+' ('+str(i)+')'+ extensions[track.selectedFormat]
             trackAlreadyDownloaded = False
             writepath = Path(currentFilename)
-
 
         if extrasPath:
             if not self.extrasPath: self.extrasPath = extrasPath
@@ -476,7 +482,7 @@ class DownloadJob:
                                 track.playlist['picType'],
                                 track.playlist['pic'],
                                 self.settings['localArtworkSize'], self.settings['localArtworkSize'],
-                                'none-100-0-0.png' if format == "png" else f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg'
+                                imageQuality
                             )
                             self.playlistURLs.append({'url': url, 'ext': format})
                 else:
@@ -548,13 +554,10 @@ class DownloadJob:
 
             try:
                 trackDownloaded = downloadMusic(track, trackAPI_gw)
-            except DownloadFailed as e:
-                raise e
             except Exception as e:
                 raise e
 
-            if not trackDownloaded:
-                return self.download(trackAPI_gw, track)
+            if not trackDownloaded: return self.download(trackAPI_gw, track)
         else:
             logger.info(f"[{track.mainArtist['name']} - {track.title}] Skipping track as it's already downloaded")
             self.completeTrackPercentage()
@@ -574,9 +577,8 @@ class DownloadJob:
                     track.filesizes['FILESIZE_FLAC'] = "0"
                     track.filesizes['FILESIZE_FLAC_TESTED'] = True
                     return self.download(trackAPI_gw, track)
-            if track.searched:
-                result['searched'] = f"{track.mainArtist['name']} - {track.title}"
 
+        if track.searched: result['searched'] = f"{track.mainArtist['name']} - {track.title}"
         logger.info(f"[{track.mainArtist['name']} - {track.title}] Track download completed\n{str(writepath)}")
         self.queueItem.downloaded += 1
         self.queueItem.files.append(str(writepath))
@@ -586,10 +588,9 @@ class DownloadJob:
         return result
 
     def getPreferredBitrate(self, track):
-        if track.localTrack:
-            return 0
+        if track.localTrack: return 0
 
-        fallback = self.settings['fallbackBitrate']
+        shouldFallback = self.settings['fallbackBitrate']
         falledBack = False
 
         formats_non_360 = {
@@ -603,30 +604,34 @@ class DownloadJob:
             13: "MP4_RA1",
         }
 
-        if not fallback:
-            error_num = -100
+        is360format = int(self.bitrate) in formats_360
+
+        if not shouldFallback:
             formats = formats_360
             formats.update(formats_non_360)
-        elif int(self.bitrate) in formats_360:
-            error_num = -200
+        elif is360format:
             formats = formats_360
         else:
-            error_num = 8
             formats = formats_non_360
 
-        for format_num, format in formats.items():
-            if format_num <= int(self.bitrate):
-                if f"FILESIZE_{format}" in track.filesizes:
-                    if int(track.filesizes[f"FILESIZE_{format}"]) != 0:
-                        return format_num
-                    elif not track.filesizes[f"FILESIZE_{format}_TESTED"]:
-                        request = requests.head(self.dz.get_track_stream_url(track.id, track.MD5, track.mediaVersion, format_num), headers={'User-Agent': USER_AGENT_HEADER}, timeout=30)
+        for formatNumber, formatName in formats.items():
+            if formatNumber <= int(self.bitrate):
+                if f"FILESIZE_{formatName}" in track.filesizes:
+                    if int(track.filesizes[f"FILESIZE_{formatName}"]) != 0: return formatNumber
+                    if not track.filesizes[f"FILESIZE_{formatName}_TESTED"]:
+                        request = requests.head(
+                            self.dz.get_track_stream_url(track.id, track.MD5, track.mediaVersion, formatNumber),
+                            headers={'User-Agent': USER_AGENT_HEADER},
+                            timeout=30
+                        )
                         try:
                             request.raise_for_status()
-                            return format_num
+                            return formatNumber
                         except request_exception.HTTPError: # if the format is not available, Deezer returns a 403 error
                             pass
-                if fallback:
+                if not shouldFallback:
+                    raise PreferredBitrateNotFound
+                else:
                     if not falledBack:
                         falledBack = True
                         logger.info(f"[{track.mainArtist['name']} - {track.title}] Fallback to lower bitrate")
@@ -640,18 +645,14 @@ class DownloadJob:
                                     'artist': track.mainArtist['name']
                                 },
                             })
-                    continue
-                else:
-                    return error_num
-
-        return error_num # fallback is enabled and loop went through all formats
+        if is360format: raise TrackNot360
+        return 8
 
     def streamTrack(self, stream, track, start=0):
         if self.queueItem.cancel: raise DownloadCancelled
 
         headers=dict(self.dz.http_headers)
-        if range != 0:
-            headers['Range'] = f'bytes={start}-'
+        if range != 0: headers['Range'] = f'bytes={start}-'
         chunkLength = start
         percentage = 0
 
@@ -664,8 +665,7 @@ class DownloadJob:
                 blowfish_key = str.encode(self.dz._get_blowfish_key(str(track.id)))
 
                 complete = int(request.headers["Content-Length"])
-                if complete == 0:
-                    raise DownloadEmpty
+                if complete == 0: raise DownloadEmpty
                 if start != 0:
                     responseRange = request.headers["Content-Range"]
                     logger.info(f'{itemName} downloading range {responseRange}')
@@ -687,7 +687,6 @@ class DownloadJob:
                     else:
                         chunkProgres = (len(chunk) / (complete + start)) / self.queueItem.size * 100
                         self.downloadPercentage += chunkProgres
-
                     self.updatePercentage()
 
         except SSLError as e:
@@ -701,8 +700,7 @@ class DownloadJob:
         if round(self.downloadPercentage) != self.lastPercentage and round(self.downloadPercentage) % 2 == 0:
             self.lastPercentage = round(self.downloadPercentage)
             self.queueItem.progress = self.lastPercentage
-            if self.interface:
-                self.interface.send("updateQueue", {'uuid': self.queueItem.uuid, 'progress': self.lastPercentage})
+            if self.interface: self.interface.send("updateQueue", {'uuid': self.queueItem.uuid, 'progress': self.lastPercentage})
 
     def completeTrackPercentage(self):
         if isinstance(self.queueItem, QISingle):
@@ -721,9 +719,11 @@ class DownloadJob:
     def downloadWrapper(self, trackAPI_gw):
         track = {
             'id': trackAPI_gw['SNG_ID'],
-            'title': trackAPI_gw['SNG_TITLE'] + (trackAPI_gw['VERSION'] if 'VERSION' in trackAPI_gw and trackAPI_gw['VERSION'] and not trackAPI_gw['VERSION'] in trackAPI_gw['SNG_TITLE'] else ""),
+            'title': trackAPI_gw['SNG_TITLE'].strip(),
             'artist': trackAPI_gw['ART_NAME']
         }
+        if trackAPI_gw.get('VERSION') and trackAPI_gw['VERSION'] not in trackAPI_gw['SNG_TITLE']:
+            track['title'] += f" {trackAPI_gw['VERSION']}".strip()
 
         try:
             result = self.download(trackAPI_gw)
@@ -771,4 +771,10 @@ class DownloadCancelled(DownloadError):
     pass
 
 class DownloadEmpty(DownloadError):
+    pass
+
+class PreferredBitrateNotFound(DownloadError):
+    pass
+
+class TrackNot360(DownloadError):
     pass

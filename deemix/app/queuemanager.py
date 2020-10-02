@@ -53,7 +53,9 @@ class QueueManager:
 
         trackAPI_gw['SINGLE_TRACK'] = True
 
-        title = f"{trackAPI_gw['SNG_TITLE']} {trackAPI_gw.get('VERSION', '')}".strip()
+        title = trackAPI_gw['SNG_TITLE'].strip()
+        if trackAPI_gw.get('VERSION') and trackAPI_gw['VERSION'] not in trackAPI_gw['SNG_TITLE']:
+            title += f" {trackAPI_gw['VERSION']}".strip()
         explicit = bool(int(trackAPI_gw.get('EXPLICIT_LYRICS', 0)))
 
         return QISingle(
