@@ -3,6 +3,7 @@ from eventlet.green.subprocess import call as execute
 
 from os.path import sep as pathSep
 from pathlib import Path
+from shlex import quote
 import re
 import errno
 
@@ -158,7 +159,7 @@ class DownloadJob:
                 f.write(orig.encode('utf-8'))
         # Execute command after download
         if self.settings['executeCommand'] != "":
-            execute(self.settings['executeCommand'].replace("%folder%", str(self.extrasPath)).replace("%filename%", result['filename']), shell=True)
+            execute(self.settings['executeCommand'].replace("%folder%", quote(str(self.extrasPath))).replace("%filename%", quote(result['filename'])), shell=True)
 
     def collectionAfterDownload(self, tracks):
         if not self.extrasPath:
@@ -213,7 +214,7 @@ class DownloadJob:
                     f.write((line + "\n").encode('utf-8'))
         # Execute command after download
         if self.settings['executeCommand'] != "":
-            execute(self.settings['executeCommand'].replace("%folder%", str(self.extrasPath)), shell=True)
+            execute(self.settings['executeCommand'].replace("%folder%", quote(str(self.extrasPath))), shell=True)
 
     def download(self, trackAPI_gw, track=None):
         result = {}
