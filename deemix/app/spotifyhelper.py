@@ -312,8 +312,6 @@ class SpotifyHelper:
 
         with open(self.configFolder / 'spotifyCache.json', 'w') as spotifyCache:
             json.dump(cache, spotifyCache)
-        if interface:
-            interface.send("startDownload", queueItem.uuid)
 
     def get_user_playlists(self, user):
         if not self.spotifyEnabled:
