@@ -18,7 +18,7 @@ from deemix.app.queueitem import QISingle, QICollection
 from deemix.app.track import Track, AlbumDoesntExsists
 from deemix.utils import changeCase
 from deemix.utils.pathtemplates import generateFilename, generateFilepath, settingsRegexAlbum, settingsRegexArtist, settingsRegexPlaylistFile
-from deemix.api.deezer import USER_AGENT_HEADER
+from deemix.api.deezer import USER_AGENT_HEADER, TrackFormats
 from deemix.utils.taggers import tagID3, tagFLAC
 
 from Cryptodome.Cipher import Blowfish
@@ -32,14 +32,14 @@ TEMPDIR = Path(gettempdir()) / 'deemix-imgs'
 if not TEMPDIR.is_dir(): makedirs(TEMPDIR)
 
 extensions = {
-    9: '.flac',
-    0: '.mp3',
-    3: '.mp3',
-    1: '.mp3',
-    8: '.mp3',
-    15: '.mp4',
-    14: '.mp4',
-    13: '.mp4'
+    TrackFormats.FLAC:    '.flac',
+    TrackFormats.LOCAL:   '.mp3',
+    TrackFormats.MP3_320: '.mp3',
+    TrackFormats.MP3_128: '.mp3',
+    TrackFormats.DEFAULT: '.mp3',
+    TrackFormats.MP4_RA3: '.mp4',
+    TrackFormats.MP4_RA2: '.mp4',
+    TrackFormats.MP4_RA1: '.mp4'
 }
 
 errorMessages = {
@@ -115,21 +115,23 @@ class DownloadJob:
         self.playlistURLs = []
 
     def start(self):
-        if self.queueItem.cancel:
-            self.interface.send('currentItemCancelled', self.queueItem.uuid)
-            self.interface.send("removedFromQueue", self.queueItem.uuid)
-            return None
-        if isinstance(self.queueItem, QISingle):
-            result = self.downloadWrapper(self.queueItem.single)
-            if result: self.singleAfterDownload(result)
-        elif isinstance(self.queueItem, QICollection):
-            tracks = [None] * len(self.queueItem.collection)
-            pool = eventlet.GreenPool(size=self.settings['queueConcurrency'])
-            for pos, track in enumerate(self.queueItem.collection, start=0):
-                tracks[pos] = pool.spawn(self.downloadWrapper, track)
-            pool.waitall()
-            self.collectionAfterDownload(tracks)
-        if self.interface: self.interface.send("finishDownload", self.queueItem.uuid)
+        if not self.queueItem.cancel:
+            if isinstance(self.queueItem, QISingle):
+                result = self.downloadWrapper(self.queueItem.single)
+                if result: self.singleAfterDownload(result)
+            elif isinstance(self.queueItem, QICollection):
+                tracks = [None] * len(self.queueItem.collection)
+                pool = eventlet.GreenPool(size=self.settings['queueConcurrency'])
+                for pos, track in enumerate(self.queueItem.collection, start=0):
+                    tracks[pos] = pool.spawn(self.downloadWrapper, track)
+                pool.waitall()
+                self.collectionAfterDownload(tracks)
+        if self.interface:
+            if self.queueItem.cancel:
+                self.interface.send('currentItemCancelled', self.queueItem.uuid)
+                self.interface.send("removedFromQueue", self.queueItem.uuid)
+            else:
+                self.interface.send("finishDownload", self.queueItem.uuid)
         return self.extrasPath
 
     def singleAfterDownload(self, result):
@@ -565,9 +567,9 @@ class DownloadJob:
         # Adding tags
         if (not trackAlreadyDownloaded or self.settings['overwriteFile'] in ['t', 'y']) and not track.localTrack:
             logger.info(f"[{track.mainArtist['name']} - {track.title}] Applying tags to the track")
-            if track.selectedFormat in [3, 1, 8]:
+            if track.selectedFormat in [TrackFormats.MP3_320, TrackFormats.MP3_128, TrackFormats.DEFAULT]:
                 tagID3(writepath, track, self.settings['tags'])
-            elif track.selectedFormat == 9:
+            elif track.selectedFormat ==  TrackFormats.FLAC:
                 try:
                     tagFLAC(writepath, track, self.settings['tags'])
                 except (FLACNoHeaderError, FLACError):
@@ -588,20 +590,20 @@ class DownloadJob:
         return result
 
     def getPreferredBitrate(self, track):
-        if track.localTrack: return 0
+        if track.localTrack: return TrackFormats.LOCAL
 
         shouldFallback = self.settings['fallbackBitrate']
         falledBack = False
 
         formats_non_360 = {
-            9: "FLAC",
-            3: "MP3_320",
-            1: "MP3_128",
+            TrackFormats.FLAC: "FLAC",
+            TrackFormats.MP3_320: "MP3_320",
+            TrackFormats.MP3_128: "MP3_128",
         }
         formats_360 = {
-            15: "MP4_RA3",
-            14: "MP4_RA2",
-            13: "MP4_RA1",
+            TrackFormats.MP4_RA3: "MP4_RA3",
+            TrackFormats.MP4_RA2: "MP4_RA2",
+            TrackFormats.MP4_RA1: "MP4_RA1",
         }
 
         is360format = int(self.bitrate) in formats_360
@@ -646,7 +648,7 @@ class DownloadJob:
                                 },
                             })
         if is360format: raise TrackNot360
-        return 8
+        return TrackFormats.DEFAULT
 
     def streamTrack(self, stream, track, start=0):
         if self.queueItem.cancel: raise DownloadCancelled

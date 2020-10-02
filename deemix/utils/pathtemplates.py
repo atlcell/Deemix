@@ -2,16 +2,17 @@ import re
 from os.path import sep as pathSep
 from pathlib import Path
 from unicodedata import normalize
+from deemix.api.deezer import TrackFormats
 
 bitrateLabels = {
-    15: "360 HQ",
-    14: "360 MQ",
-    13: "360 LQ",
-    9: "FLAC",
-    3: "320",
-    1: "128",
-    8: "128",
-    0: "MP3"
+    TrackFormats.MP4_RA3: "360 HQ",
+    TrackFormats.MP4_RA2: "360 MQ",
+    TrackFormats.MP4_RA1: "360 LQ",
+    TrackFormats.FLAC   : "FLAC",
+    TrackFormats.MP3_320: "320",
+    TrackFormats.MP3_128: "128",
+    TrackFormats.DEFAULT: "128",
+    TrackFormats.LOCAL  : "MP3"
 }
 
 def fixName(txt, char='_'):

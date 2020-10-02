@@ -40,6 +40,17 @@ class LyricsStatus():
     PARTIALLY_NO_ADVICE = 7
     """Partially No Advice Available (Album "lyrics" only)"""
 
+class TrackFormats():
+    """Number associtation for formats"""
+    FLAC    = 9
+    MP3_320 = 3
+    MP3_128 = 1
+    MP4_RA3 = 15
+    MP4_RA2 = 14
+    MP4_RA1 = 13
+    DEFAULT = 8
+    LOCAL   = 0
+
 class Deezer:
     def __init__(self):
         self.api_url = "http://www.deezer.com/ajax/gw-light.php"

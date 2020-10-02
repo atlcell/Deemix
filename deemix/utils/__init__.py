@@ -1,5 +1,6 @@
 import re
 import string
+from deemix.api.deezer import TrackFormats
 
 def generateReplayGainString(trackGain):
     return "{0:.2f} dB".format((float(trackGain) + 18.4) * -1)
@@ -7,17 +8,17 @@ def generateReplayGainString(trackGain):
 def getBitrateInt(txt):
     txt = str(txt).lower()
     if txt in ['flac', 'lossless', '9']:
-        return 9
+        return TrackFormats.FLAC
     elif txt in ['mp3', '320', '3']:
-        return 3
+        return TrackFormats.MP3_320
     elif txt in ['128', '1']:
-        return 1
+        return TrackFormats.MP3_128
     elif txt in ['360', '360_hq', '15']:
-        return 15
+        return TrackFormats.MP4_RA3
     elif txt in ['360_mq', '14']:
-        return 14
+        return TrackFormats.MP4_RA2
     elif txt in ['360_lq', '13']:
-        return 13
+        return TrackFormats.MP4_RA1
     else:
         return None
 
