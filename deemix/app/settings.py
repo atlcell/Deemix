@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from os import makedirs, listdir
 from deemix import __version__ as deemixVersion
+from deemix.api.deezer import TrackFormats
 import logging
 import datetime
 import platform
@@ -10,6 +11,39 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('deemix')
 
 import deemix.utils.localpaths as localpaths
+
+class OverwriteOption():
+    """Should the lib overwrite files?"""
+
+    OVERWRITE = 'y'
+    """Yes, overwrite the file"""
+
+    DONT_OVERWRITE = 'n'
+    """No, don't overwrite the file"""
+
+    DONT_CHECK_EXT = 'e'
+    """No, and don't check for extensions"""
+
+    KEEP_BOTH = 'b'
+    """No, and keep both files"""
+
+    ONLY_TAGS = 't'
+    """Overwrite only the tags"""
+
+class FeaturesOption():
+    """What should I do with featured artists?"""
+
+    NO_CHANGE = 0
+    """Do nothing"""
+
+    REMOVE_TITLE = 1
+    """Remove from track title"""
+
+    REMOVE_TITLE_ALBUM = 3
+    """Remove from track title and album title"""
+
+    MOVE_TITLE = 2
+    """Move to track title"""
 
 DEFAULT_SETTINGS = {
   "downloadLocation": str(localpaths.getHomeFolder() / 'deemix Music'),
@@ -29,13 +63,13 @@ DEFAULT_SETTINGS = {
   "paddingSize": "0",
   "illegalCharacterReplacer": "_",
   "queueConcurrency": 3,
-  "maxBitrate": "3",
+  "maxBitrate": str(TrackFormats.MP3_320),
   "fallbackBitrate": True,
   "fallbackSearch": False,
   "logErrors": True,
   "logSearched": False,
   "saveDownloadQueue": False,
-  "overwriteFile": "n",
+  "overwriteFile": OverwriteOption.DONT_OVERWRITE,
   "createM3U8File": False,
   "playlistFilenameTemplate": "playlist",
   "syncedLyrics": False,
@@ -53,7 +87,7 @@ DEFAULT_SETTINGS = {
   "removeAlbumVersion": False,
   "removeDuplicateArtists": False,
   "tagsLanguage": "",
-  "featuredToTitle": "0",
+  "featuredToTitle": FeaturesOption.NO_CHANGE,
   "titleCasing": "nothing",
   "artistCasing": "nothing",
   "executeCommand": "",

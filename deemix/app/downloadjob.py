@@ -20,6 +20,7 @@ from deemix.utils import changeCase
 from deemix.utils.pathtemplates import generateFilename, generateFilepath, settingsRegexAlbum, settingsRegexArtist, settingsRegexPlaylistFile
 from deemix.api.deezer import USER_AGENT_HEADER, TrackFormats
 from deemix.utils.taggers import tagID3, tagFLAC
+from deemix.app.settings import OverwriteOption, FeaturesOption
 
 from Cryptodome.Cipher import Blowfish
 from mutagen.flac import FLACNoHeaderError, error as FLACError
@@ -55,8 +56,8 @@ errorMessages = {
     'albumDoesntExsists': "Track's album does not exsist, failed to gather info"
 }
 
-def downloadImage(url, path, overwrite="n"):
-    if not path.is_file() or overwrite in ['y', 't', 'b']:
+def downloadImage(url, path, overwrite=OverwriteOption.DONT_OVERWRITE):
+    if not path.is_file() or overwrite in [OverwriteOption.OVERWRITE, OverwriteOption.ONLY_TAGS, OverwriteOption.KEEP_BOTH]:
         try:
             image = get(url, headers={'User-Agent': USER_AGENT_HEADER}, timeout=30)
             image.raise_for_status()
@@ -299,8 +300,10 @@ class DownloadJob:
             raise DownloadFailed("no360RA")
         track.selectedFormat = selectedFormat
 
-        imageQuality = f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg'
-        if self.settings['embeddedArtworkPNG']: imageQuality = 'none-100-0-0.png'
+        imageQualityJPEG = f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg'
+        imageQualityPNG = 'none-100-0-0.png'
+        imageQuality = imageQualityJPEG
+        if self.settings['embeddedArtworkPNG']: imageQuality = imageQualityPNG
 
         if self.settings['tags']['savePlaylistAsCompilation'] and track.playlist:
             track.trackNumber = track.position
@@ -337,15 +340,11 @@ class DownloadJob:
         if track.playlist: track.playlist['dateString'] = formatDate(track.playlist['date'], self.settings['dateFormat'])
 
         # Check if user wants the feat in the title
-        # 0 => do not change
-        # 1 => remove from title
-        # 2 => add to title
-        # 3 => remove from title and album title
-        if self.settings['featuredToTitle'] == "1":
+        if str(self.settings['featuredToTitle']) == FeaturesOption.REMOVE_TITLE:
             track.title = track.getCleanTitle()
-        elif self.settings['featuredToTitle'] == "2":
+        elif str(self.settings['featuredToTitle']) == FeaturesOption.MOVE_TITLE:
             track.title = track.getFeatTitle()
-        elif self.settings['featuredToTitle'] == "3":
+        elif str(self.settings['featuredToTitle']) == FeaturesOption.REMOVE_TITLE_ALBUM:
             track.title = track.getCleanTitle()
             track.album['title'] = track.getCleanAlbumTitle()
 
@@ -366,15 +365,23 @@ class DownloadJob:
                     track.artist[type][i] = changeCase(artist, self.settings['artistCasing'])
             track.generateMainFeatStrings()
 
-        # Generate artist tag if needed
+        # Generate artist tag
         if self.settings['tags']['multiArtistSeparator'] == "default":
-            track.artistsString = ", ".join(track.artists)
+            if str(self.settings['featuredToTitle']) == FeaturesOption.MOVE_TITLE:
+                track.artistsString = ", ".join(track.artist['Main'])
+            else:
+                track.artistsString = ", ".join(track.artists)
         elif self.settings['tags']['multiArtistSeparator'] == "andFeat":
             track.artistsString = track.mainArtistsString
-            if track.featArtistsString and str(self.settings['featuredToTitle']) != "2":
+            if track.featArtistsString and str(self.settings['featuredToTitle']) != FeaturesOption.MOVE_TITLE:
                 track.artistsString += " " + track.featArtistsString
         else:
-            track.artistsString = self.settings['tags']['multiArtistSeparator'].join(track.artists)
+            separator = self.settings['tags']['multiArtistSeparator']
+            if str(self.settings['featuredToTitle']) == FeaturesOption.MOVE_TITLE:
+                track.artistsString = separator.join(track.artist['Main'])
+            else:
+                track.artistsString = separator.join(track.artists)
+
 
 
         # Generate filename and filepath from metadata
@@ -394,20 +401,24 @@ class DownloadJob:
                 if format in ["png","jpg"]:
                     if self.settings['tags']['savePlaylistAsCompilation'] and track.playlist:
                         if track.playlist['picType']:
+                            localImageQuality = imageQualityJPEG
+                            if format == "png": localImageQuality = imageQualityPNG
                             url = "https://e-cdns-images.dzcdn.net/images/{}/{}/{}x{}-{}".format(
                                 track.album['picType'],
                                 track.album['pic'],
                                 self.settings['localArtworkSize'], self.settings['localArtworkSize'],
-                                imageQuality
+                                localImageQuality
                             )
                         else:
                             url = track.album['pic']
                             if format != "jpg": continue
                     else:
+                        localImageQuality = imageQualityJPEG
+                        if format == "png": localImageQuality = imageQualityPNG
                         url = "https://e-cdns-images.dzcdn.net/images/cover/{}/{}x{}-{}".format(
                             track.album['pic'],
                             self.settings['localArtworkSize'], self.settings['localArtworkSize'],
-                            imageQuality
+                            localImageQuality
                         )
                     result['albumURLs'].append({'url': url, 'ext': format})
             result['albumPath'] = coverPath
@@ -420,14 +431,17 @@ class DownloadJob:
                 if format in ["png","jpg"]:
                     url = ""
                     if track.album['mainArtist']['pic'] != "":
+                        localImageQuality = imageQualityJPEG
+                        if format == "png": localImageQuality = imageQualityPNG
                         url = "https://e-cdns-images.dzcdn.net/images/artist/{}/{}x{}-{}".format(
-                            track.album['mainArtist']['pic'], self.settings['localArtworkSize'], self.settings['localArtworkSize'],
-                            imageQuality
+                            track.album['mainArtist']['pic'],
+                            self.settings['localArtworkSize'], self.settings['localArtworkSize'],
+                            localImageQuality
                         )
                     elif format == "jpg": # Blank artist image is not available in PNG
                         url = "https://e-cdns-images.dzcdn.net/images/artist//{}x{}-{}".format(
                             self.settings['localArtworkSize'], self.settings['localArtworkSize'],
-                            f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg'
+                            imageQualityJPEG
                         )
                     if url: result['artistURLs'].append({'url': url, 'ext': format})
             result['artistPath'] = artistPath
@@ -445,14 +459,14 @@ class DownloadJob:
 
         # Save lyrics in lrc file
         if self.settings['syncedLyrics'] and track.lyrics['sync']:
-            if not (filepath / f"{filename}.lrc").is_file() or self.settings['overwriteFile'] in ['y', 't']:
+            if not (filepath / f"{filename}.lrc").is_file() or self.settings['overwriteFile'] in [OverwriteOption.OVERWRITE, OverwriteOption.ONLY_TAGS]:
                 with open(filepath / f"{filename}.lrc", 'wb') as f:
                     f.write(track.lyrics['sync'].encode('utf-8'))
 
         trackAlreadyDownloaded = writepath.is_file()
 
         # Don't overwrite and don't mind extension
-        if not trackAlreadyDownloaded and self.settings['overwriteFile'] == 'e':
+        if not trackAlreadyDownloaded and self.settings['overwriteFile'] == OverwriteOption.DONT_CHECK_EXT:
             exts = ['.mp3', '.flac', '.opus', '.m4a']
             baseFilename = str(filepath / filename)
             for ext in exts:
@@ -460,7 +474,7 @@ class DownloadJob:
                 if trackAlreadyDownloaded: break
 
         # Don't overwrite and keep both files
-        if trackAlreadyDownloaded and self.settings['overwriteFile'] == 'b':
+        if trackAlreadyDownloaded and self.settings['overwriteFile'] == OverwriteOption.KEEP_BOTH:
             baseFilename = str(filepath / filename)
             i = 1
             currentFilename = baseFilename+' ('+str(i)+')'+ extensions[track.selectedFormat]
@@ -480,11 +494,13 @@ class DownloadJob:
                 if track.playlist['picType']:
                     for format in self.settings['localArtworkFormat'].split(","):
                         if format in ["png","jpg"]:
+                            localImageQuality = imageQualityJPEG
+                            if format == "png": localImageQuality = imageQualityPNG
                             url = "https://e-cdns-images.dzcdn.net/images/{}/{}/{}x{}-{}".format(
                                 track.playlist['picType'],
                                 track.playlist['pic'],
                                 self.settings['localArtworkSize'], self.settings['localArtworkSize'],
-                                imageQuality
+                                localImageQuality
                             )
                             self.playlistURLs.append({'url': url, 'ext': format})
                 else:
@@ -496,7 +512,7 @@ class DownloadJob:
                 track.playlist['dateString'] = formatDate(track.playlist['date'], self.settings['dateFormat'])
                 self.playlistCoverName = f"{settingsRegexAlbum(self.settings['coverImageTemplate'], track.playlist, self.settings, track.playlist)}"
 
-        if not trackAlreadyDownloaded or self.settings['overwriteFile'] == 'y':
+        if not trackAlreadyDownloaded or self.settings['overwriteFile'] == OverwriteOption.OVERWRITE:
             logger.info(f"[{track.mainArtist['name']} - {track.title}] Downloading the track")
             track.downloadUrl = self.dz.get_track_stream_url(track.id, track.MD5, track.mediaVersion, track.selectedFormat)
 
@@ -565,7 +581,7 @@ class DownloadJob:
             self.completeTrackPercentage()
 
         # Adding tags
-        if (not trackAlreadyDownloaded or self.settings['overwriteFile'] in ['t', 'y']) and not track.localTrack:
+        if (not trackAlreadyDownloaded or self.settings['overwriteFile'] in [OverwriteOption.ONLY_TAGS, OverwriteOption.OVERWRITE]) and not track.localTrack:
             logger.info(f"[{track.mainArtist['name']} - {track.title}] Applying tags to the track")
             if track.selectedFormat in [TrackFormats.MP3_320, TrackFormats.MP3_128, TrackFormats.DEFAULT]:
                 tagID3(writepath, track, self.settings['tags'])
