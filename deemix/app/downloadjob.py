@@ -15,7 +15,7 @@ from os import makedirs
 from tempfile import gettempdir
 
 from deemix.app.queueitem import QISingle, QICollection
-from deemix.app.track import Track, AlbumDoesntExsists
+from deemix.app.track import Track, AlbumDoesntExists
 from deemix.utils import changeCase
 from deemix.utils.pathtemplates import generateFilename, generateFilepath, settingsRegexAlbum, settingsRegexArtist, settingsRegexPlaylistFile
 from deemix.api.deezer import USER_AGENT_HEADER, TrackFormats
@@ -53,7 +53,7 @@ errorMessages = {
     'notAvailable': "Track not available on deezer's servers!",
     'notAvailableNoAlternative': "Track not available on deezer's servers and no alternative found!",
     'noSpaceLeft': "No space left on target drive, clean up some space for the tracks",
-    'albumDoesntExsists': "Track's album does not exsist, failed to gather info"
+    'albumDoesntExists': "Track's album does not exsist, failed to gather info"
 }
 
 def downloadImage(url, path, overwrite=OverwriteOption.DONT_OVERWRITE):
@@ -232,8 +232,8 @@ class DownloadJob:
                               trackAPI=trackAPI_gw['_EXTRA_TRACK'] if '_EXTRA_TRACK' in trackAPI_gw else None,
                               albumAPI=trackAPI_gw['_EXTRA_ALBUM'] if '_EXTRA_ALBUM' in trackAPI_gw else None
                               )
-            except AlbumDoesntExsists:
-                raise DownloadError('albumDoesntExsists')
+            except AlbumDoesntExists:
+                raise DownloadError('albumDoesntExists')
             if self.queueItem.cancel: raise DownloadCancelled
 
         # Check if track not yet encoded
@@ -453,7 +453,7 @@ class DownloadJob:
             filepath = filepath / tempPath
             filename = filename[filename.rfind(pathSep) + len(pathSep):]
 
-        # Make sure the filepath exsists
+        # Make sure the filepath exists
         makedirs(filepath, exist_ok=True)
         writepath = filepath / f"{filename}{extensions[track.selectedFormat]}"
 

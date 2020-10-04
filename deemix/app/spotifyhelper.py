@@ -34,7 +34,7 @@ class SpotifyHelper:
         self.sp = None
         self.configFolder = configFolder
 
-        # Make sure config folder exsists
+        # Make sure config folder exists
         if not self.configFolder:
             self.configFolder = getConfigFolder()
         self.configFolder = Path(self.configFolder)

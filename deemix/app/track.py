@@ -251,7 +251,7 @@ class Track:
                     albumAPI_gw = dz.get_album_gw(self.album['id'])
                 except APIError:
                     albumAPI_gw = None
-                    raise AlbumDoesntExsists
+                    raise AlbumDoesntExists
 
             self.album['title'] = albumAPI_gw['ALB_TITLE']
             self.album['mainArtist'] = {
@@ -398,5 +398,5 @@ class TrackError(Exception):
     """Base class for exceptions in this module."""
     pass
 
-class AlbumDoesntExsists(TrackError):
+class AlbumDoesntExists(TrackError):
     pass
