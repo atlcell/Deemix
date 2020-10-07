@@ -391,7 +391,7 @@ class Deezer:
     def get_artist_discography_gw(self, art_id, nb=100):
         start = 0
         releases = []
-        RELEASE_TYPE = ["single", "album", "compile", "ep", "bundle"]
+        RELEASE_TYPE = {0:"single", 1:"album", 2:"compile", 3:"ep", 4:"bundle"}
         result = {'all': []}
         IDs = []
         while True:
@@ -415,7 +415,7 @@ class Deezer:
                     'genre_id': release['GENRE_ID'],
                     'fans': release['RANK'],
                     'release_date': release['PHYSICAL_RELEASE_DATE'],
-                    'record_type': RELEASE_TYPE[int(release['TYPE'])],
+                    'record_type': RELEASE_TYPE.get(int(release['TYPE']), "unknown"),
                     'tracklist': f"https://api.deezer.com/album/{release['ALB_ID']}/tracks",
                     'explicit_lyrics': int(release['EXPLICIT_LYRICS']) > 0,
                     'type': release['__TYPE__'],
