@@ -436,6 +436,7 @@ class Deezer:
                         if not 'more' in result:
                             result['more'] = []
                         result['more'].append(obj)
+                        result['all'].append(obj)
         return result
 
     def search_main_gw(self, term):

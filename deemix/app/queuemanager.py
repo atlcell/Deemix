@@ -184,9 +184,10 @@ class QueueManager:
 
         if interface: interface.send("startAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
 
-        artistAPITracks = dz.get_artist_albums(id)
+        artistDiscographyAPI = dz.get_artist_discography_gw(id, 100)
+        allReleases = artistDiscographyAPI.pop('all', None)
         albumList = []
-        for album in artistAPITracks['data']:
+        for album in allReleases:
             albumList.append(self.generateAlbumQueueItem(dz, album['id'], settings, bitrate))
 
         if interface: interface.send("finishAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
