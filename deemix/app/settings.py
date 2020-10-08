@@ -33,16 +33,16 @@ class OverwriteOption():
 class FeaturesOption():
     """What should I do with featured artists?"""
 
-    NO_CHANGE = 0
+    NO_CHANGE = "0"
     """Do nothing"""
 
-    REMOVE_TITLE = 1
+    REMOVE_TITLE = "1"
     """Remove from track title"""
 
-    REMOVE_TITLE_ALBUM = 3
+    REMOVE_TITLE_ALBUM = "3"
     """Remove from track title and album title"""
 
-    MOVE_TITLE = 2
+    MOVE_TITLE = "2"
     """Move to track title"""
 
 DEFAULT_SETTINGS = {
