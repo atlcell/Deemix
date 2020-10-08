@@ -2,13 +2,14 @@ from pathlib import Path
 from os import makedirs
 
 from deemix.app import deemix
+from deemix.utils import checkFolder
 
 class cli(deemix):
     def __init__(self, downloadpath, configFolder=None):
         super().__init__(configFolder)
         if downloadpath:
-            self.set.settings['downloadLocation'] = str(downloadpath)
-            makedirs(downloadpath, exist_ok=True)
+            if checkFolder(downloadpath):
+                self.set.settings['downloadLocation'] = str(downloadpath)
             print("Using folder: "+self.set.settings['downloadLocation'])
 
     def downloadLink(self, url, bitrate=None):

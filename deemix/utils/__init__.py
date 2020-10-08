@@ -1,6 +1,7 @@
 import re
 import string
 from deemix.api.deezer import TrackFormats
+import os
 
 def generateReplayGainString(trackGain):
     return "{0:.2f} dB".format((float(trackGain) + 18.4) * -1)
@@ -120,3 +121,11 @@ def uniqueArray(arr):
             if iPrinc!=iRest and namePrinc.lower() in nRest.lower():
                 del arr[iRest]
     return arr
+
+def checkFolder(folder):
+    try:
+        os.makedirs(folder, exist_ok=True)
+    except Exception as e:
+        print(str(e))
+        return False
+    return os.access(folder, os.W_OK)

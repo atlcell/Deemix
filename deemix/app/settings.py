@@ -3,6 +3,7 @@ from pathlib import Path
 from os import makedirs, listdir
 from deemix import __version__ as deemixVersion
 from deemix.api.deezer import TrackFormats
+from deemix.utils import checkFolder
 import logging
 import datetime
 import platform
@@ -142,10 +143,11 @@ class Settings:
         with open(self.configFolder / 'config.json', 'r') as configFile:
             self.settings = json.load(configFile)
 
-        self.settingsCheck()
-
         # Make sure the download path exsits
-        makedirs(self.settings['downloadLocation'], exist_ok=True)
+        if not checkFolder(self.settings['downloadLocation']) and self.settings['downloadLocation'] != "":
+            self.settings['downloadLocation'] = ""
+
+        self.settingsCheck()
 
         # LOGFILES
 
@@ -173,6 +175,9 @@ class Settings:
     def saveSettings(self, newSettings=None, dz=None):
         if newSettings:
             if dz and newSettings.get('tagsLanguage') != self.settings.get('tagsLanguage'): dz.set_accept_language(newSettings.get('tagsLanguage'))
+            if newSettings.get('downloadLocation') != self.settings.get('downloadLocation') and not checkFolder(newSettings.get('downloadLocation')):
+                    newSettings['downloadLocation'] = DEFAULT_SETTINGS['downloadLocation']
+                    makedirs(newSettings['downloadLocation'], exist_ok=True)
             self.settings = newSettings
         with open(self.configFolder / 'config.json', 'w') as configFile:
             json.dump(self.settings, configFile, indent=2)
@@ -189,7 +194,8 @@ class Settings:
                 self.settings['tags'][set] = DEFAULT_SETTINGS['tags'][set]
                 changes += 1
         if self.settings['downloadLocation'] == "":
-            self.settings['downloadLocation'] = str(localpaths.getHomeFolder() / 'deemix Music')
+            self.settings['downloadLocation'] = DEFAULT_SETTINGS['downloadLocation']
+            makedirs(self.settings['downloadLocation'], exist_ok=True)
             changes += 1
         for template in ['tracknameTemplate', 'albumTracknameTemplate', 'playlistTracknameTemplate', 'playlistNameTemplate', 'artistNameTemplate', 'albumNameTemplate', 'playlistFilenameTemplate', 'coverImageTemplate', 'artistImageTemplate', 'paddingSize']:
             if self.settings[template] == "":
