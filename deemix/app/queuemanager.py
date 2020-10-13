@@ -475,7 +475,15 @@ class QueueManager:
         if (configFolder / 'queue.json').is_file() and not len(self.queue):
             if interface: interface.send('restoringQueue')
             with open(configFolder / 'queue.json', 'r') as f:
-                qd = json.load(f)
+                try:
+                    qd = json.load(f)
+                except json.decoder.JSONDecodeError:
+                    logger.warn("Saved queue is corrupted, resetting it")
+                    qd = {
+                        'queue': [],
+                        'queueComplete': [],
+                        'queueList': {}
+                    }
             remove(configFolder / 'queue.json')
             self.restoreQueue(qd['queue'], qd['queueComplete'], qd['queueList'], settings)
             if interface:
