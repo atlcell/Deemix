@@ -65,7 +65,8 @@ class Track:
         self.fallbackId = "0"
         if 'FALLBACK' in trackAPI_gw:
             self.fallbackId = trackAPI_gw['FALLBACK']['SNG_ID']
-        self.filesizes = dz.get_track_filesizes(self.id)
+        if int(self.id) > 0:
+            self.filesizes = dz.get_track_filesizes(self.id)
 
     def parseLocalTrackData(self, trackAPI_gw):
         # Local tracks has only the trackAPI_gw page and
