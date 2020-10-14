@@ -386,7 +386,7 @@ class QueueManager:
         def processQueueItem(item, silent=False):
             if isinstance(item, QueueError):
                 logger.error(f"[{item.link}] {item.message}")
-                if interface and not silent: interface.send("queueError", item.toDict())
+                if interface: interface.send("queueError", item.toDict())
                 return False
             if item.uuid in list(self.queueList.keys()):
                 logger.warn(f"[{item.uuid}] Already in queue, will not be added again.")
