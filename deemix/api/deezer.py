@@ -271,13 +271,18 @@ class Deezer:
         return self.gw_api_call('deezer.getChildAccounts')['results']
 
     def get_track_gw(self, sng_id):
-        if int(sng_id) < 0:
-            body = self.gw_api_call('song.getData', {'sng_id': sng_id})
-        else:
-            body = self.gw_api_call('deezer.pageTrack', {'sng_id': sng_id})
+        body = None
+        if int(sng_id) > 0:
+            try:
+                body = self.gw_api_call('deezer.pageTrack', {'sng_id': sng_id})
+            except:
+                body = None
+        if body:
             if 'LYRICS' in body['results']:
                 body['results']['DATA']['LYRICS'] = body['results']['LYRICS']
             body['results'] = body['results']['DATA']
+        else:
+            body = self.gw_api_call('song.getData', {'sng_id': sng_id})
         return body['results']
 
     def get_tracks_gw(self, ids):
