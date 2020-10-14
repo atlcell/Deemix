@@ -8,6 +8,7 @@ from pathlib import Path
 import json
 from os import remove
 import eventlet
+import uuid
 urlopen = eventlet.import_patched('urllib.request').urlopen
 
 logging.basicConfig(level=logging.INFO)
@@ -369,6 +370,8 @@ class QueueManager:
 
         if type(url) is list:
             queueItem = []
+            request_uuid = str(uuid.uuid4())
+            if interface: interface.send("startGeneratingItems", {'uuid': request_uuid, 'total': len(url)})
             for link in url:
                 item = parseLink(link)
                 if not item: continue
@@ -376,6 +379,7 @@ class QueueManager:
                     queueItem += item
                 else:
                     queueItem.append(item)
+            if interface: interface.send("finishGeneratingItems", {'uuid': request_uuid, 'total': len(queueItem)})
             if not len(queueItem):
                 return False
         else:
