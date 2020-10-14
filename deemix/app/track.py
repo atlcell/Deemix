@@ -273,9 +273,8 @@ class Track:
             self.album['recordType'] = "album"
             self.album['label'] = albumAPI_gw.get('LABEL_NAME', self.album['label'])
 
-            if albumAPI_gw.get('EXPLICIT_ALBUM_CONTENT') and albumAPI_gw['EXPLICIT_ALBUM_CONTENT'].get('EXPLICIT_LYRICS_STATUS'):
-                explicitLyricsStatus = albumAPI_gw['EXPLICIT_ALBUM_CONTENT']['EXPLICIT_LYRICS_STATUS']
-                self.album['explicit'] = explicitLyricsStatus in [LyricsStatus.EXPLICIT, LyricsStatus.PARTIALLY_EXPLICIT]
+            explicitLyricsStatus = albumAPI_gw.get('EXPLICIT_ALBUM_CONTENT', {}).get('EXPLICIT_LYRICS_STATUS', LyricsStatus.UNKNOWN)
+            self.album['explicit'] = explicitLyricsStatus in [LyricsStatus.EXPLICIT, LyricsStatus.PARTIALLY_EXPLICIT]
 
             if not self.album['pic']:
                 self.album['pic'] = albumAPI_gw['ALB_PICTURE']

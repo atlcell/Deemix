@@ -107,7 +107,7 @@ class QueueManager:
             trackAPI['FILENAME_TEMPLATE'] = settings['albumTracknameTemplate']
             collection.append(trackAPI)
 
-        explicit = albumAPI_gw['EXPLICIT_ALBUM_CONTENT']['EXPLICIT_LYRICS_STATUS'] in [LyricsStatus.EXPLICIT, LyricsStatus.PARTIALLY_EXPLICIT]
+        explicit = albumAPI_gw.get('EXPLICIT_ALBUM_CONTENT', {}).get('EXPLICIT_LYRICS_STATUS', LyricsStatus.UNKNOWN) in [LyricsStatus.EXPLICIT, LyricsStatus.PARTIALLY_EXPLICIT]
 
         return QICollection(
             id=id,
@@ -151,7 +151,7 @@ class QueueManager:
         playlistAPI['nb_tracks'] = totalSize
         collection = []
         for pos, trackAPI in enumerate(playlistTracksAPI, start=1):
-            if trackAPI['EXPLICIT_TRACK_CONTENT'].get('EXPLICIT_LYRICS_STATUS', LyricsStatus.UNKNOWN) in [LyricsStatus.EXPLICIT, LyricsStatus.PARTIALLY_EXPLICIT]:
+            if trackAPI.get('EXPLICIT_TRACK_CONTENT', {}).get('EXPLICIT_LYRICS_STATUS', LyricsStatus.UNKNOWN) in [LyricsStatus.EXPLICIT, LyricsStatus.PARTIALLY_EXPLICIT]:
                 playlistAPI['explicit'] = True
             trackAPI['_EXTRA_PLAYLIST'] = playlistAPI
             trackAPI['POSITION'] = pos
@@ -258,7 +258,7 @@ class QueueManager:
         playlistAPI['nb_tracks'] = totalSize
         collection = []
         for pos, trackAPI in enumerate(artistTopTracksAPI_gw, start=1):
-            if trackAPI['EXPLICIT_TRACK_CONTENT'].get('EXPLICIT_LYRICS_STATUS', LyricsStatus.UNKNOWN) in [LyricsStatus.EXPLICIT, LyricsStatus.PARTIALLY_EXPLICIT]:
+            if trackAPI.get('EXPLICIT_TRACK_CONTENT', {}).get('EXPLICIT_LYRICS_STATUS', LyricsStatus.UNKNOWN) in [LyricsStatus.EXPLICIT, LyricsStatus.PARTIALLY_EXPLICIT]:
                 playlistAPI['explicit'] = True
             trackAPI['_EXTRA_PLAYLIST'] = playlistAPI
             trackAPI['POSITION'] = pos
