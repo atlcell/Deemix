@@ -147,14 +147,13 @@ class Track:
                     if syncLyricsJson[line]["line"] != "":
                         timestamp = syncLyricsJson[line]["lrc_timestamp"]
                         milliseconds = int(syncLyricsJson[line]["milliseconds"])
+                        self.lyrics['syncID3'].append((syncLyricsJson[line]["line"], milliseconds))
                     else:
                         notEmptyLine = line + 1
                         while syncLyricsJson[notEmptyLine]["line"] == "":
                             notEmptyLine = notEmptyLine + 1
                         timestamp = syncLyricsJson[notEmptyLine]["lrc_timestamp"]
-                        milliseconds = int(syncLyricsJson[notEmptyLine]["milliseconds"])
                     self.lyrics['sync'] += timestamp + syncLyricsJson[line]["line"] + "\r\n"
-                    self.lyrics['syncID3'].append((syncLyricsJson[line]["line"], milliseconds))
 
         self.mainArtist = {
             'id': trackAPI_gw['ART_ID'],
