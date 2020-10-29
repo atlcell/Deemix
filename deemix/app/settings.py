@@ -117,6 +117,7 @@ DEFAULT_SETTINGS = {
     "copyright": False,
     "composer": False,
     "involvedPeople": False,
+    "source": False,
     "savePlaylistAsCompilation": False,
     "useNullSeparator": False,
     "saveID3v1": True,

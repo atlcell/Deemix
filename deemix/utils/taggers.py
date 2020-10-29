@@ -94,6 +94,10 @@ def tagID3(stream, track, save):
     if save['savePlaylistAsCompilation'] and track.playlist or track.album['recordType'] == "compile":
         tag.add(TCMP(text="1"))
 
+    if save['source']:
+        tag.add(TXXX(desc="SOURCE", text='Deezer'))
+        tag.add(TXXX(desc="SOURCEID", text=str(track.id)))
+
     if save['cover'] and track.album['picPath']:
 
         descEncoding = Encoding.LATIN1
@@ -190,6 +194,10 @@ def tagFLAC(stream, track, save):
         tag["COPYRIGHT"] = track.copyright
     if save['savePlaylistAsCompilation'] and track.playlist or track.album['recordType'] == "compile":
         tag["COMPILATION"] = "1"
+
+    if save['source']:
+        tag["SOURCE"] = 'Deezer'
+        tag["SOURCEID"] = str(track.id)
 
     if save['cover'] and track.album['picPath']:
         image = Picture()
