@@ -47,7 +47,7 @@ class FeaturesOption():
     """Move to track title"""
 
 DEFAULT_SETTINGS = {
-  "downloadLocation": str(localpaths.getHomeFolder() / 'deemix Music'),
+  "downloadLocation": str(localpaths.getMusicFolder()),
   "tracknameTemplate": "%artist% - %title%",
   "albumTracknameTemplate": "%tracknumber% - %title%",
   "playlistTracknameTemplate": "%position% - %artist% - %title%",
@@ -128,7 +128,7 @@ DEFAULT_SETTINGS = {
 }
 
 class Settings:
-    def __init__(self, configFolder=None):
+    def __init__(self, configFolder=None, overwriteDownloadFolder=None):
         self.settings = {}
         self.configFolder = Path(configFolder or localpaths.getConfigFolder())
 
@@ -144,11 +144,27 @@ class Settings:
         with open(self.configFolder / 'config.json', 'r') as configFile:
             self.settings = json.load(configFile)
 
-        # Make sure the download path exsits
-        if not checkFolder(self.settings['downloadLocation']) and self.settings['downloadLocation'] != "":
-            self.settings['downloadLocation'] = ""
+        # Check for overwriteDownloadFolder
+        # This prevents the creation of the original download folder when
+        # using overwriteDownloadFolder
+        originalDownloadFolder = self.settings['downloadLocation']
+        if overwriteDownloadFolder:
+            overwriteDownloadFolder = str(overwriteDownloadFolder)
+            self.settings['downloadLocation'] = overwriteDownloadFolder
 
-        self.settingsCheck()
+        # Make sure the download path exsits, fallback to default
+        invalidDownloadFolder = False
+        if self.settings['downloadLocation'] == "" or not checkFolder(self.settings['downloadLocation']):
+            self.settings['downloadLocation'] = DEFAULT_SETTINGS['downloadLocation']
+            originalDownloadFolder = self.settings['downloadLocation']
+            invalidDownloadFolder = True
+
+        # Check the settings and save them if something changed
+        if self.settingsCheck() > 0 or invalidDownloadFolder:
+            makedirs(self.settings['downloadLocation'], exist_ok=True)
+            self.settings['downloadLocation'] = originalDownloadFolder # Prevents the saving of the overwritten path
+            self.saveSettings()
+            self.settings['downloadLocation'] = overwriteDownloadFolder or originalDownloadFolder # Restores the correct path
 
         # LOGFILES
 
@@ -196,11 +212,9 @@ class Settings:
                 changes += 1
         if self.settings['downloadLocation'] == "":
             self.settings['downloadLocation'] = DEFAULT_SETTINGS['downloadLocation']
-            makedirs(self.settings['downloadLocation'], exist_ok=True)
             changes += 1
         for template in ['tracknameTemplate', 'albumTracknameTemplate', 'playlistTracknameTemplate', 'playlistNameTemplate', 'artistNameTemplate', 'albumNameTemplate', 'playlistFilenameTemplate', 'coverImageTemplate', 'artistImageTemplate', 'paddingSize']:
             if self.settings[template] == "":
                 self.settings[template] = DEFAULT_SETTINGS[template]
                 changes += 1
-        if changes > 0:
-            self.saveSettings()
+        return changes
