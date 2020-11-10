@@ -285,6 +285,7 @@ class QueueManager:
     def generateQueueItem(self, dz, url, settings, bitrate=None, interface=None):
         bitrate = getBitrateInt(bitrate) or settings['maxBitrate']
         if 'deezer.page.link' in url: url = urlopen(url).url
+        if 'link.tospotify.com' in url: url = urlopen(url).url
 
         type = getTypeFromLink(url)
         id = getIDFromLink(url, type)
@@ -344,9 +345,8 @@ class QueueManager:
                     return QueueError(url, "Wrong URL: "+e.msg[e.msg.find('\n')+2:])
                 except Exception as e:
                     return QueueError(url, "Something went wrong: "+str(e))
-        else:
-            logger.warn("URL not supported yet")
-            return QueueError(url, "URL not supported yet", "unsupportedURL")
+        logger.warn("URL not supported yet")
+        return QueueError(url, "URL not supported yet", "unsupportedURL")
 
     def addToQueue(self, dz, url, settings, bitrate=None, interface=None, ack=None):
         if not dz.logged_in:
