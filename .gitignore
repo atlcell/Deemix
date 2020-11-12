@@ -32,3 +32,4 @@ yarn-error.log*
 #build files
 /build
 /*egg-info
+updatePyPi.sh
