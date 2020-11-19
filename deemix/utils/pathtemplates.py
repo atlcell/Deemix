@@ -2,7 +2,7 @@ import re
 from os.path import sep as pathSep
 from pathlib import Path
 from unicodedata import normalize
-from deemix.api.deezer import TrackFormats
+from deezer import TrackFormats
 
 bitrateLabels = {
     TrackFormats.MP4_RA3: "360 HQ",

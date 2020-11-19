@@ -151,7 +151,7 @@ class SpotifyHelper:
             if str(track_id) in cache['tracks']:
                 dz_track = None
                 if cache['tracks'][str(track_id)]['isrc']:
-                    dz_track = dz.get_track_by_ISRC(cache['tracks'][str(track_id)]['isrc'])
+                    dz_track = dz.api.get_track_by_ISRC(cache['tracks'][str(track_id)]['isrc'])
                     dz_id = dz_track['id'] if 'id' in dz_track and 'title' in dz_track else "0"
                     cache['tracks'][str(track_id)]['id'] = dz_id
                 return (cache['tracks'][str(track_id)]['id'], dz_track, cache['tracks'][str(track_id)]['isrc'])
@@ -164,15 +164,21 @@ class SpotifyHelper:
         isrc = None
         if 'external_ids' in spotify_track and 'isrc' in spotify_track['external_ids']:
             try:
-                dz_track = dz.get_track_by_ISRC(spotify_track['external_ids']['isrc'])
+                dz_track = dz.api.get_track_by_ISRC(spotify_track['external_ids']['isrc'])
                 dz_id = dz_track['id'] if 'id' in dz_track and 'title' in dz_track else "0"
                 isrc = spotify_track['external_ids']['isrc']
             except:
-                dz_id = dz.get_track_from_metadata(spotify_track['artists'][0]['name'], spotify_track['name'],
-                                                      spotify_track['album']['name']) if fallbackSearch else "0"
+                dz_id = dz.api.get_track_id_from_metadata(
+                            artist=spotify_track['artists'][0]['name'],
+                            track=spotify_track['name'],
+                            album=spotify_track['album']['name']
+                        ) if fallbackSearch else "0"
         elif fallbackSearch:
-            dz_id = dz.get_track_from_metadata(spotify_track['artists'][0]['name'], spotify_track['name'],
-                                                  spotify_track['album']['name'])
+            dz_id = dz.api.get_track_id_from_metadata(
+                        artist=spotify_track['artists'][0]['name'],
+                        track=spotify_track['name'],
+                        album=spotify_track['album']['name']
+                    )
         if singleTrack:
             cache['tracks'][str(track_id)] = {'id': dz_id, 'isrc': isrc}
             with open(self.configFolder / 'spotifyCache.json', 'w') as spotifyCache:
@@ -195,12 +201,12 @@ class SpotifyHelper:
         upc = None
         if 'external_ids' in spotify_album and 'upc' in spotify_album['external_ids']:
             try:
-                dz_album = dz.get_album_by_UPC(spotify_album['external_ids']['upc'])
+                dz_album = dz.api.get_album_by_UPC(spotify_album['external_ids']['upc'])
                 dz_album = dz_album['id'] if 'id' in dz_album else "0"
                 upc = spotify_album['external_ids']['upc']
             except:
                 try:
-                    dz_album = dz.get_album_by_UPC(int(spotify_album['external_ids']['upc']))
+                    dz_album = dz.api.get_album_by_UPC(int(spotify_album['external_ids']['upc']))
                     dz_album = dz_album['id'] if 'id' in dz_album else "0"
                 except:
                     dz_album = "0"
@@ -221,7 +227,7 @@ class SpotifyHelper:
             cover = "https://e-cdns-images.dzcdn.net/images/cover/d41d8cd98f00b204e9800998ecf8427e/75x75-000000-80-0-0.jpg"
 
         playlistAPI = self._convert_playlist_structure(spotify_playlist)
-        playlistAPI['various_artist'] = dz.get_artist(5080)
+        playlistAPI['various_artist'] = dz.api.get_artist(5080)
 
         extra = {}
         extra['unconverted'] = []
@@ -271,7 +277,7 @@ class SpotifyHelper:
                 trackID = cache['tracks'][str(track['id'])]['id']
                 trackAPI = None
                 if cache['tracks'][str(track['id'])]['isrc']:
-                    trackAPI = dz.get_track_by_ISRC(cache['tracks'][str(track['id'])]['isrc'])
+                    trackAPI = dz.api.get_track_by_ISRC(cache['tracks'][str(track['id'])]['isrc'])
             else:
                 (trackID, trackAPI, isrc)  = self.get_trackid_spotify(dz, "0", queueItem.settings['fallbackSearch'], track)
                 cache['tracks'][str(track['id'])] = {
@@ -292,7 +298,7 @@ class SpotifyHelper:
                     'ART_NAME': track['artists'][0]['name']
                 }
             else:
-                deezerTrack = dz.get_track_gw(trackID)
+                deezerTrack = dz.gw.get_track_with_fallback(trackID)
             deezerTrack['_EXTRA_PLAYLIST'] = queueItem.extra['playlistAPI']
             if trackAPI:
                 deezerTrack['_EXTRA_TRACK'] = trackAPI

@@ -18,8 +18,10 @@ from deemix.app.queueitem import QISingle, QICollection
 from deemix.app.track import Track, AlbumDoesntExists
 from deemix.utils import changeCase
 from deemix.utils.pathtemplates import generateFilename, generateFilepath, settingsRegexAlbum, settingsRegexArtist, settingsRegexPlaylistFile
-from deemix.api.deezer import USER_AGENT_HEADER, TrackFormats
+from deezer import TrackFormats
+from deemix import USER_AGENT_HEADER
 from deemix.utils.taggers import tagID3, tagFLAC
+from deemix.utils.decryption import generateStreamURL, generateBlowfishKey
 from deemix.app.settings import OverwriteOption, FeaturesOption
 
 from Cryptodome.Cipher import Blowfish
@@ -240,14 +242,14 @@ class DownloadJob:
         if track.MD5 == '':
             if track.fallbackId != "0":
                 logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not yet encoded, using fallback id")
-                newTrack = self.dz.get_track_gw(track.fallbackId)
+                newTrack = self.dz.gw.get_track_with_fallback(track.fallbackId)
                 track.parseEssentialData(self.dz, newTrack)
                 return self.download(trackAPI_gw, track)
             elif not track.searched and self.settings['fallbackSearch']:
                 logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not yet encoded, searching for alternative")
-                searchedId = self.dz.get_track_from_metadata(track.mainArtist['name'], track.title, track.album['title'])
+                searchedId = self.dz.api.get_track_id_from_metadata(track.mainArtist['name'], track.title, track.album['title'])
                 if searchedId != "0":
-                    newTrack = self.dz.get_track_gw(searchedId)
+                    newTrack = self.dz.gw.get_track_with_fallback(searchedId)
                     track.parseEssentialData(self.dz, newTrack)
                     track.searched = True
                     if self.interface:
@@ -271,14 +273,14 @@ class DownloadJob:
         except PreferredBitrateNotFound:
             if track.fallbackId != "0":
                 logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not found at desired bitrate, using fallback id")
-                newTrack = self.dz.get_track_gw(track.fallbackId)
+                newTrack = self.dz.gw.get_track_with_fallback(track.fallbackId)
                 track.parseEssentialData(self.dz, newTrack)
                 return self.download(trackAPI_gw, track)
             elif not track.searched and self.settings['fallbackSearch']:
                 logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not found at desired bitrate, searching for alternative")
-                searchedId = self.dz.get_track_from_metadata(track.mainArtist['name'], track.title, track.album['title'])
+                searchedId = self.dz.api.get_track_id_from_metadata(track.mainArtist['name'], track.title, track.album['title'])
                 if searchedId != "0":
-                    newTrack = self.dz.get_track_gw(searchedId)
+                    newTrack = self.dz.gw.get_track_with_fallback(searchedId)
                     track.parseEssentialData(self.dz, newTrack)
                     track.searched = True
                     if self.interface:
@@ -514,7 +516,7 @@ class DownloadJob:
 
         if not trackAlreadyDownloaded or self.settings['overwriteFile'] == OverwriteOption.OVERWRITE:
             logger.info(f"[{track.mainArtist['name']} - {track.title}] Downloading the track")
-            track.downloadUrl = self.dz.get_track_stream_url(track.id, track.MD5, track.mediaVersion, track.selectedFormat)
+            track.downloadUrl = generateStreamURL(track.id, track.MD5, track.mediaVersion, track.selectedFormat)
 
             def downloadMusic(track, trackAPI_gw):
                 try:
@@ -527,14 +529,14 @@ class DownloadJob:
                     if writepath.is_file(): writepath.unlink()
                     if track.fallbackId != "0":
                         logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not available, using fallback id")
-                        newTrack = self.dz.get_track_gw(track.fallbackId)
+                        newTrack = self.dz.gw.get_track_with_fallback(track.fallbackId)
                         track.parseEssentialData(self.dz, newTrack)
                         return False
                     elif not track.searched and self.settings['fallbackSearch']:
                         logger.warn(f"[{track.mainArtist['name']} - {track.title}] Track not available, searching for alternative")
-                        searchedId = self.dz.get_track_from_metadata(track.mainArtist['name'], track.title, track.album['title'])
+                        searchedId = self.dz.api.get_track_id_from_metadata(track.mainArtist['name'], track.title, track.album['title'])
                         if searchedId != "0":
-                            newTrack = self.dz.get_track_gw(searchedId)
+                            newTrack = self.dz.gw.get_track_with_fallback(searchedId)
                             track.parseEssentialData(self.dz, newTrack)
                             track.searched = True
                             if self.interface:
@@ -638,7 +640,7 @@ class DownloadJob:
                     if int(track.filesizes[f"FILESIZE_{formatName}"]) != 0: return formatNumber
                     if not track.filesizes[f"FILESIZE_{formatName}_TESTED"]:
                         request = requests.head(
-                            self.dz.get_track_stream_url(track.id, track.MD5, track.mediaVersion, formatNumber),
+                            generateStreamURL(track.id, track.MD5, track.mediaVersion, formatNumber),
                             headers={'User-Agent': USER_AGENT_HEADER},
                             timeout=30
                         )
@@ -679,8 +681,7 @@ class DownloadJob:
         try:
             with self.dz.session.get(track.downloadUrl, headers=headers, stream=True, timeout=10) as request:
                 request.raise_for_status()
-
-                blowfish_key = str.encode(self.dz._get_blowfish_key(str(track.id)))
+                blowfish_key = str.encode(generateBlowfishKey(str(track.id)))
 
                 complete = int(request.headers["Content-Length"])
                 if complete == 0: raise DownloadEmpty

@@ -1,6 +1,6 @@
 import re
 import string
-from deemix.api.deezer import TrackFormats
+from deezer import TrackFormats
 import os
 
 def generateReplayGainString(trackGain):

@@ -1,4 +1,4 @@
-from deemix.api.deezer import Deezer
+from deezer import Deezer
 from deemix.app.settings import Settings
 from deemix.app.queuemanager import QueueManager
 from deemix.app.spotifyhelper import SpotifyHelper

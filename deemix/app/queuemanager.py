@@ -1,6 +1,7 @@
 from deemix.app.downloadjob import DownloadJob
 from deemix.utils import getIDFromLink, getTypeFromLink, getBitrateInt
-from deemix.api.deezer import APIError, LyricsStatus
+from deezer.gw import APIError as gwAPIError, LyricsStatus
+from deezer.api import APIError
 from spotipy.exceptions import SpotifyException
 from deemix.app.queueitem import QueueItem, QISingle, QICollection, QIConvertable
 import logging
@@ -26,7 +27,7 @@ class QueueManager:
         # Check if is an isrc: url
         if str(id).startswith("isrc"):
             try:
-                trackAPI = dz.get_track(id)
+                trackAPI = dz.api.get_track(id)
             except APIError as e:
                 e = json.loads(str(e))
                 return QueueError("https://deezer.com/track/"+str(id), f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
@@ -37,8 +38,8 @@ class QueueManager:
 
         # Get essential track info
         try:
-            trackAPI_gw = dz.get_track_gw(id)
-        except APIError as e:
+            trackAPI_gw = dz.gw.get_track_with_fallback(id)
+        except gwAPIError as e:
             e = json.loads(str(e))
             message = "Wrong URL"
             if "DATA_ERROR" in e: message += f": {e['DATA_ERROR']}"
@@ -74,7 +75,7 @@ class QueueManager:
     def generateAlbumQueueItem(self, dz, id, settings, bitrate):
         # Get essential album info
         try:
-            albumAPI = dz.get_album(id)
+            albumAPI = dz.api.get_album(id)
         except APIError as e:
             e = json.loads(str(e))
             return QueueError("https://deezer.com/album/"+str(id), f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
@@ -83,7 +84,7 @@ class QueueManager:
 
         # Get extra info about album
         # This saves extra api calls when downloading
-        albumAPI_gw = dz.get_album_gw(id)
+        albumAPI_gw = dz.gw.get_album(id)
         albumAPI['nb_disk'] = albumAPI_gw['NUMBER_DISK']
         albumAPI['copyright'] = albumAPI_gw['COPYRIGHT']
 
@@ -91,7 +92,7 @@ class QueueManager:
         if albumAPI['nb_tracks'] == 1:
             return self.generateTrackQueueItem(dz, albumAPI['tracks']['data'][0]['id'], settings, bitrate, albumAPI=albumAPI)
 
-        tracksArray = dz.get_album_tracks_gw(id)
+        tracksArray = dz.gw.get_album_tracks(id)
 
         if albumAPI['cover_small'] != None:
             cover = albumAPI['cover_small'][:-24] + '/75x75-000000-80-0-0.jpg'
@@ -126,14 +127,14 @@ class QueueManager:
     def generatePlaylistQueueItem(self, dz, id, settings, bitrate):
         # Get essential playlist info
         try:
-            playlistAPI = dz.get_playlist(id)
+            playlistAPI = dz.api.get_playlist(id)
         except:
             playlistAPI = None
         # Fallback to gw api if the playlist is private
         if not playlistAPI:
             try:
-                playlistAPI = dz.get_playlist_gw(id)
-            except APIError as e:
+                playlistAPI = dz.gw.get_playlist_page(id)
+            except gwAPIError as e:
                 e = json.loads(str(e))
                 message = "Wrong URL"
                 if "DATA_ERROR" in e:
@@ -141,12 +142,12 @@ class QueueManager:
                 return QueueError("https://deezer.com/playlist/"+str(id), message)
 
         # Check if private playlist and owner
-        if not playlistAPI['public'] and playlistAPI['creator']['id'] != str(dz.user['id']):
+        if not playlistAPI['public'] and playlistAPI['creator']['id'] != str(dz.current_user['id']):
             logger.warn("You can't download others private playlists.")
             return QueueError("https://deezer.com/playlist/"+str(id), "You can't download others private playlists.", "notYourPrivatePlaylist")
 
-        playlistTracksAPI = dz.get_playlist_tracks_gw(id)
-        playlistAPI['various_artist'] = dz.get_artist(5080) # Useful for save as compilation
+        playlistTracksAPI = dz.gw.get_playlist_tracks(id)
+        playlistAPI['various_artist'] = dz.api.get_artist(5080) # Useful for save as compilation
 
         totalSize = len(playlistTracksAPI)
         playlistAPI['nb_tracks'] = totalSize
@@ -178,14 +179,14 @@ class QueueManager:
     def generateArtistQueueItem(self, dz, id, settings, bitrate, interface=None):
         # Get essential artist info
         try:
-            artistAPI = dz.get_artist(id)
+            artistAPI = dz.api.get_artist(id)
         except APIError as e:
             e = json.loads(str(e))
             return QueueError("https://deezer.com/artist/"+str(id), f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
 
         if interface: interface.send("startAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
 
-        artistDiscographyAPI = dz.get_artist_discography_gw(id, 100)
+        artistDiscographyAPI = dz.gw.get_artist_discography_tabs(id, 100)
         allReleases = artistDiscographyAPI.pop('all', [])
         albumList = []
         for album in allReleases:
@@ -197,14 +198,14 @@ class QueueManager:
     def generateArtistDiscographyQueueItem(self, dz, id, settings, bitrate, interface=None):
         # Get essential artist info
         try:
-            artistAPI = dz.get_artist(id)
+            artistAPI = dz.api.get_artist(id)
         except APIError as e:
             e = json.loads(str(e))
             return QueueError("https://deezer.com/artist/"+str(id)+"/discography", f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
 
         if interface: interface.send("startAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
 
-        artistDiscographyAPI = dz.get_artist_discography_gw(id, 100)
+        artistDiscographyAPI = dz.gw.get_artist_discography_tabs(id, 100)
         artistDiscographyAPI.pop('all', None) # all contains albums and singles, so its all duplicates. This removes them
         albumList = []
         for type in artistDiscographyAPI:
@@ -217,7 +218,7 @@ class QueueManager:
     def generateArtistTopQueueItem(self, dz, id, settings, bitrate, interface=None):
         # Get essential artist info
         try:
-            artistAPI = dz.get_artist(id)
+            artistAPI = dz.api.get_artist(id)
         except APIError as e:
             e = json.loads(str(e))
             return QueueError("https://deezer.com/artist/"+str(id)+"/top_track", f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
@@ -252,8 +253,8 @@ class QueueManager:
             'type': "playlist"
         }
 
-        artistTopTracksAPI_gw = dz.get_artist_toptracks_gw(id)
-        playlistAPI['various_artist'] = dz.get_artist(5080) # Useful for save as compilation
+        artistTopTracksAPI_gw = dz.gw.get_artist_toptracks(id)
+        playlistAPI['various_artist'] = dz.api.get_artist(5080) # Useful for save as compilation
 
         totalSize = len(artistTopTracksAPI_gw)
         playlistAPI['nb_tracks'] = totalSize

@@ -1,6 +1,10 @@
+import eventlet
+requests = eventlet.import_patched('requests')
+
 import logging
 
-from deemix.api.deezer import APIError, LyricsStatus
+from deezer.gw import APIError as gwAPIError, LyricsStatus
+from deezer.api import APIError
 from deemix.utils import removeFeatures, andCommaConcat, uniqueArray, generateReplayGainString
 
 logging.basicConfig(level=logging.INFO)
@@ -66,7 +70,7 @@ class Track:
         if 'FALLBACK' in trackAPI_gw:
             self.fallbackId = trackAPI_gw['FALLBACK']['SNG_ID']
         if int(self.id) > 0:
-            self.filesizes = dz.get_track_filesizes(self.id)
+            self.filesizes = self.getFilesizes(dz)
 
     def parseLocalTrackData(self, trackAPI_gw):
         # Local tracks has only the trackAPI_gw page and
@@ -132,8 +136,8 @@ class Track:
         if not "LYRICS" in trackAPI_gw and self.lyrics['id'] != 0:
             logger.info(f"[{trackAPI_gw['ART_NAME']} - {self.title}] Getting lyrics")
             try:
-                trackAPI_gw["LYRICS"] = dz.get_lyrics_gw(self.id)
-            except APIError:
+                trackAPI_gw["LYRICS"] = dz.gw.get_track_lyrics(self.id)
+            except gwAPIError:
                 self.lyrics['id'] = 0
         if self.lyrics['id'] != 0:
             self.lyrics['unsync'] = trackAPI_gw["LYRICS"].get("LYRICS_TEXT")
@@ -184,7 +188,7 @@ class Track:
         if not albumAPI:
             logger.info(f"[{self.mainArtist['name']} - {self.title}] Getting album infos")
             try:
-                albumAPI = dz.get_album(self.album['id'])
+                albumAPI = dz.api.get_album(self.album['id'])
             except APIError:
                 albumAPI = None
 
@@ -248,8 +252,8 @@ class Track:
             if not albumAPI_gw:
                 logger.info(f"[{self.mainArtist['name']} - {self.title}] Getting more album infos")
                 try:
-                    albumAPI_gw = dz.get_album_gw(self.album['id'])
-                except APIError:
+                    albumAPI_gw = dz.gw.get_album(self.album['id'])
+                except gwAPIError:
                     albumAPI_gw = None
                     raise AlbumDoesntExists
 
@@ -264,7 +268,7 @@ class Track:
             # Getting artist image ID
             # ex: https://e-cdns-images.dzcdn.net/images/artist/f2bc007e9133c946ac3c3907ddc5d2ea/56x56-000000-80-0-0.jpg
             logger.info(f"[{self.mainArtist['name']} - {self.title}] Getting artist picture fallback")
-            artistAPI = dz.get_artist(self.album['mainArtist']['id'])
+            artistAPI = dz.api.get_artist(self.album['mainArtist']['id'])
             self.album['mainArtist']['pic'] = artistAPI['picture_small'][artistAPI['picture_small'].find('artist/') + 7:-24]
 
             self.album['artists'] = [albumAPI_gw['ART_NAME']]
@@ -294,7 +298,7 @@ class Track:
 
         if not trackAPI:
             logger.info(f"[{self.mainArtist['name']} - {self.title}] Getting extra track infos")
-            trackAPI = dz.get_track(self.id)
+            trackAPI = dz.api.get_track(self.id)
         self.bpm = trackAPI['bpm']
 
         if not self.replayGain and 'gain' in trackAPI:
@@ -327,13 +331,13 @@ class Track:
         if not self.album['discTotal']:
             if not albumAPI_gw:
                 logger.info(f"[{self.mainArtist['name']} - {self.title}] Getting more album infos")
-                albumAPI_gw = dz.get_album_gw(self.album['id'])
+                albumAPI_gw = dz.gw.get_album(self.album['id'])
             self.album['discTotal'] = albumAPI_gw['NUMBER_DISK']
 
         if not self.copyright:
             if not albumAPI_gw:
                 logger.info(f"[{self.mainArtist['name']} - {self.title}] Getting more album infos")
-                albumAPI_gw = dz.get_album_gw(self.album['id'])
+                albumAPI_gw = dz.gw.get_album(self.album['id'])
             self.copyright = albumAPI_gw['COPYRIGHT']
 
     def parsePlaylistData(self, playlist, settings):
@@ -392,6 +396,36 @@ class Track:
         self.featArtistsString = ""
         if 'Featured' in self.artist:
             self.featArtistsString = "feat. "+andCommaConcat(self.artist['Featured'])
+
+    def getFilesizes(self, dz):
+        try:
+            guest_sid = dz.session.cookies.get('sid')
+            site = requests.post(
+                "https://api.deezer.com/1.0/gateway.php",
+                params={
+                    'api_key': "4VCYIJUCDLOUELGD1V8WBVYBNVDYOXEWSLLZDONGBBDFVXTZJRXPR29JRLQFO6ZE",
+                    'sid': guest_sid,
+                    'input': '3',
+                    'output': '3',
+                    'method': 'song_getData'
+                },
+                timeout=30,
+                json={'sng_id': self.id},
+                headers=dz.http_headers
+            )
+            result_json = site.json()
+        except:
+            eventlet.sleep(2)
+            return self.getFilesizes(dz)
+        if len(result_json['error']):
+            raise APIError(json.dumps(result_json['error']))
+        response = result_json.get("results")
+        filesizes = {}
+        for key, value in response.items():
+            if key.startswith("FILESIZE_"):
+                filesizes[key] = value
+                filesizes[key+"_TESTED"] = False
+        return filesizes
 
 class TrackError(Exception):
     """Base class for exceptions in this module."""

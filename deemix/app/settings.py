@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from os import makedirs, listdir
 from deemix import __version__ as deemixVersion
-from deemix.api.deezer import TrackFormats
+from deezer import TrackFormats
 from deemix.utils import checkFolder
 import logging
 import datetime
