@@ -75,6 +75,7 @@ class Deezer:
         self.checksums = None
 
         self.session = requests.Session()
+        self.mobile_session = requests.Session()
         self.logged_in = False
 
         self.session.mount('http://', requests.adapters.HTTPAdapter(pool_maxsize=100))
@@ -92,11 +93,11 @@ class Deezer:
 
     def get_track_filesizes(self, sng_id):
         try:
-            response = requests.post("https://www.deezer.com/",
+            response = self.mobile_session.post("https://www.deezer.com/",
                                      headers=self.http_headers,
                                      timeout=30)
-            guest_sid = response.cookies.get('sid')
-            site = requests.post(
+            guest_sid = self.mobile_session.cookies.get('sid')
+            site = self.mobile_session.post(
                 "https://api.deezer.com/1.0/gateway.php",
                 params={
                     'api_key': "4VCYIJUCDLOUELGD1V8WBVYBNVDYOXEWSLLZDONGBBDFVXTZJRXPR29JRLQFO6ZE",
