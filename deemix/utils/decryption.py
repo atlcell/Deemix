@@ -1,7 +1,6 @@
 import binascii
 from Cryptodome.Cipher import Blowfish, AES
 from Cryptodome.Hash import MD5
-from Cryptodome.Util.Padding import pad
 
 def _md5(data):
     h = MD5.new()
@@ -21,7 +20,7 @@ def generateStreamURL(sng_id, md5, media_version, format):
         [str.encode(md5), str.encode(str(format)), str.encode(str(sng_id)), str.encode(str(media_version))])
     md5val = _md5(urlPart)
     step2 = str.encode(md5val) + b'\xa4' + urlPart + b'\xa4'
-    step2 = pad(step2, 16)
+    step2 = step2 + (b'.' * (16 - (len(step2) % 16)))
     urlPart = binascii.hexlify(AES.new(b'jo6aey6haid2Teih', AES.MODE_ECB).encrypt(step2))
     return "https://e-cdns-proxy-" + md5[0] + ".dzcdn.net/mobile/1/" + urlPart.decode("utf-8")
 
