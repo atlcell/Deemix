@@ -24,3 +24,9 @@ def generateStreamURL(sng_id, md5, media_version, format):
     step2 = pad(step2, 16)
     urlPart = binascii.hexlify(AES.new(b'jo6aey6haid2Teih', AES.MODE_ECB).encrypt(step2))
     return "https://e-cdns-proxy-" + md5[0] + ".dzcdn.net/mobile/1/" + urlPart.decode("utf-8")
+
+def reverseStreamURL(url):
+    urlPart = url[42:]
+    step2 = AES.new(b'jo6aey6haid2Teih', AES.MODE_ECB).decrypt(binascii.unhexlify(urlPart.encode("utf-8")))
+    (md5val, md5, format, sng_id, media_version, _) = step2.split(b'\xa4')
+    return (sng_id.decode('utf-8'), md5.decode('utf-8'), media_version.decode('utf-8'), format.decode('utf-8'))
