@@ -204,6 +204,7 @@ class Track:
                 'name': albumAPI['artist']['name'],
                 'pic': artistPicture
             }
+            self.album['rootArtist'] = albumAPI.get('root_artist', None)
 
             self.album['artist'] = {}
             self.album['artists'] = []

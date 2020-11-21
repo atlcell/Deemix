@@ -447,7 +447,7 @@ class DownloadJob:
                         )
                     if url: result['artistURLs'].append({'url': url, 'ext': format})
             result['artistPath'] = artistPath
-            result['artistFilename'] = f"{settingsRegexArtist(self.settings['artistImageTemplate'], track.album['mainArtist'], self.settings)}"
+            result['artistFilename'] = f"{settingsRegexArtist(self.settings['artistImageTemplate'], track.album['mainArtist'], self.settings, rootArtist=track.album['rootArtist'])}"
 
         # Remove subfolders from filename and add it to filepath
         if pathSep in filename:

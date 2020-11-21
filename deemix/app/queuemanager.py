@@ -72,7 +72,7 @@ class QueueManager:
             single=trackAPI_gw,
         )
 
-    def generateAlbumQueueItem(self, dz, id, settings, bitrate):
+    def generateAlbumQueueItem(self, dz, id, settings, bitrate, rootArtist=None):
         # Get essential album info
         try:
             albumAPI = dz.api.get_album(id)
@@ -87,6 +87,7 @@ class QueueManager:
         albumAPI_gw = dz.gw.get_album(id)
         albumAPI['nb_disk'] = albumAPI_gw['NUMBER_DISK']
         albumAPI['copyright'] = albumAPI_gw['COPYRIGHT']
+        albumAPI['root_artist'] = rootArtist
 
         # If the album is a single download as a track
         if albumAPI['nb_tracks'] == 1:
@@ -185,12 +186,16 @@ class QueueManager:
             return QueueError("https://deezer.com/artist/"+str(id), f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
 
         if interface: interface.send("startAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
+        rootArtist = {
+            'id': artistAPI['id'],
+            'name': artistAPI['name']
+        }
 
         artistDiscographyAPI = dz.gw.get_artist_discography_tabs(id, 100)
         allReleases = artistDiscographyAPI.pop('all', [])
         albumList = []
         for album in allReleases:
-            albumList.append(self.generateAlbumQueueItem(dz, album['id'], settings, bitrate))
+            albumList.append(self.generateAlbumQueueItem(dz, album['id'], settings, bitrate, rootArtist=rootArtist))
 
         if interface: interface.send("finishAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
         return albumList
@@ -204,13 +209,17 @@ class QueueManager:
             return QueueError("https://deezer.com/artist/"+str(id)+"/discography", f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
 
         if interface: interface.send("startAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
+        rootArtist = {
+            'id': artistAPI['id'],
+            'name': artistAPI['name']
+        }
 
         artistDiscographyAPI = dz.gw.get_artist_discography_tabs(id, 100)
         artistDiscographyAPI.pop('all', None) # all contains albums and singles, so its all duplicates. This removes them
         albumList = []
         for type in artistDiscographyAPI:
             for album in artistDiscographyAPI[type]:
-                albumList.append(self.generateAlbumQueueItem(dz, album['id'], settings, bitrate))
+                albumList.append(self.generateAlbumQueueItem(dz, album['id'], settings, bitrate, rootArtist=rootArtist))
 
         if interface: interface.send("finishAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
         return albumList

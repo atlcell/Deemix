@@ -85,7 +85,7 @@ def generateFilepath(track, settings):
         (settings['createArtistFolder'] and track.playlist and settings['tags']['savePlaylistAsCompilation']) or
         (settings['createArtistFolder'] and track.playlist and settings['createStructurePlaylist'])
     ):
-        filepath = filepath / settingsRegexArtist(settings['artistNameTemplate'], track.album['mainArtist'], settings)
+        filepath = filepath / settingsRegexArtist(settings['artistNameTemplate'], track.album['mainArtist'], settings, rootArtist=track.album['rootArtist'])
         artistPath = filepath
 
     if (settings['createAlbumFolder'] and
@@ -168,9 +168,14 @@ def settingsRegexAlbum(foldername, album, settings, playlist=None):
         else:
             foldername = foldername.replace("%genre%", "Unknown")
     foldername = foldername.replace("%album%", fixName(album['title'], settings['illegalCharacterReplacer']))
-    foldername = foldername.replace("%artist%",
-                                    fixName(album['mainArtist']['name'], settings['illegalCharacterReplacer']))
+    foldername = foldername.replace("%artist%", fixName(album['mainArtist']['name'], settings['illegalCharacterReplacer']))
     foldername = foldername.replace("%artist_id%", str(album['mainArtist']['id']))
+    if album['rootArtist']:
+        foldername = foldername.replace("%root_artist%", fixName(album['rootArtist']['name'], settings['illegalCharacterReplacer']))
+        foldername = foldername.replace("%root_artist_id%", str(album['rootArtist']['id']))
+    else:
+        foldername = foldername.replace("%root_artist%", fixName(album['mainArtist']['name'], settings['illegalCharacterReplacer']))
+        foldername = foldername.replace("%root_artist_id%", str(album['mainArtist']['id']))
     foldername = foldername.replace("%tracktotal%", str(album['trackTotal']))
     foldername = foldername.replace("%disctotal%", str(album['discTotal']))
     foldername = foldername.replace("%type%", fixName(album['recordType'].capitalize(), settings['illegalCharacterReplacer']))
@@ -185,9 +190,15 @@ def settingsRegexAlbum(foldername, album, settings, playlist=None):
     return antiDot(fixLongName(foldername))
 
 
-def settingsRegexArtist(foldername, artist, settings):
+def settingsRegexArtist(foldername, artist, settings, rootArtist=None):
     foldername = foldername.replace("%artist%", fixName(artist['name'], settings['illegalCharacterReplacer']))
     foldername = foldername.replace("%artist_id%", str(artist['id']))
+    if rootArtist:
+        foldername = foldername.replace("%root_artist%", fixName(rootArtist['name'], settings['illegalCharacterReplacer']))
+        foldername = foldername.replace("%root_artist_id%", str(rootArtist['id']))
+    else:
+        foldername = foldername.replace("%root_artist%", fixName(artist['name'], settings['illegalCharacterReplacer']))
+        foldername = foldername.replace("%root_artist_id%", str(artist['id']))
     foldername = foldername.replace('\\', pathSep).replace('/', pathSep)
     return antiDot(fixLongName(foldername))
 
