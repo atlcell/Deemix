@@ -264,6 +264,7 @@ class Track:
                 'name': albumAPI_gw['ART_NAME'],
                 'pic': None
             }
+            self.album['rootArtist'] = None
 
             # albumAPI_gw doesn't contain the artist cover
             # Getting artist image ID
@@ -359,6 +360,7 @@ class Track:
             'pic': playlist['various_artist']['picture_small'][
                    playlist['various_artist']['picture_small'].find('artist/') + 7:-24]
         }
+        self.playlist['rootArtist'] = None
         if settings['albumVariousArtists']:
             self.playlist['artist'] = {"Main": [playlist['various_artist']['name'], ]}
             self.playlist['artists'] = [playlist['various_artist']['name'], ]
