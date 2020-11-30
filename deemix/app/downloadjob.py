@@ -709,7 +709,7 @@ class DownloadJob:
                         self.downloadPercentage += chunkProgres
                     self.updatePercentage()
 
-        except SSLError as e:
+        except (SSLError, u3SSLError) as e:
             logger.info(f'{itemName} retrying from byte {chunkLength}')
             return self.streamTrack(stream, track, chunkLength)
         except (request_exception.ConnectionError, requests.exceptions.ReadTimeout):
