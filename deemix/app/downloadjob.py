@@ -13,6 +13,7 @@ import errno
 from ssl import SSLError
 from os import makedirs
 from tempfile import gettempdir
+from urllib3.exceptions import SSLError as u3SSLError
 
 from deemix.app.queueitem import QISingle, QICollection
 from deemix.app.track import Track, AlbumDoesntExists
@@ -76,7 +77,7 @@ def downloadImage(url, path, overwrite=OverwriteOption.DONT_OVERWRITE):
                     eventlet.sleep(1)
                     return  downloadImage(urlBase+pictureUrl.replace(str(pictureSize)+"x"+str(pictureSize), '1200x1200'), path, overwrite)
             logger.error("Image not found: "+url)
-        except (request_exception.ConnectionError, request_exception.ChunkedEncodingError) as e:
+        except (request_exception.ConnectionError, request_exception.ChunkedEncodingError, u3SSLError) as e:
             logger.error("Couldn't download Image, retrying in 5 seconds...: "+url+"\n")
             eventlet.sleep(5)
             return downloadImage(url, path, overwrite)
