@@ -7,7 +7,9 @@ userdata = ""
 musicdata = ""
 
 
-if os.getenv("XDG_CONFIG_HOME"):
+if os.getenv("DEEMIX_DATA_DIR"):
+    userdata = Path(os.getenv("DEEMIX_DATA_DIR"))
+elif os.getenv("XDG_CONFIG_HOME"):
     userdata = Path(os.getenv("XDG_CONFIG_HOME")) / 'deemix'
 elif os.getenv("APPDATA"):
     userdata = Path(os.getenv("APPDATA")) / "deemix"
@@ -16,7 +18,9 @@ elif sys.platform.startswith('darwin'):
 else:
     userdata = homedata / '.config' / 'deemix'
 
-if os.getenv("XDG_MUSIC_DIR"):
+if os.getenv("DEEMIX_MUSIC_DIR"):
+    musicdata = Path(os.getenv("DEEMIX_MUSIC_DIR"))
+elif os.getenv("XDG_MUSIC_DIR"):
     musicdata = Path(os.getenv("XDG_MUSIC_DIR")) / "deemix Music"
 elif os.name == 'nt':
     import winreg
@@ -32,9 +36,6 @@ elif os.name == 'nt':
     musicdata = Path(location) / "deemix Music"
 else:
     musicdata = homedata / "Music" / "deemix Music"
-
-def getHomeFolder():
-    return homedata
 
 def getConfigFolder():
     return userdata
