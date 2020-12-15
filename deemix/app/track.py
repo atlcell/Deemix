@@ -55,8 +55,8 @@ class Track:
         self.searched = False
         self.selectedFormat = 0
         self.dateString = None
-        self.album['picUrl'] = None
-        self.album['picPath'] = None
+        self.album['embeddedCoverURL'] = None
+        self.album['embeddedCoverPath'] = None
         self.album['bitrate'] = 0
         self.album['dateString'] = None
         self.artistsString = ""
@@ -78,12 +78,20 @@ class Track:
         self.album = {
             'id': "0",
             'title': trackAPI_gw['ALB_TITLE'],
-            'pic': trackAPI_gw.get('ALB_PICTURE', "")
+            'pic': {
+                'md5': trackAPI_gw.get('ALB_PICTURE', ""),
+                'type': "cover",
+                'url': None
+            }
         }
         self.mainArtist = {
             'id': "0",
             'name': trackAPI_gw['ART_NAME'],
-            'pic': ""
+            'pic': {
+                'md5': "",
+                'type': "artist",
+                'url': None
+            }
         }
         self.artists = [trackAPI_gw['ART_NAME']]
         self.artist = {
@@ -162,7 +170,11 @@ class Track:
         self.mainArtist = {
             'id': trackAPI_gw['ART_ID'],
             'name': trackAPI_gw['ART_NAME'],
-            'pic': trackAPI_gw.get('ART_PICTURE')
+            'pic': {
+                'md5': trackAPI_gw.get('ART_PICTURE'),
+                'type': "artist",
+                'url': None
+            }
         }
 
         self.date = None
@@ -176,7 +188,11 @@ class Track:
         self.album = {
             'id': trackAPI_gw['ALB_ID'],
             'title': trackAPI_gw['ALB_TITLE'],
-            'pic': trackAPI_gw.get('ALB_PICTURE'),
+            'pic': {
+                'md5': trackAPI_gw.get('ALB_PICTURE'),
+                'type': "cover",
+                'url': None
+            },
             'barcode': "Unknown",
             'label': "Unknown",
             'explicit': False,
@@ -202,7 +218,11 @@ class Track:
             self.album['mainArtist'] = {
                 'id': albumAPI['artist']['id'],
                 'name': albumAPI['artist']['name'],
-                'pic': artistPicture
+                'pic': {
+                    'md5': artistPicture,
+                    'type': "artist",
+                    'url': None
+                }
             }
             self.album['rootArtist'] = albumAPI.get('root_artist', None)
 
@@ -241,10 +261,10 @@ class Track:
             self.album['discTotal'] = albumAPI.get('nb_disk', "1")
             self.copyright = albumAPI.get('copyright')
 
-            if not self.album['pic']:
-                # Getting album cover ID
+            if not self.album['pic']['md5']:
+                # Getting album cover MD5
                 # ex: https://e-cdns-images.dzcdn.net/images/cover/2e018122cb56986277102d2041a592c8/56x56-000000-80-0-0.jpg
-                self.album['pic'] = albumAPI['cover_small'][albumAPI['cover_small'].find('cover/') + 6:-24]
+                self.album['pic']['md5'] = albumAPI['cover_small'][albumAPI['cover_small'].find('cover/') + 6:-24]
 
             if albumAPI.get('genres') and len(albumAPI['genres'].get('data', [])) > 0:
                 for genre in albumAPI['genres']['data']:
@@ -262,7 +282,11 @@ class Track:
             self.album['mainArtist'] = {
                 'id': albumAPI_gw['ART_ID'],
                 'name': albumAPI_gw['ART_NAME'],
-                'pic': None
+                'pic': {
+                    'md5': "",
+                    'type': "artist",
+                    'url': None
+                }
             }
             self.album['rootArtist'] = None
 
@@ -271,7 +295,7 @@ class Track:
             # ex: https://e-cdns-images.dzcdn.net/images/artist/f2bc007e9133c946ac3c3907ddc5d2ea/56x56-000000-80-0-0.jpg
             logger.info(f"[{self.mainArtist['name']} - {self.title}] Getting artist picture fallback")
             artistAPI = dz.api.get_artist(self.album['mainArtist']['id'])
-            self.album['mainArtist']['pic'] = artistAPI['picture_small'][artistAPI['picture_small'].find('artist/') + 7:-24]
+            self.album['mainArtist']['pic']['md5'] = artistAPI['picture_small'][artistAPI['picture_small'].find('artist/') + 7:-24]
 
             self.album['artists'] = [albumAPI_gw['ART_NAME']]
             self.album['trackTotal'] = albumAPI_gw['NUMBER_TRACK']
@@ -282,15 +306,14 @@ class Track:
             explicitLyricsStatus = albumAPI_gw.get('EXPLICIT_ALBUM_CONTENT', {}).get('EXPLICIT_LYRICS_STATUS', LyricsStatus.UNKNOWN)
             self.album['explicit'] = explicitLyricsStatus in [LyricsStatus.EXPLICIT, LyricsStatus.PARTIALLY_EXPLICIT]
 
-            if not self.album['pic']:
-                self.album['pic'] = albumAPI_gw['ALB_PICTURE']
+            if not self.album['pic']['md5']:
+                self.album['pic']['md5'] = albumAPI_gw['ALB_PICTURE']
             if 'PHYSICAL_RELEASE_DATE' in albumAPI_gw:
                 self.album['date'] = {
                     'day': albumAPI_gw["PHYSICAL_RELEASE_DATE"][8:10],
                     'month': albumAPI_gw["PHYSICAL_RELEASE_DATE"][5:7],
                     'year': albumAPI_gw["PHYSICAL_RELEASE_DATE"][0:4]
                 }
-        self.album['picType'] = 'cover'
 
         isAlbumArtistVariousArtists = self.album['mainArtist']['id'] == VARIOUS_ARTISTS
         self.album['mainArtist']['save'] = not isAlbumArtistVariousArtists or settings['albumVariousArtists'] and isAlbumArtistVariousArtists
@@ -348,17 +371,27 @@ class Track:
             url = playlist['picture_small']
             picType = url[url.find('images/')+7:]
             picType = picType[:picType.find('/')]
-            self.playlist['pic'] = url[url.find(picType+'/') + len(picType)+1:-24]
-            self.playlist['picType'] = picType
+            self.playlist['pic'] = {
+                'md5': url[url.find(picType+'/') + len(picType)+1:-24],
+                'type': picType,
+                'url': None
+            }
         else:
-            self.playlist['pic'] = playlist['picture_xl']
-            self.playlist['picType'] = None
+            self.playlist['pic'] = {
+                'md5': None,
+                'type': None,
+                'url': playlist['picture_xl']
+            }
         self.playlist['title'] = playlist['title']
         self.playlist['mainArtist'] = {
             'id': playlist['various_artist']['id'],
             'name': playlist['various_artist']['name'],
-            'pic': playlist['various_artist']['picture_small'][
-                   playlist['various_artist']['picture_small'].find('artist/') + 7:-24]
+            'pic': {
+                'md5': playlist['various_artist']['picture_small'][
+                       playlist['various_artist']['picture_small'].find('artist/') + 7:-24],
+                'type': "artist",
+                'url': None
+            }
         }
         self.playlist['rootArtist'] = None
         if settings['albumVariousArtists']:

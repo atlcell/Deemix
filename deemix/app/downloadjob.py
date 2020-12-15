@@ -93,6 +93,28 @@ def downloadImage(url, path, overwrite=OverwriteOption.DONT_OVERWRITE):
     else:
         return path
 
+def generatePictureURL(pic, size, format):
+    if pic['url']: return pic['url']
+    if format.startswith("jpg"):
+        if '-' in format:
+            quality = format[4:]
+        else:
+            quality = 80
+        format = 'jpg'
+        return "https://e-cdns-images.dzcdn.net/images/{}/{}/{}x{}-{}".format(
+            pic['type'],
+            pic['md5'],
+            size, size,
+            f'000000-{quality}-0-0.jpg'
+        )
+    if format == 'png':
+        return "https://e-cdns-images.dzcdn.net/images/{}/{}/{}x{}-{}".format(
+            pic['type'],
+            pic['md5'],
+            size, size,
+            'none-100-0-0.png'
+        )
+
 def formatDate(date, template):
     elements = {
         'year': ['YYYY', 'YY', 'Y'],
@@ -269,6 +291,7 @@ class DownloadJob:
             else:
                 raise DownloadFailed("notEncoded")
 
+        # Choose the target bitrate
         try:
             selectedFormat = self.getPreferredBitrate(track)
         except PreferredBitrateNotFound:
@@ -302,41 +325,28 @@ class DownloadJob:
         except TrackNot360:
             raise DownloadFailed("no360RA")
         track.selectedFormat = selectedFormat
+        track.album['bitrate'] = selectedFormat
 
-        imageQualityJPEG = f'000000-{self.settings["jpegImageQuality"]}-0-0.jpg'
-        imageQualityPNG = 'none-100-0-0.png'
-        imageQuality = imageQualityJPEG
-        if self.settings['embeddedArtworkPNG']: imageQuality = imageQualityPNG
+        # Generate covers URLs
+        embeddedImageFormat = f'jpg-{self.settings["jpegImageQuality"]}'
+        if self.settings['embeddedArtworkPNG']: imageFormat = 'png'
 
         if self.settings['tags']['savePlaylistAsCompilation'] and track.playlist:
             track.trackNumber = track.position
             track.discNumber = "1"
             track.album = {**track.album, **track.playlist}
-            if 'picType' in track.playlist:
-                track.playlist['picUrl'] = "https://e-cdns-images.dzcdn.net/images/{}/{}/{}x{}-{}".format(
-                    track.playlist['picType'],
-                    track.playlist['pic'],
-                    self.settings['embeddedArtworkSize'], self.settings['embeddedArtworkSize'],
-                    imageQuality
-                )
-            else:
-                track.playlist['picUrl'] = track.playlist['pic']
+            track.album['embeddedCoverURL'] = generatePictureURL(track.playlist['pic'], self.settings['embeddedArtworkSize'], embeddedImageFormat)
 
-            ext = track.playlist['picUrl'][-4:]
-            if ext[0] != ".": ext = ".jpg"
+            ext = track.album['embeddedCoverURL'][-4:]
+            if ext[0] != ".": ext = ".jpg" # Check for Spotify images
 
-            track.album['picPath'] = TEMPDIR / f"pl{trackAPI_gw['_EXTRA_PLAYLIST']['id']}_{self.settings['embeddedArtworkSize']}{ext}"
+            track.album['embeddedCoverPath'] = TEMPDIR / f"pl{trackAPI_gw['_EXTRA_PLAYLIST']['id']}_{self.settings['embeddedArtworkSize']}{ext}"
         else:
             if track.album['date']: track.date = track.album['date']
-            track.album['picUrl'] = "https://e-cdns-images.dzcdn.net/images/cover/{}/{}x{}-{}".format(
-                track.album['pic'],
-                self.settings['embeddedArtworkSize'], self.settings['embeddedArtworkSize'],
-                imageQuality
-            )
+            track.album['embeddedCoverURL'] = generatePictureURL(track.album['pic'], self.settings['embeddedArtworkSize'], embeddedImageFormat)
 
-            track.album['picPath'] = TEMPDIR / f"alb{track.album['id']}_{self.settings['embeddedArtworkSize']}{track.album['picUrl'][-4:]}"
-
-        track.album['bitrate'] = selectedFormat
+            ext = track.album['embeddedCoverURL'][-4:]
+            track.album['embeddedCoverPath'] = TEMPDIR / f"alb{track.album['id']}_{self.settings['embeddedArtworkSize']}{ext}"
 
         track.dateString = formatDate(track.date, self.settings['dateFormat'])
         track.album['dateString'] = formatDate(track.album['date'], self.settings['dateFormat'])
@@ -385,8 +395,6 @@ class DownloadJob:
             else:
                 track.artistsString = separator.join(track.artists)
 
-
-
         # Generate filename and filepath from metadata
         filename = generateFilename(track, self.settings, trackAPI_gw['FILENAME_TEMPLATE'])
         (filepath, artistPath, coverPath, extrasPath) = generateFilepath(track, self.settings)
@@ -395,34 +403,21 @@ class DownloadJob:
 
         # Download and cache coverart
         logger.info(f"[{track.mainArtist['name']} - {track.title}] Getting the album cover")
-        track.album['picPath'] = downloadImage(track.album['picUrl'], track.album['picPath'])
+        track.album['embeddedCoverPath'] = downloadImage(track.album['embeddedCoverURL'], track.album['embeddedCoverPath'])
 
         # Save local album art
         if coverPath:
             result['albumURLs'] = []
             for format in self.settings['localArtworkFormat'].split(","):
                 if format in ["png","jpg"]:
-                    if self.settings['tags']['savePlaylistAsCompilation'] and track.playlist:
-                        if track.playlist['picType']:
-                            localImageQuality = imageQualityJPEG
-                            if format == "png": localImageQuality = imageQualityPNG
-                            url = "https://e-cdns-images.dzcdn.net/images/{}/{}/{}x{}-{}".format(
-                                track.album['picType'],
-                                track.album['pic'],
-                                self.settings['localArtworkSize'], self.settings['localArtworkSize'],
-                                localImageQuality
-                            )
-                        else:
-                            url = track.album['pic']
-                            if format != "jpg": continue
-                    else:
-                        localImageQuality = imageQualityJPEG
-                        if format == "png": localImageQuality = imageQualityPNG
-                        url = "https://e-cdns-images.dzcdn.net/images/cover/{}/{}x{}-{}".format(
-                            track.album['pic'],
-                            self.settings['localArtworkSize'], self.settings['localArtworkSize'],
-                            localImageQuality
-                        )
+                    extendedFormat = format
+                    if extendedFormat == "jpg": extendedFormat += f"-{self.settings['jpegImageQuality']}"
+                    url = generatePictureURL(track.album['pic'], self.settings['localArtworkSize'], extendedFormat)
+                    if self.settings['tags']['savePlaylistAsCompilation'] \
+                        and track.playlist \
+                        and track.playlist['pic']['url'] \
+                        and not format.startswith("jpg"):
+                            continue
                     result['albumURLs'].append({'url': url, 'ext': format})
             result['albumPath'] = coverPath
             result['albumFilename'] = f"{settingsRegexAlbum(self.settings['coverImageTemplate'], track.album, self.settings, track.playlist)}"
@@ -432,23 +427,30 @@ class DownloadJob:
             result['artistURLs'] = []
             for format in self.settings['localArtworkFormat'].split(","):
                 if format in ["png","jpg"]:
-                    url = ""
-                    if track.album['mainArtist']['pic'] != "":
-                        localImageQuality = imageQualityJPEG
-                        if format == "png": localImageQuality = imageQualityPNG
-                        url = "https://e-cdns-images.dzcdn.net/images/artist/{}/{}x{}-{}".format(
-                            track.album['mainArtist']['pic'],
-                            self.settings['localArtworkSize'], self.settings['localArtworkSize'],
-                            localImageQuality
-                        )
-                    elif format == "jpg": # Blank artist image is not available in PNG
-                        url = "https://e-cdns-images.dzcdn.net/images/artist//{}x{}-{}".format(
-                            self.settings['localArtworkSize'], self.settings['localArtworkSize'],
-                            imageQualityJPEG
-                        )
-                    if url: result['artistURLs'].append({'url': url, 'ext': format})
+                    extendedFormat = format
+                    if extendedFormat == "jpg": extendedFormat += f"-{self.settings['jpegImageQuality']}"
+                    url = generatePictureURL(track.album['mainArtist']['pic'], self.settings['localArtworkSize'], extendedFormat)
+                    if track.album['mainArtist']['pic']['md5'] == "" and not format.startswith("jpg"): continue
+                    result['artistURLs'].append({'url': url, 'ext': format})
             result['artistPath'] = artistPath
             result['artistFilename'] = f"{settingsRegexArtist(self.settings['artistImageTemplate'], track.album['mainArtist'], self.settings, rootArtist=track.album['rootArtist'])}"
+
+        # Save playlist cover
+        if track.playlist:
+            if not len(self.playlistURLs):
+                for format in self.settings['localArtworkFormat'].split(","):
+                    if format in ["png","jpg"]:
+                        extendedFormat = format
+                        if extendedFormat == "jpg": extendedFormat += f"-{self.settings['jpegImageQuality']}"
+                        url = generatePictureURL(track.playlist['pic'], self.settings['localArtworkSize'], extendedFormat)
+                        if track.playlist['pic']['url'] and not format.startswith("jpg"): continue
+                        self.playlistURLs.append({'url': url, 'ext': format})
+            if not self.playlistCoverName:
+                track.playlist['id'] = "pl_" + str(trackAPI_gw['_EXTRA_PLAYLIST']['id'])
+                track.playlist['genre'] = ["Compilation", ]
+                track.playlist['bitrate'] = selectedFormat
+                track.playlist['dateString'] = formatDate(track.playlist['date'], self.settings['dateFormat'])
+                self.playlistCoverName = f"{settingsRegexAlbum(self.settings['coverImageTemplate'], track.playlist, self.settings, track.playlist)}"
 
         # Remove subfolders from filename and add it to filepath
         if pathSep in filename:
@@ -490,30 +492,6 @@ class DownloadJob:
         if extrasPath:
             if not self.extrasPath: self.extrasPath = extrasPath
             result['filename'] = str(writepath)[len(str(extrasPath))+ len(pathSep):]
-
-        # Save playlist cover
-        if track.playlist:
-            if not len(self.playlistURLs):
-                if track.playlist['picType']:
-                    for format in self.settings['localArtworkFormat'].split(","):
-                        if format in ["png","jpg"]:
-                            localImageQuality = imageQualityJPEG
-                            if format == "png": localImageQuality = imageQualityPNG
-                            url = "https://e-cdns-images.dzcdn.net/images/{}/{}/{}x{}-{}".format(
-                                track.playlist['picType'],
-                                track.playlist['pic'],
-                                self.settings['localArtworkSize'], self.settings['localArtworkSize'],
-                                localImageQuality
-                            )
-                            self.playlistURLs.append({'url': url, 'ext': format})
-                else:
-                    self.playlistURLs.append({'url': track.playlist['pic'], 'ext': 'jpg'})
-            if not self.playlistCoverName:
-                track.playlist['id'] = "pl_" + str(trackAPI_gw['_EXTRA_PLAYLIST']['id'])
-                track.playlist['genre'] = ["Compilation", ]
-                track.playlist['bitrate'] = selectedFormat
-                track.playlist['dateString'] = formatDate(track.playlist['date'], self.settings['dateFormat'])
-                self.playlistCoverName = f"{settingsRegexAlbum(self.settings['coverImageTemplate'], track.playlist, self.settings, track.playlist)}"
 
         if not trackAlreadyDownloaded or self.settings['overwriteFile'] == OverwriteOption.OVERWRITE:
             logger.info(f"[{track.mainArtist['name']} - {track.title}] Downloading the track")

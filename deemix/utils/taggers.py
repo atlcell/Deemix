@@ -98,17 +98,17 @@ def tagID3(stream, track, save):
         tag.add(TXXX(desc="SOURCE", text='Deezer'))
         tag.add(TXXX(desc="SOURCEID", text=str(track.id)))
 
-    if save['cover'] and track.album['picPath']:
+    if save['cover'] and track.album['embeddedCoverPath']:
 
         descEncoding = Encoding.LATIN1
         if save['coverDescriptionUTF8']:
             descEncoding = Encoding.UTF8
 
         mimeType = 'image/jpeg'
-        if str(track.album['picPath']).endswith('png'):
+        if str(track.album['embeddedCoverPath']).endswith('png'):
             mimeType = 'image/png'
 
-        with open(track.album['picPath'], 'rb') as f:
+        with open(track.album['embeddedCoverPath'], 'rb') as f:
             tag.add(APIC(descEncoding, mimeType, PictureType.COVER_FRONT, desc='cover', data=f.read()))
 
     tag.save( stream,
@@ -199,13 +199,13 @@ def tagFLAC(stream, track, save):
         tag["SOURCE"] = 'Deezer'
         tag["SOURCEID"] = str(track.id)
 
-    if save['cover'] and track.album['picPath']:
+    if save['cover'] and track.album['embeddedCoverPath']:
         image = Picture()
         image.type = PictureType.COVER_FRONT
         image.mime = 'image/jpeg'
-        if str(track.album['picPath']).endswith('png'):
+        if str(track.album['embeddedCoverPath']).endswith('png'):
             image.mime = 'image/png'
-        with open(track.album['picPath'], 'rb') as f:
+        with open(track.album['embeddedCoverPath'], 'rb') as f:
             image.data = f.read()
         tag.add_picture(image)
 
