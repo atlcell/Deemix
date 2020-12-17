@@ -24,7 +24,7 @@ def tagID3(stream, track, save):
             else:
                 tag.add(TPE1(text=track.artistsString))
             # Tag ARTISTS is added to keep the multiartist support when using a non standard tagging method
-            # https://picard-docs.musicbrainz.org/en/technical/tag_mapping.html#artists
+            # https://picard-docs.musicbrainz.org/en/appendices/tag_mapping.html#artists
             tag.add(TXXX(desc="ARTISTS", text=track.artists))
 
     if save['album']:
