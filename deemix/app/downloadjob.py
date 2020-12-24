@@ -252,7 +252,6 @@ class DownloadJob:
             logger.info(f"[{trackAPI_gw['ART_NAME']} - {trackAPI_gw['SNG_TITLE']}] Getting the tags")
             try:
                 track = Track(self.dz,
-                              settings=self.settings,
                               trackAPI_gw=trackAPI_gw,
                               trackAPI=trackAPI_gw['_EXTRA_TRACK'] if '_EXTRA_TRACK' in trackAPI_gw else None,
                               albumAPI=trackAPI_gw['_EXTRA_ALBUM'] if '_EXTRA_ALBUM' in trackAPI_gw else None
@@ -351,6 +350,23 @@ class DownloadJob:
         track.dateString = formatDate(track.date, self.settings['dateFormat'])
         track.album['dateString'] = formatDate(track.album['date'], self.settings['dateFormat'])
         if track.playlist: track.playlist['dateString'] = formatDate(track.playlist['date'], self.settings['dateFormat'])
+
+        # Check various artist option
+        if self.settings['albumVariousArtists'] and track.album['variousArtists']:
+            artist = track.album['variousArtists']
+            isMainArtist = artist['role'] == "Main"
+
+            if artist['name'] not in track.album['artists']:
+                track.album['artists'].insert(0, artist['name'])
+
+            if isMainArtist or artist['name'] not in track.album['artist']['Main'] and not isMainArtist:
+                if not artist['role'] in track.album['artist']:
+                    track.album['artist'][artist['role']] = []
+                track.album['artist'][artist['role']].insert(0, artist['name'])
+        track.album['mainArtist']['save'] = not track.album['mainArtist']['isVariousArtists'] or self.settings['albumVariousArtists'] and track.album['mainArtist']['isVariousArtists']
+
+        # Check removeDuplicateArtists
+        if self.settings['removeDuplicateArtists']: track.removeDuplicateArtists()
 
         # Check if user wants the feat in the title
         if str(self.settings['featuredToTitle']) == FeaturesOption.REMOVE_TITLE:

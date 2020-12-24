@@ -13,7 +13,7 @@ logger = logging.getLogger('deemix')
 VARIOUS_ARTISTS = 5080
 
 class Track:
-    def __init__(self, dz, settings, trackAPI_gw, trackAPI=None, albumAPI_gw=None, albumAPI=None):
+    def __init__(self, dz, trackAPI_gw, trackAPI=None, albumAPI_gw=None, albumAPI=None):
         self.parseEssentialData(dz, trackAPI_gw)
 
         self.title = trackAPI_gw['SNG_TITLE'].strip()
@@ -26,7 +26,7 @@ class Track:
         if self.localTrack:
             self.parseLocalTrackData(trackAPI_gw)
         else:
-            self.parseData(dz, settings, trackAPI_gw, trackAPI, albumAPI_gw, albumAPI)
+            self.parseData(dz, trackAPI_gw, trackAPI, albumAPI_gw, albumAPI)
 
         # Make sure there is at least one artist
         if not 'Main' in self.artist:
@@ -45,7 +45,7 @@ class Track:
         # Add playlist data if track is in a playlist
         self.playlist = None
         if "_EXTRA_PLAYLIST" in trackAPI_gw:
-            self.parsePlaylistData(trackAPI_gw["_EXTRA_PLAYLIST"], settings)
+            self.parsePlaylistData(trackAPI_gw["_EXTRA_PLAYLIST"])
 
         self.singleDownload = trackAPI_gw.get('SINGLE_TRACK', False)
 
@@ -124,13 +124,12 @@ class Track:
         self.replayGain = ""
         self.trackNumber = "0"
 
-    def parseData(self, dz, settings, trackAPI_gw, trackAPI, albumAPI_gw, albumAPI):
+    def parseData(self, dz, trackAPI_gw, trackAPI, albumAPI_gw, albumAPI):
         self.discNumber = trackAPI_gw.get('DISK_NUMBER')
         self.explicit = bool(int(trackAPI_gw.get('EXPLICIT_LYRICS', "0")))
         self.copyright = trackAPI_gw.get('COPYRIGHT')
         self.replayGain = ""
-        if 'GAIN' in trackAPI_gw:
-            self.replayGain = generateReplayGainString(trackAPI_gw['GAIN'])
+        if 'GAIN' in trackAPI_gw: self.replayGain = generateReplayGainString(trackAPI_gw['GAIN'])
         self.ISRC = trackAPI_gw.get('ISRC')
         self.trackNumber = trackAPI_gw['TRACK_NUMBER']
         self.contributors = trackAPI_gw['SNG_CONTRIBUTORS']
@@ -228,23 +227,22 @@ class Track:
 
             self.album['artist'] = {}
             self.album['artists'] = []
+            self.album['variousArtists'] = None
             for artist in albumAPI['contributors']:
                 isVariousArtists = artist['id'] == VARIOUS_ARTISTS
                 isMainArtist = artist['role'] == "Main"
 
-                if not isVariousArtists or settings['albumVariousArtists'] and isVariousArtists:
-                    if artist['name'] not in self.album['artists']:
-                        self.album['artists'].append(artist['name'])
+                if isVariousArtists:
+                    self.album['variousArtists'] = artist
+                    continue
 
-                    if isMainArtist or artist['name'] not in self.album['artist']['Main'] and not isMainArtist:
-                        if not artist['role'] in self.album['artist']:
-                            self.album['artist'][artist['role']] = []
-                        self.album['artist'][artist['role']].append(artist['name'])
+                if artist['name'] not in self.album['artists']:
+                    self.album['artists'].append(artist['name'])
 
-            if settings['removeDuplicateArtists']:
-                self.album['artists'] = uniqueArray(self.album['artists'])
-                for role in self.album['artist'].keys():
-                    self.album['artist'][role] = uniqueArray(self.album['artist'][role])
+                if isMainArtist or artist['name'] not in self.album['artist']['Main'] and not isMainArtist:
+                    if not artist['role'] in self.album['artist']:
+                        self.album['artist'][artist['role']] = []
+                    self.album['artist'][artist['role']].append(artist['name'])
 
             self.album['trackTotal'] = albumAPI['nb_tracks']
             self.album['recordType'] = albumAPI['record_type']
@@ -315,8 +313,7 @@ class Track:
                     'year': albumAPI_gw["PHYSICAL_RELEASE_DATE"][0:4]
                 }
 
-        isAlbumArtistVariousArtists = self.album['mainArtist']['id'] == VARIOUS_ARTISTS
-        self.album['mainArtist']['save'] = not isAlbumArtistVariousArtists or settings['albumVariousArtists'] and isAlbumArtistVariousArtists
+        self.album['mainArtist']['isVariousArtists'] = self.album['mainArtist']['id'] == VARIOUS_ARTISTS
 
         if self.album['date'] and not self.date:
             self.date = self.album['date']
@@ -339,19 +336,16 @@ class Track:
             isVariousArtists = artist['id'] == VARIOUS_ARTISTS
             isMainArtist = artist['role'] == "Main"
 
-            if not isVariousArtists or len(trackAPI['contributors']) == 1 and isVariousArtists:
-                if artist['name'] not in self.artists:
-                    self.artists.append(artist['name'])
+            if isVariousArtists or len(trackAPI['contributors']) == 1 and not isVariousArtists:
+                continue
 
-                if isMainArtist or artist['name'] not in self.artist['Main'] and not isMainArtist:
-                    if not artist['role'] in self.artist:
-                        self.artist[artist['role']] = []
-                    self.artist[artist['role']].append(artist['name'])
+            if artist['name'] not in self.artists:
+                self.artists.append(artist['name'])
 
-        if settings['removeDuplicateArtists']:
-            self.artists = uniqueArray(self.artists)
-            for role in self.artist.keys():
-                self.artist[role] = uniqueArray(self.artist[role])
+            if isMainArtist or artist['name'] not in self.artist['Main'] and not isMainArtist:
+                if not artist['role'] in self.artist:
+                    self.artist[artist['role']] = []
+                self.artist[artist['role']].append(artist['name'])
 
         if not self.album['discTotal']:
             if not albumAPI_gw:
@@ -365,7 +359,7 @@ class Track:
                 albumAPI_gw = dz.gw.get_album(self.album['id'])
             self.copyright = albumAPI_gw['COPYRIGHT']
 
-    def parsePlaylistData(self, playlist, settings):
+    def parsePlaylistData(self, playlist):
         self.playlist = {}
         if 'dzcdn.net' in playlist['picture_small']:
             url = playlist['picture_small']
@@ -394,12 +388,9 @@ class Track:
             }
         }
         self.playlist['rootArtist'] = None
-        if settings['albumVariousArtists']:
-            self.playlist['artist'] = {"Main": [playlist['various_artist']['name'], ]}
-            self.playlist['artists'] = [playlist['various_artist']['name'], ]
-        else:
-            self.playlist['artist'] = {"Main": []}
-            self.playlist['artists'] = []
+        self.playlist['artist'] = {"Main": []}
+        self.playlist['artists'] = []
+        self.playlist['variousArtists'] = playlist['various_artist']
         self.playlist['trackTotal'] = playlist['nb_tracks']
         self.playlist['recordType'] = "compile"
         self.playlist['barcode'] = ""
@@ -413,6 +404,15 @@ class Track:
         self.playlist['discTotal'] = "1"
         self.playlist['playlistId'] = playlist['id']
         self.playlist['owner'] = playlist['creator']
+
+    def removeDuplicateArtists(self):
+        self.artists = uniqueArray(self.artists)
+        for role in self.artist.keys():
+            self.artist[role] = uniqueArray(self.artist[role])
+
+        self.album['artists'] = uniqueArray(self.album['artists'])
+        for role in self.album['artist'].keys():
+            self.album['artist'][role] = uniqueArray(self.album['artist'][role])
 
     # Removes featuring from the title
     def getCleanTitle(self):
