@@ -113,6 +113,8 @@ class Track:
         self.album['genre'] = []
         self.album['label'] = "Unknown"
         self.album['mainArtist'] = self.mainArtist
+        self.album['mainArtist']['isVariousArtists'] = False
+        self.album['rootArtist'] = None
         self.album['recordType'] = "album"
         self.album['trackTotal'] = "0"
         self.bpm = 0
@@ -380,6 +382,7 @@ class Track:
         self.playlist['mainArtist'] = {
             'id': playlist['various_artist']['id'],
             'name': playlist['various_artist']['name'],
+            'isVariousArtists': True,
             'pic': {
                 'md5': playlist['various_artist']['picture_small'][
                        playlist['various_artist']['picture_small'].find('artist/') + 7:-24],
