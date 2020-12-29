@@ -2,6 +2,7 @@ from deemix.app.downloadjob import DownloadJob
 from deemix.utils import getIDFromLink, getTypeFromLink, getBitrateInt
 from deezer.gw import APIError as gwAPIError, LyricsStatus
 from deezer.api import APIError
+from deezer.utils import map_user_playlist
 from spotipy.exceptions import SpotifyException
 from deemix.app.queueitem import QueueItem, QISingle, QICollection, QIConvertable
 import logging
@@ -134,7 +135,8 @@ class QueueManager:
         # Fallback to gw api if the playlist is private
         if not playlistAPI:
             try:
-                playlistAPI = dz.gw.get_playlist_page(id)
+                userPlaylist = dz.gw.get_playlist_page(id)
+                playlistAPI = map_user_playlist(userPlaylist['DATA'])
             except gwAPIError as e:
                 e = json.loads(str(e))
                 message = "Wrong URL"
@@ -143,8 +145,8 @@ class QueueManager:
                 return QueueError("https://deezer.com/playlist/"+str(id), message)
 
         # Check if private playlist and owner
-        if not playlistAPI['public'] and playlistAPI['creator']['id'] != str(dz.current_user['id']):
-            logger.warn("You can't download others private playlists.")
+        if not playlistAPI.get('public', False) and playlistAPI['creator']['id'] != str(dz.current_user['id']):
+            logger.warning("You can't download others private playlists.")
             return QueueError("https://deezer.com/playlist/"+str(id), "You can't download others private playlists.", "notYourPrivatePlaylist")
 
         playlistTracksAPI = dz.gw.get_playlist_tracks(id)
