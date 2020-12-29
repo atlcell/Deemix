@@ -114,6 +114,7 @@ class Track:
         self.album['label'] = "Unknown"
         self.album['mainArtist'] = self.mainArtist
         self.album['mainArtist']['isVariousArtists'] = False
+        self.album['variousArtists'] = None
         self.album['rootArtist'] = None
         self.album['recordType'] = "album"
         self.album['trackTotal'] = "0"
@@ -209,6 +210,7 @@ class Track:
             except APIError:
                 albumAPI = None
 
+        self.album['variousArtists'] = None
         if albumAPI:
             self.album['title'] = albumAPI['title']
 
@@ -227,9 +229,8 @@ class Track:
             }
             self.album['rootArtist'] = albumAPI.get('root_artist', None)
 
-            self.album['artist'] = {}
+            self.album['artist'] = {'Main': []}
             self.album['artists'] = []
-            self.album['variousArtists'] = None
             for artist in albumAPI['contributors']:
                 isVariousArtists = artist['id'] == VARIOUS_ARTISTS
                 isMainArtist = artist['role'] == "Main"
@@ -332,7 +333,7 @@ class Track:
         if not self.discNumber:
             self.discNumber = trackAPI['disk_number']
 
-        self.artist = {}
+        self.artist = {'Main': []}
         self.artists = []
         for artist in trackAPI['contributors']:
             isVariousArtists = artist['id'] == VARIOUS_ARTISTS
