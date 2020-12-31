@@ -364,6 +364,7 @@ class Track:
 
     def parsePlaylistData(self, playlist):
         self.playlist = {}
+        playlist['various_artist']['role'] = "Main"
         if 'dzcdn.net' in playlist['picture_small']:
             url = playlist['picture_small']
             picType = url[url.find('images/')+7:]
