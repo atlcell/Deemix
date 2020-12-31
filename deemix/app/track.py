@@ -339,7 +339,7 @@ class Track:
             isVariousArtists = artist['id'] == VARIOUS_ARTISTS
             isMainArtist = artist['role'] == "Main"
 
-            if isVariousArtists or len(trackAPI['contributors']) == 1 and not isVariousArtists:
+            if len(trackAPI['contributors']) > 1 and isVariousArtists:
                 continue
 
             if artist['name'] not in self.artists:
