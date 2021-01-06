@@ -30,8 +30,8 @@ class QueueManager:
             try:
                 trackAPI = dz.api.get_track(id)
             except APIError as e:
-                e = json.loads(str(e))
-                return QueueError("https://deezer.com/track/"+str(id), f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
+                e = str(e)
+                return QueueError("https://deezer.com/track/"+str(id), f"Wrong URL: {e}")
             if 'id' in trackAPI and 'title' in trackAPI:
                 id = trackAPI['id']
             else:
@@ -41,7 +41,7 @@ class QueueManager:
         try:
             trackAPI_gw = dz.gw.get_track_with_fallback(id)
         except gwAPIError as e:
-            e = json.loads(str(e))
+            e = str(e)
             message = "Wrong URL"
             if "DATA_ERROR" in e: message += f": {e['DATA_ERROR']}"
             return QueueError("https://deezer.com/track/"+str(id), message)
@@ -78,8 +78,8 @@ class QueueManager:
         try:
             albumAPI = dz.api.get_album(id)
         except APIError as e:
-            e = json.loads(str(e))
-            return QueueError("https://deezer.com/album/"+str(id), f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
+            e = str(e)
+            return QueueError("https://deezer.com/album/"+str(id), f"Wrong URL: {e}")
 
         if str(id).startswith('upc'): id = albumAPI['id']
 
@@ -138,7 +138,7 @@ class QueueManager:
                 userPlaylist = dz.gw.get_playlist_page(id)
                 playlistAPI = map_user_playlist(userPlaylist['DATA'])
             except gwAPIError as e:
-                e = json.loads(str(e))
+                e = str(e)
                 message = "Wrong URL"
                 if "DATA_ERROR" in e:
                     message += f": {e['DATA_ERROR']}"
@@ -184,8 +184,8 @@ class QueueManager:
         try:
             artistAPI = dz.api.get_artist(id)
         except APIError as e:
-            e = json.loads(str(e))
-            return QueueError("https://deezer.com/artist/"+str(id), f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
+            e = str(e)
+            return QueueError("https://deezer.com/artist/"+str(id), f"Wrong URL: {e}")
 
         if interface: interface.send("startAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
         rootArtist = {
@@ -207,8 +207,8 @@ class QueueManager:
         try:
             artistAPI = dz.api.get_artist(id)
         except APIError as e:
-            e = json.loads(str(e))
-            return QueueError("https://deezer.com/artist/"+str(id)+"/discography", f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
+            e = str(e)
+            return QueueError("https://deezer.com/artist/"+str(id)+"/discography", f"Wrong URL: {e}")
 
         if interface: interface.send("startAddingArtist", {'name': artistAPI['name'], 'id': artistAPI['id']})
         rootArtist = {
@@ -231,8 +231,8 @@ class QueueManager:
         try:
             artistAPI = dz.api.get_artist(id)
         except APIError as e:
-            e = json.loads(str(e))
-            return QueueError("https://deezer.com/artist/"+str(id)+"/top_track", f"Wrong URL: {e['type']+': ' if 'type' in e else ''}{e['message'] if 'message' in e else ''}")
+            e = str(e)
+            return QueueError("https://deezer.com/artist/"+str(id)+"/top_track", f"Wrong URL: {e}")
 
         # Emulate the creation of a playlist
         # Can't use generatePlaylistQueueItem as this is not a real playlist
