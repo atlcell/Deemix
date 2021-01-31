@@ -450,10 +450,10 @@ class DownloadJob:
         writepath = filepath / f"{filename}{extensions[track.selectedFormat]}"
 
         # Save lyrics in lrc file
-        if self.settings['syncedLyrics'] and track.lyrics['sync']:
+        if self.settings['syncedLyrics'] and track.lyrics.sync:
             if not (filepath / f"{filename}.lrc").is_file() or self.settings['overwriteFile'] in [OverwriteOption.OVERWRITE, OverwriteOption.ONLY_TAGS]:
                 with open(filepath / f"{filename}.lrc", 'wb') as f:
-                    f.write(track.lyrics['sync'].encode('utf-8'))
+                    f.write(track.lyrics.sync.encode('utf-8'))
 
         trackAlreadyDownloaded = writepath.is_file()
 
