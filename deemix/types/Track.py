@@ -152,6 +152,10 @@ class Track:
             if not self.copyright: self.copyright = albumAPI_gw['COPYRIGHT']
             self.parseTrack(trackAPI)
 
+        # Remove unwanted charaters in track name
+        # Example: track/127793
+        self.title = ' '.join(self.title.split())
+
         # Make sure there is at least one artist
         if not len(self.artist['Main']):
             self.artist['Main'] = [self.mainArtist['name']]
