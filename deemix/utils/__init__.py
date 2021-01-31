@@ -122,6 +122,12 @@ def uniqueArray(arr):
                 del arr[iRest]
     return arr
 
+def removeDuplicateArtists(artist, artists):
+    artists = uniqueArray(artists)
+    for role in artist.keys():
+        artist[role] = uniqueArray(artist[role])
+    return (artist, artists)
+
 def checkFolder(folder):
     try:
         os.makedirs(folder, exist_ok=True)
