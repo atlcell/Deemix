@@ -1,6 +1,6 @@
 from deezer.gw import LyricsStatus
 
-from deemix.utils import removeDuplicateArtists
+from deemix.utils import removeDuplicateArtists, removeFeatures
 from deemix.types.Artist import Artist
 from deemix.types.Date import Date
 from deemix.types.Picture import Picture
