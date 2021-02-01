@@ -45,6 +45,7 @@ def removeFeatures(title):
         if ")" in clean:
             tempTrack += clean[clean.find(")", pos + 1) + 1:]
         clean = tempTrack.strip()
+        clean = ' '.join(clean.split())
     return clean
 
 
