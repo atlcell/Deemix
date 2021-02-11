@@ -69,6 +69,7 @@ def getIDFromLink(link, type):
         link = link[:-1]
 
     if link.startswith("http") and 'open.spotify.com/' in link:
+        if '&' in link: link = link[:link.find('&')]
         if type == "spotifyplaylist":
             return link[link.find("/playlist/") + 10:]
         if type == "spotifytrack":
